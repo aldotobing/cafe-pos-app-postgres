@@ -8,77 +8,54 @@ button, a, [role="button"], input[type="checkbox"], input[type="radio"], input[t
   cursor: pointer;
 }
 
-/* Fast and smooth theme transitions - comfortable pacing */
+/* No theme transitions - instant theme switching */
 *, *::before, *::after {
-  transition-property: background-color, border-color, color, fill, stroke;
-  transition-duration: 250ms;
-  transition-timing-function: ease;
-}
-
-/* Major surfaces slightly longer for a smooth fade */
-.bg-background, 
-.bg-card,
-.bg-popover,
-.bg-muted {
-  transition-duration: 350ms;
-}
-
-/* Exclude performance-heavy elements from transitions */
-svg *, path, circle, rect, line, 
-* > img, * > video, * > canvas,
-progress, meter,
-.animate-spin, .animate-pulse, .animate-bounce {
   transition: none !important;
 }
 
-/* Inputs and links stay smooth */
-input, textarea, select, a {
-  transition-duration: 200ms;
-}
-
 :root {
-  /* Warm Professional Light Theme — High Readability */
-  --background: #FAF9F7;       /* Warm off-white — gentle page foundation */
-  --foreground: #292524;        /* Warm near-black — crisp body text (12:1 contrast) */
-  --card: #FFFFFF;              /* Pure white — clean card elevation */
-  --card-foreground: #292524;
-  --popover: #FFFFFF;
-  --popover-foreground: #292524;
-  --primary: #A0693D;           /* Warm terracotta brown — harmonious accent */
+  /* Soft Warm Light Theme — Gentle & Comfortable */
+  --background: #F5F3F0;       /* Softer warm off-white — more gentle page foundation */
+  --foreground: #3A3632;        /* Softer dark gray — comfortable body text */
+  --card: #FFFEFD;             /* Nearly white with warmth — softer card elevation */
+  --card-foreground: #3A3632;
+  --popover: #FFFEFD;
+  --popover-foreground: #3A3632;
+  --primary: #9C633A;           /* Softer terracotta brown — gentler accent */
   --primary-foreground: #FFFFFF;
-  --secondary: #F3EFE9;         /* Warm tint — visibly distinct from background */
-  --secondary-foreground: #44403C; /* Stone-700 — clear readable secondary text */
-  --muted: #EDEAE4;             /* Warm muted surface — soft but defined */
-  --muted-foreground: #78716C;  /* Stone-500 — WCAG AA compliant (4.6:1) */
-  --accent: #E8E3DB;            /* Warm accent — visible surface distinction */
-  --accent-foreground: #44403C;
+  --secondary: #F0EBE5;         /* Softer warm tint — more subtle distinction */
+  --secondary-foreground: #524D48; /* Softer secondary text */
+  --muted: #E9E4DE;             /* Softer muted surface — gentler background */
+  --muted-foreground: #827C76;  /* Softer muted text — still readable */
+  --accent: #E2DCD4;            /* Softer accent — gentler surface distinction */
+  --accent-foreground: #524D48;
   --destructive: #D4543E;
   --destructive-foreground: #FFFFFF;
-  --border: #D5CFC6;            /* Visible warm border — clear element boundaries */
-  --input: #FFFFFF;             /* White inputs — distinct from page background */
-  --ring: #A0693D;
-  --chart-1: #A0693D;
-  --chart-2: #7B9B8B;
-  --chart-3: #8B9590;
-  --chart-4: #A0876B;
-  --chart-5: #B5A491;
+  --border: #E0D9D0;            /* Softer warm border — gentler element boundaries */
+  --input: #FFFEFD;             /* Softer white inputs — matches card */
+  --ring: #9C633A;
+  --chart-1: #9C633A;
+  --chart-2: #7A9A8A;
+  --chart-3: #8A928D;
+  --chart-4: #9E8570;
+  --chart-5: #B3A28F;
   --radius: 0.5rem;
-  --sidebar: #FFFFFF;
-  --sidebar-foreground: #292524;
-  --sidebar-primary: #A0693D;
+  --sidebar: #FFFEFD;
+  --sidebar-foreground: #3A3632;
+  --sidebar-primary: #9C633A;
   --sidebar-primary-foreground: #FFFFFF;
-  --sidebar-accent: #F3EFE9;
-  --sidebar-accent-foreground: #44403C;
-  --sidebar-border: #D5CFC6;
-  --sidebar-ring: #A0693D;
+  --sidebar-accent: #F0EBE5;
+  --sidebar-accent-foreground: #4A4540;
+  --sidebar-border: #E0D9D0;
+  --sidebar-ring: #9C633A;
 
-  /* Navigation active states — clear warm emphasis */
-  --nav-active-bg: rgba(160, 105, 61, 0.10);
-  --nav-active-text: #A0693D;
+  /* Navigation active states — softer warm emphasis */
+  --nav-active-bg: rgba(156, 99, 58, 0.10);
+  --nav-active-text: #9C633A;
 
-  /* Scrollbar colors — soft and visible */
-  --scrollbar-thumb: rgba(41, 37, 36, 0.16);
-  --scrollbar-thumb-hover: rgba(41, 37, 36, 0.28);
+  /* Scrollbar colors — softer and visible */
+  --scrollbar-thumb: rgba(58, 54, 50, 0.12);
+  --scrollbar-thumb-hover: rgba(58, 54, 50, 0.20);
   --scrollbar-track: transparent;
 }
 
@@ -172,9 +149,33 @@ input, textarea, select, a {
   }
   body {
     @apply bg-background text-foreground font-sans text-[15px] leading-relaxed;
+    position: relative;
+  }
+
+  /* Light mode - subpixel rendering for sharper text */
+  :root body {
+    -webkit-font-smoothing: auto;
+    -moz-osx-font-smoothing: auto;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Dark mode - antialiased for lighter text on dark */
+  .dark body {
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    position: relative;
+  }
+
+  /* Card components - softer shadows and borders */
+  .bg-card {
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.02);
+  }
+
+  /* Buttons - softer shadows */
+  button {
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+  }
+  button:hover {
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
   }
 
   /* Grain overlay for texture - extremely subtle for comfort */
@@ -185,7 +186,7 @@ input, textarea, select, a {
     z-index: 0;
     pointer-events: none;
     background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='1'/%3E%3C/svg%3E");
-    opacity: 0.008;
+    opacity: 0.006;
   }
 
   h1, h2, h3, h4 {
@@ -265,7 +266,7 @@ input, textarea, select, a {
     scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
   }
 
-  /* Form inputs and form controls - clear and professional */
+  /* Form inputs and form controls - softer and elegant */
   input[type="text"],
   input[type="email"],
   input[type="password"],
@@ -275,8 +276,9 @@ input, textarea, select, a {
   input[type="search"],
   textarea,
   select {
-    @apply border border-border text-foreground placeholder:text-muted-foreground focus:border-ring focus:ring-1 focus:ring-ring transition-colors;
+    @apply border border-border text-foreground placeholder:text-muted-foreground focus:border-ring focus:ring-1 focus:ring-ring/30 transition-colors;
     background-color: var(--input);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
   }
 
   input[type="text"]::placeholder,
@@ -290,16 +292,17 @@ input, textarea, select, a {
     @apply text-muted-foreground;
   }
 
-  /* Focus visible states for better accessibility */
+  /* Focus visible states - softer and more elegant */
   input:focus-visible,
   textarea:focus-visible,
   select:focus-visible {
-    @apply outline-none border-ring ring-1 ring-ring;
+    @apply outline-none border-ring ring-1 ring-ring/30;
+    box-shadow: 0 0 0 3px rgba(156, 99, 58, 0.08);
   }
 
-  /* Text selection — branded highlight */
+  /* Text selection — softer branded highlight */
   ::selection {
-    background-color: rgba(160, 105, 61, 0.18);
+    background-color: rgba(156, 99, 58, 0.15);
     color: var(--foreground);
   }
   .dark ::selection {

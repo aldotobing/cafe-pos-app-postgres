@@ -233,12 +233,14 @@ export function AddMenuForm({ formVariants }: { formVariants: any }) {
               <div className="md:col-span-9 flex flex-col sm:flex-row sm:flex-wrap items-start sm:items-center gap-3">
                 <div className="relative w-full sm:w-auto sm:max-w-[160px]">
                   <input
-                    type="number"
+                    type="text"
+                    inputMode="numeric"
                     className="w-full rounded-lg border border-input bg-background pl-4 pr-10 py-2.5 text-sm shadow-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary"
                     value={form.marginPercent || ''}
-                    min={0}
-                    max={999}
-                    onChange={(e) => setForm((f) => ({ ...f, marginPercent: Number(e.target.value) || 0 }))}
+                    onChange={(e) => {
+                      const raw = e.target.value.replace(/\D/g, '');
+                      setForm((f) => ({ ...f, marginPercent: Math.min(999, Number(raw) || 0) }));
+                    }}
                   />
                   <div className="absolute right-4 top-2.5 text-sm text-muted-foreground font-medium">%</div>
                 </div>
@@ -374,12 +376,15 @@ export function AddMenuForm({ formVariants }: { formVariants: any }) {
                   <label className="md:col-span-3 text-sm font-medium text-foreground pt-2.5">Stok Tersedia</label>
                   <div className="md:col-span-9">
                     <input
-                      type="number"
+                      type="text"
+                      inputMode="numeric"
                       className="w-full sm:max-w-[200px] rounded-lg border border-input bg-background px-4 py-2.5 text-sm shadow-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary"
                       value={form.stockQuantity || ''}
-                      min={0}
                       placeholder="0"
-                      onChange={(e) => setForm((f) => ({ ...f, stockQuantity: Number(e.target.value) || 0 }))}
+                      onChange={(e) => {
+                        const raw = e.target.value.replace(/\D/g, '');
+                        setForm((f) => ({ ...f, stockQuantity: Number(raw) || 0 }));
+                      }}
                     />
                   </div>
                 </div>
@@ -390,12 +395,15 @@ export function AddMenuForm({ formVariants }: { formVariants: any }) {
                   </div>
                   <div className="md:col-span-9">
                     <input
-                      type="number"
+                      type="text"
+                      inputMode="numeric"
                       className="w-full sm:max-w-[200px] rounded-lg border border-input bg-background px-4 py-2.5 text-sm shadow-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/20 focus-visible:border-amber-500"
                       value={form.minStock || ''}
-                      min={0}
                       placeholder="5"
-                      onChange={(e) => setForm((f) => ({ ...f, minStock: Number(e.target.value) || 5 }))}
+                      onChange={(e) => {
+                        const raw = e.target.value.replace(/\D/g, '');
+                        setForm((f) => ({ ...f, minStock: Number(raw) || 5 }));
+                      }}
                     />
                     <p className="text-xs text-muted-foreground leading-relaxed mt-1">Peringatan stok menipis akan muncul bila stok mencapai angka ini.</p>
                   </div>
@@ -537,11 +545,15 @@ export function AddMenuForm({ formVariants }: { formVariants: any }) {
                           Stok Varian
                         </label>
                         <input
-                          type="number"
+                          type="text"
+                          inputMode="numeric"
                           className="w-full rounded-lg border border-input bg-background px-4 py-2.5 text-sm shadow-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary"
                           placeholder="0"
                           value={variantForm.stockQuantity || ''}
-                          onChange={(e) => setVariantForm(f => ({ ...f, stockQuantity: Number(e.target.value) || 0 }))}
+                          onChange={(e) => {
+                            const raw = e.target.value.replace(/\D/g, '');
+                            setVariantForm(f => ({ ...f, stockQuantity: Number(raw) || 0 }));
+                          }}
                         />
                       </div>
                       <div>
