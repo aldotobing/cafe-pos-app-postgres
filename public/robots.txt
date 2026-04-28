@@ -1,0 +1,51 @@
+# KasirKu POS - Robots.txt
+# https://kasirku.biz.id
+
+# Default rules for all crawlers
+User-agent: *
+# Allow crawling of public pages
+Allow: /
+Allow: /login
+Allow: /register
+Allow: /signup
+Allow: /policy
+Allow: /tos
+
+# Disallow crawling of private/authenticated areas
+Disallow: /admin-dashboard/
+Disallow: /cashier-dashboard/
+Disallow: /dashboard/
+Disallow: /pos/
+Disallow: /menu/
+Disallow: /stock/
+Disallow: /categories/
+Disallow: /transactions/
+Disallow: /receipt/
+Disallow: /reports/
+Disallow: /settings/
+Disallow: /create-cafe/
+Disallow: /pending-approval/
+Disallow: /superadmin/
+
+# Disallow crawling of API and internal routes
+Disallow: /api/
+Disallow: /_next/
+Disallow: /home/
+
+# Allow Google to crawl and preview images
+User-agent: Googlebot-Image
+Allow: /images/
+Allow: /*.png$
+Allow: /*.jpg$
+Allow: /*.jpeg$
+Allow: /*.webp$
+
+# Bingbot settings
+User-agent: bingbot
+Allow: /
+Disallow: /api/
+Disallow: /_next/
+Crawl-delay: 5
+
+# Sitemap location
+Sitemap: https://kasirku.biz.id/sitemap.xml

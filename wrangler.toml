@@ -1,0 +1,8 @@
+name = "cafe-pos-app"
+main = ".open-next/worker.js"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "cafe-pos-db"
+database_id = "YOUR_D1_DATABASE_ID"
+preview_database_id = "cafe-pos-db"

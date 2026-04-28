@@ -1,0 +1,315 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+/* Global pointer cursor for all interactive elements */
+button, a, [role="button"], input[type="checkbox"], input[type="radio"], input[type="submit"], input[type="reset"], select, summary {
+  cursor: pointer;
+}
+
+/* Fast and smooth theme transitions - comfortable pacing */
+*, *::before, *::after {
+  transition-property: background-color, border-color, color, fill, stroke;
+  transition-duration: 250ms;
+  transition-timing-function: ease;
+}
+
+/* Major surfaces slightly longer for a smooth fade */
+.bg-background, 
+.bg-card,
+.bg-popover,
+.bg-muted {
+  transition-duration: 350ms;
+}
+
+/* Exclude performance-heavy elements from transitions */
+svg *, path, circle, rect, line, 
+* > img, * > video, * > canvas,
+progress, meter,
+.animate-spin, .animate-pulse, .animate-bounce {
+  transition: none !important;
+}
+
+/* Inputs and links stay smooth */
+input, textarea, select, a {
+  transition-duration: 200ms;
+}
+
+:root {
+  /* Warm Professional Light Theme — High Readability */
+  --background: #FAF9F7;       /* Warm off-white — gentle page foundation */
+  --foreground: #292524;        /* Warm near-black — crisp body text (12:1 contrast) */
+  --card: #FFFFFF;              /* Pure white — clean card elevation */
+  --card-foreground: #292524;
+  --popover: #FFFFFF;
+  --popover-foreground: #292524;
+  --primary: #A0693D;           /* Warm terracotta brown — harmonious accent */
+  --primary-foreground: #FFFFFF;
+  --secondary: #F3EFE9;         /* Warm tint — visibly distinct from background */
+  --secondary-foreground: #44403C; /* Stone-700 — clear readable secondary text */
+  --muted: #EDEAE4;             /* Warm muted surface — soft but defined */
+  --muted-foreground: #78716C;  /* Stone-500 — WCAG AA compliant (4.6:1) */
+  --accent: #E8E3DB;            /* Warm accent — visible surface distinction */
+  --accent-foreground: #44403C;
+  --destructive: #D4543E;
+  --destructive-foreground: #FFFFFF;
+  --border: #D5CFC6;            /* Visible warm border — clear element boundaries */
+  --input: #FFFFFF;             /* White inputs — distinct from page background */
+  --ring: #A0693D;
+  --chart-1: #A0693D;
+  --chart-2: #7B9B8B;
+  --chart-3: #8B9590;
+  --chart-4: #A0876B;
+  --chart-5: #B5A491;
+  --radius: 0.5rem;
+  --sidebar: #FFFFFF;
+  --sidebar-foreground: #292524;
+  --sidebar-primary: #A0693D;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: #F3EFE9;
+  --sidebar-accent-foreground: #44403C;
+  --sidebar-border: #D5CFC6;
+  --sidebar-ring: #A0693D;
+
+  /* Navigation active states — clear warm emphasis */
+  --nav-active-bg: rgba(160, 105, 61, 0.10);
+  --nav-active-text: #A0693D;
+
+  /* Scrollbar colors — soft and visible */
+  --scrollbar-thumb: rgba(41, 37, 36, 0.16);
+  --scrollbar-thumb-hover: rgba(41, 37, 36, 0.28);
+  --scrollbar-track: transparent;
+}
+
+.dark {
+  --background: #181815;
+  --foreground: #EDECE8;
+  --card: #232320;
+  --card-foreground: #EDECE8;
+  --popover: #232320;
+  --popover-foreground: #EDECE8;
+  --primary: #D4AF37;
+  --primary-foreground: #181815;
+  --secondary: #2E2E2A;
+  --secondary-foreground: #EDECE8;
+  --muted: #2E2E2A;
+  --muted-foreground: #C5C4C0;
+  --accent: #2E2E2A;
+  --accent-foreground: #EDECE8;
+  --destructive: oklch(0.55 0.22 25);
+  --destructive-foreground: #EDECE8;
+  --border: rgba(255, 255, 255, 0.08);
+  --input: rgba(255, 255, 255, 0.08);
+  --ring: #D4AF37;
+  --chart-1: #D4AF37;
+  --chart-2: oklch(0.65 0.13 150);
+  --chart-3: oklch(0.65 0.13 200);
+  --chart-4: oklch(0.7 0.16 80);
+  --chart-5: oklch(0.6 0.18 25);
+  --sidebar: #181815;
+  --sidebar-foreground: #EDECE8;
+  --sidebar-primary: #D4AF37;
+  --sidebar-primary-foreground: #181815;
+  --sidebar-accent: #232320;
+  --sidebar-accent-foreground: #EDECE8;
+  --sidebar-border: rgba(255, 255, 255, 0.08);
+  --sidebar-ring: #D4AF37;
+  /* Navigation active states - Apple-style subtle white/gray */
+  --nav-active-bg: rgba(255, 255, 255, 0.1);
+  --nav-active-text: #EDECE8;
+  /* Scrollbar colors - dark theme */
+  --scrollbar-thumb: rgba(255, 255, 255, 0.2);
+  --scrollbar-thumb-hover: rgba(255, 255, 255, 0.35);
+  --scrollbar-track: rgba(255, 255, 255, 0.04);
+}
+
+@theme inline {
+  --font-sans: var(--font-plus-jakarta);
+  --font-display: var(--font-plus-jakarta);
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground font-sans text-[15px] leading-relaxed;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    position: relative;
+  }
+
+  /* Grain overlay for texture - extremely subtle for comfort */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='1'/%3E%3C/svg%3E");
+    opacity: 0.008;
+  }
+
+  h1, h2, h3, h4 {
+    @apply font-semibold tracking-tight text-foreground;
+  }
+  h1 { @apply text-4xl lg:text-5xl; }
+  h2 { @apply text-2xl lg:text-3xl; }
+  h3 { @apply text-xl lg:text-2xl; }
+  h4 { @apply text-base font-medium; }
+  p { @apply leading-7 text-muted-foreground; }
+
+  /* Custom scrollbar styles */
+  .scrollbar-thin {
+    scrollbar-width: thin;
+  }
+
+  .scrollbar-hide {
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;  /* Chrome, Safari, Opera */
+  }
+
+  /* POS Menu Grid Custom Scrollbar - overlay auto-hide */
+  .scrollbar-custom {
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-thumb) transparent;
+  }
+
+  .scrollbar-custom::-webkit-scrollbar {
+    width: 4px;
+  }
+
+  .scrollbar-custom::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .scrollbar-custom::-webkit-scrollbar-thumb {
+    background-color: var(--scrollbar-thumb);
+    border-radius: 9999px;
+    transition: background-color 0.2s;
+  }
+
+  .scrollbar-custom::-webkit-scrollbar-thumb:hover {
+    background-color: var(--scrollbar-thumb-hover);
+  }
+
+  .scrollbar-custom::-webkit-scrollbar-thumb:vertical {
+    min-height: 40px;
+  }
+
+  /* Webkit scrollbar styling - uses theme variables */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background-color: var(--scrollbar-thumb);
+    border-radius: 0.5rem;
+    min-height: 30px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: var(--scrollbar-thumb-hover);
+  }
+
+  ::-webkit-scrollbar-track {
+    background-color: var(--scrollbar-track);
+    border-radius: 0.5rem;
+  }
+
+  /* Firefox scrollbar styling */
+  * {
+    scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+  }
+
+  /* Form inputs and form controls - clear and professional */
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="number"],
+  input[type="date"],
+  input[type="time"],
+  input[type="search"],
+  textarea,
+  select {
+    @apply border border-border text-foreground placeholder:text-muted-foreground focus:border-ring focus:ring-1 focus:ring-ring transition-colors;
+    background-color: var(--input);
+  }
+
+  input[type="text"]::placeholder,
+  input[type="email"]::placeholder,
+  input[type="password"]::placeholder,
+  input[type="number"]::placeholder,
+  input[type="date"]::placeholder,
+  input[type="time"]::placeholder,
+  input[type="search"]::placeholder,
+  textarea::placeholder {
+    @apply text-muted-foreground;
+  }
+
+  /* Focus visible states for better accessibility */
+  input:focus-visible,
+  textarea:focus-visible,
+  select:focus-visible {
+    @apply outline-none border-ring ring-1 ring-ring;
+  }
+
+  /* Text selection — branded highlight */
+  ::selection {
+    background-color: rgba(160, 105, 61, 0.18);
+    color: var(--foreground);
+  }
+  .dark ::selection {
+    background-color: rgba(212, 175, 55, 0.25);
+    color: var(--foreground);
+  }
+
+  /* Native select options — readable in light mode dropdowns */
+  select option {
+    color: var(--foreground);
+    background-color: var(--card);
+  }
+}
