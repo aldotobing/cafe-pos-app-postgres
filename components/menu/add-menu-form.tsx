@@ -98,29 +98,32 @@ export function AddMenuForm({ formVariants }: { formVariants: any }) {
 
   return (
     <motion.div
-      className="w-full my-6 space-y-6"
+      className="w-full my-4 sm:my-6 space-y-4 sm:space-y-5"
       variants={formVariants}
       initial="hidden"
       animate="visible"
       transition={{ delay: 0.1, duration: 0.5, ease: "easeOut" }}
     >
-      <div className="space-y-6">
+      <div className="space-y-4 sm:space-y-5">
         {/* Section: Basic Information */}
         <div className="bg-card rounded-xl border shadow-sm overflow-hidden">
-          <div className="border-b bg-muted/40 px-4 sm:px-6 py-4">
+          <button 
+            className="w-full border-b bg-muted/50 px-5 py-4 flex items-center justify-between text-left hover:bg-muted/60 transition-colors"
+            onClick={() => {/* Future: collapsible */}}
+          >
             <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
               <Package className="h-4 w-4 text-primary" />
               Informasi Dasar
             </h3>
-          </div>
+          </button>
           
-          <div className="p-4 sm:p-6 space-y-6 sm:space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-y-2 gap-x-6">
-              <label className="md:col-span-3 text-sm font-medium text-foreground pt-0 md:pt-2">Nama Produk <span className="text-destructive">*</span></label>
+          <div className="p-4 sm:p-5 space-y-4 sm:space-y-5">
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+              <label className="md:col-span-3 text-sm font-medium text-foreground pt-2.5">Nama Produk <span className="text-destructive">*</span></label>
               <div className="md:col-span-9">
                 <input
                   type="text"
-                  className="w-full max-w-lg rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary placeholder:text-muted-foreground"
+                  className="w-full rounded-lg border border-input bg-background px-4 py-2.5 text-sm shadow-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary placeholder:text-muted-foreground"
                   placeholder="Contoh: Kaus Polos / Nasi Goreng"
                   value={form.name}
                   onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
@@ -128,21 +131,21 @@ export function AddMenuForm({ formVariants }: { formVariants: any }) {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-y-2 gap-x-6">
-              <label className="md:col-span-3 text-sm font-medium text-foreground pt-0 md:pt-2">Kategori Produk <span className="text-destructive">*</span></label>
-              <div className="md:col-span-9 flex flex-wrap sm:flex-nowrap items-center gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+              <label className="md:col-span-3 text-sm font-medium text-foreground pt-2.5">Kategori Produk <span className="text-destructive">*</span></label>
+              <div className="md:col-span-9 flex flex-wrap items-center gap-2">
                 {categories.length === 0 ? (
                   <button
                     type="button"
                     onClick={() => router.push('/categories')}
-                    className="inline-flex items-center gap-2 text-sm text-primary hover:text-primary/80 transition-colors bg-primary/10 px-4 py-2 rounded-md"
+                    className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:text-primary/80 transition-colors bg-primary/10 px-4 py-2.5 rounded-lg"
                   >
                     <Plus className="h-4 w-4" /> Tambah Kategori
                   </button>
                 ) : (
                   <>
                     <select
-                      className="w-full sm:max-w-[240px] rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                      className="w-full sm:w-auto sm:max-w-[280px] rounded-lg border border-input bg-background px-4 py-2.5 text-sm shadow-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary"
                       value={form.categoryId}
                       onChange={(e) => {
                         const selectedCat = categories.find(c => c.id === e.target.value);
@@ -162,22 +165,23 @@ export function AddMenuForm({ formVariants }: { formVariants: any }) {
                     <button
                       type="button"
                       onClick={() => router.push('/categories')}
-                      className="text-xs font-semibold text-primary hover:text-primary/80 transition-colors flex items-center gap-1 bg-primary/5 px-2.5 py-1.5 rounded"
+                      className="text-xs font-medium text-primary hover:text-primary/80 transition-colors flex items-center gap-1.5 bg-primary/5 px-3 py-2.5 rounded-lg"
                     >
-                      <FolderOpen className="h-3 w-3" /> Kelola
+                      <FolderOpen className="h-3.5 w-3.5" /> Kelola
                     </button>
                   </>
                 )}
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-y-2 gap-x-6">
-              <div className="md:col-span-3 pt-0 md:pt-2">
-                <label className="text-sm font-medium text-foreground">Foto Produk</label>
-                <p className="text-xs text-muted-foreground mt-1 pr-4">Pilih foto yang jelas dengan pencahayaan baik. (Opsional)</p>
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+              <div className="md:col-span-3 pt-2.5">
+                <label className="text-sm font-medium text-foreground block">Foto Produk</label>
+                <p className="text-xs text-muted-foreground leading-relaxed mt-1 hidden md:block">Pilih foto yang jelas dengan pencahayaan baik. (Opsional)</p>
               </div>
               <div className="md:col-span-9">
-                <div className="max-w-[240px]">
+                <p className="text-xs text-muted-foreground leading-relaxed mb-2 md:hidden">Pilih foto yang jelas dengan pencahayaan baik. (Opsional)</p>
+                <div className="w-full sm:max-w-[280px]">
                   <ImageUpload
                     value={form.imageUrl}
                     onChange={(url) => setForm(f => ({ ...f, imageUrl: url }))}
@@ -192,51 +196,54 @@ export function AddMenuForm({ formVariants }: { formVariants: any }) {
 
         {/* Section: Pricing */}
         <div className="bg-card rounded-xl border shadow-sm overflow-hidden">
-          <div className="border-b bg-muted/40 px-4 sm:px-6 py-4">
+          <div className="border-b bg-muted/50 px-5 py-4">
             <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
               <DollarSign className="h-4 w-4 text-emerald-600 dark:text-emerald-500" />
               Harga & Margin Profit
             </h3>
           </div>
 
-          <div className="p-4 sm:p-6 space-y-6 sm:space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-y-2 gap-x-6">
-              <div className="md:col-span-3 pt-0 md:pt-2">
-                <label className="text-sm font-medium text-foreground">Harga Modal (HPP)</label>
-                <p className="text-xs text-muted-foreground mt-1 pr-4">Total modal atau biaya pokok untuk 1 item.</p>
+          <div className="p-4 sm:p-5 space-y-4 sm:space-y-5">
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+              <div className="md:col-span-3 pt-2.5">
+                <label className="text-sm font-medium text-foreground block">Harga Modal (HPP)</label>
+                <p className="text-xs text-muted-foreground leading-relaxed mt-1 hidden md:block">Total modal atau biaya pokok untuk 1 item.</p>
               </div>
-              <div className="md:col-span-9 relative w-full sm:max-w-[280px]">
-                <span className="absolute left-3 top-2.5 text-sm text-muted-foreground">Rp</span>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  className="w-full rounded-md border border-input bg-background pl-9 pr-3 py-2 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
-                  value={form.hppPrice ? form.hppPrice.toLocaleString('id-ID') : ''}
-                  onChange={(e) => {
-                    const raw = e.target.value.replace(/\D/g, '');
-                    setForm((f) => ({ ...f, hppPrice: Number(raw) || 0 }));
-                  }}
-                  placeholder="0"
-                />
+              <div className="md:col-span-9">
+                <p className="text-xs text-muted-foreground leading-relaxed mb-2 md:hidden">Total modal atau biaya pokok untuk 1 item.</p>
+                <div className="relative w-full sm:max-w-[280px]">
+                  <span className="absolute left-4 top-2.5 text-sm text-muted-foreground font-medium">Rp</span>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    className="w-full rounded-lg border border-input bg-background pl-11 pr-4 py-2.5 text-sm shadow-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary"
+                    value={form.hppPrice ? form.hppPrice.toLocaleString('id-ID') : ''}
+                    onChange={(e) => {
+                      const raw = e.target.value.replace(/\D/g, '');
+                      setForm((f) => ({ ...f, hppPrice: Number(raw) || 0 }));
+                    }}
+                    placeholder="0"
+                  />
+                </div>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-y-2 gap-x-6">
-              <label className="md:col-span-3 text-sm font-medium text-foreground pt-0 md:pt-2">Target Keuntungan</label>
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+              <label className="md:col-span-3 text-sm font-medium text-foreground pt-2.5">Target Keuntungan</label>
               <div className="md:col-span-9 flex flex-col sm:flex-row sm:flex-wrap items-start sm:items-center gap-3">
-                <div className="relative w-full sm:max-w-[140px]">
+                <div className="relative w-full sm:w-auto sm:max-w-[160px]">
                   <input
                     type="number"
-                    className="w-full rounded-md border border-input bg-background pl-3 pr-8 py-2 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                    className="w-full rounded-lg border border-input bg-background pl-4 pr-10 py-2.5 text-sm shadow-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary"
                     value={form.marginPercent || ''}
                     min={0}
                     max={999}
                     onChange={(e) => setForm((f) => ({ ...f, marginPercent: Number(e.target.value) || 0 }))}
                   />
-                  <div className="absolute right-3 top-2.5 text-sm text-muted-foreground">%</div>
+                  <div className="absolute right-4 top-2.5 text-sm text-muted-foreground font-medium">%</div>
                 </div>
                 
-                <div className="flex bg-muted/50 rounded-md p-1 border">
+                <div className="flex bg-muted/50 rounded-lg p-1 border w-full sm:w-auto">
                   {[25, 50, 100].map((margin) => (
                     <button
                       key={margin}
@@ -245,9 +252,9 @@ export function AddMenuForm({ formVariants }: { formVariants: any }) {
                         setIsPriceManual(false);
                         setForm((f) => ({ ...f, marginPercent: margin }));
                       }}
-                      className={`px-3 py-1.5 text-xs font-semibold rounded-sm transition-all ${
+                      className={`flex-1 sm:flex-none px-4 py-2 text-xs font-medium rounded-md transition-all ${
                         form.marginPercent === margin && !isPriceManual
-                          ? 'bg-background shadow font-bold text-foreground'
+                          ? 'bg-background shadow-sm font-semibold text-foreground'
                           : 'text-muted-foreground hover:text-foreground hover:bg-background/50'
                       }`}
                     >
@@ -258,18 +265,18 @@ export function AddMenuForm({ formVariants }: { formVariants: any }) {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-y-2 gap-x-6">
-              <label className="md:col-span-3 text-sm font-medium text-foreground pt-0 md:pt-2">Harga Jual Final</label>
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+              <label className="md:col-span-3 text-sm font-medium text-foreground pt-2.5">Harga Jual Final</label>
               <div className="md:col-span-9">
-                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-3">
-                  <div className="relative w-full sm:max-w-[280px]">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                  <div className="relative w-full sm:w-auto sm:max-w-[280px]">
                     {isPriceManual ? (
                       <>
-                        <span className="absolute left-3 top-2.5 text-sm text-muted-foreground">Rp</span>
+                        <span className="absolute left-4 top-2.5 text-sm text-muted-foreground font-medium">Rp</span>
                         <input
                           type="text"
                           inputMode="numeric"
-                          className="w-full rounded-md border border-input bg-background pl-9 pr-3 py-2 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                          className="w-full rounded-lg border border-input bg-background pl-11 pr-4 py-2.5 text-sm shadow-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary"
                           value={form.price ? form.price.toLocaleString('id-ID') : ''}
                           placeholder="0"
                           onChange={(e) => {
@@ -279,7 +286,7 @@ export function AddMenuForm({ formVariants }: { formVariants: any }) {
                         />
                       </>
                     ) : (
-                      <div className="w-full rounded-md border border-transparent bg-muted/30 px-3 py-2 text-base font-semibold tracking-tight text-foreground shadow-sm">
+                      <div className="w-full rounded-lg border border-transparent bg-muted/30 px-4 py-2.5 text-base font-semibold tracking-tight text-foreground shadow-sm">
                         {form.price > 0 ? formatRupiah(form.price) : 'Rp 0'}
                       </div>
                     )}
@@ -288,19 +295,19 @@ export function AddMenuForm({ formVariants }: { formVariants: any }) {
                   <button
                     type="button"
                     onClick={() => setIsPriceManual(!isPriceManual)}
-                    className={`inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-md text-xs font-semibold transition-colors shrink-0 shadow-sm border ${
+                    className={`inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-xs font-medium transition-colors shrink-0 shadow-sm border w-full sm:w-auto ${
                       isPriceManual 
                         ? 'bg-primary/10 text-primary border-primary/20 hover:bg-primary/20' 
                         : 'bg-background text-muted-foreground border-input hover:text-foreground hover:bg-muted/50'
                     }`}
                   >
                      <Pencil className="h-3.5 w-3.5" />
-                    <span className="hidden sm:inline">{isPriceManual ? 'Set ke Auto' : 'Edit Harga'}</span>
+                    {isPriceManual ? 'Set ke Auto' : 'Edit Harga'}
                   </button>
                 </div>
                 
                 {form.hppPrice > 0 && form.price > form.hppPrice && (
-                  <p className="mt-2 text-xs text-muted-foreground">
+                  <p className="text-xs text-muted-foreground leading-relaxed mt-2">
                     Estimasi untung kotor: <span className="font-medium text-emerald-600 dark:text-emerald-500">+{formatRupiah(form.price - form.hppPrice)}</span> per item
                   </p>
                 )}
@@ -311,16 +318,16 @@ export function AddMenuForm({ formVariants }: { formVariants: any }) {
 
         {/* Section: Configuration & Stock */}
         <div className="bg-card rounded-xl border shadow-sm overflow-hidden">
-          <div className="border-b bg-muted/40 px-4 sm:px-6 py-4">
+          <div className="border-b bg-muted/50 px-5 py-4">
             <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
               <TrendingUp className="h-4 w-4 text-blue-600 dark:text-blue-500" />
               Sistem & Visibilitas
             </h3>
           </div>
 
-          <div className="p-4 sm:p-6 space-y-6 sm:space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-y-2 gap-x-6">
-              <label className="md:col-span-3 text-sm font-medium text-foreground pt-1">Tersedia di POS</label>
+          <div className="p-4 sm:p-5 space-y-4 sm:space-y-5">
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+              <label className="md:col-span-3 text-sm font-medium text-foreground pt-2.5">Tersedia di POS</label>
               <div className="md:col-span-9 flex items-center gap-3">
                 <div className="relative shrink-0">
                   <input
@@ -332,16 +339,16 @@ export function AddMenuForm({ formVariants }: { formVariants: any }) {
                   />
                   <label 
                     htmlFor="available-toggle"
-                    className="block w-11 h-6 bg-muted border border-transparent peer-checked:border-primary rounded-full peer-checked:bg-primary cursor-pointer transition-colors shadow-inner"
+                    className="block w-11 h-6 bg-muted border border-muted peer-checked:border-primary rounded-full peer-checked:bg-primary cursor-pointer transition-all duration-200 shadow-sm"
                   ></label>
-                  <div className="absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform pointer-events-none peer-checked:translate-x-5 shadow-sm"></div>
+                  <div className="absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform duration-200 pointer-events-none peer-checked:translate-x-5 shadow-sm"></div>
                 </div>
-                <span className="text-sm text-muted-foreground">Aktifkan agar dapat dipilih oleh kasir saat transaksi</span>
+                <span className="text-sm text-muted-foreground leading-relaxed">Aktifkan agar dapat dipilih oleh kasir saat transaksi</span>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-y-2 gap-x-6">
-              <label className="md:col-span-3 text-sm font-medium text-foreground pt-1">Track Stok</label>
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+              <label className="md:col-span-3 text-sm font-medium text-foreground pt-2.5">Track Stok</label>
               <div className="md:col-span-9 flex items-center gap-3">
                 <div className="relative shrink-0">
                   <input
@@ -353,22 +360,22 @@ export function AddMenuForm({ formVariants }: { formVariants: any }) {
                   />
                   <label 
                     htmlFor="track-toggle"
-                    className="block w-11 h-6 bg-muted border border-transparent peer-checked:border-primary rounded-full peer-checked:bg-primary cursor-pointer transition-colors shadow-inner"
+                    className="block w-11 h-6 bg-muted border border-muted peer-checked:border-primary rounded-full peer-checked:bg-primary cursor-pointer transition-all duration-200 shadow-sm"
                   ></label>
-                  <div className="absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform pointer-events-none peer-checked:translate-x-5 shadow-sm"></div>
+                  <div className="absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform duration-200 pointer-events-none peer-checked:translate-x-5 shadow-sm"></div>
                 </div>
-                <span className="text-sm text-muted-foreground">Otomatis kurangi stok saat barang terjual</span>
+                <span className="text-sm text-muted-foreground leading-relaxed">Otomatis kurangi stok saat barang terjual</span>
               </div>
             </div>
 
             {form.trackStock && (
-              <>
-                <div className="grid grid-cols-1 md:grid-cols-12 gap-y-2 gap-x-6 mt-4">
-                  <label className="md:col-span-3 text-sm font-medium text-foreground pt-0 md:pt-2">Stok Tersedia</label>
+              <div className="mt-4 p-4 rounded-lg bg-muted/30 border border-muted/50 space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+                  <label className="md:col-span-3 text-sm font-medium text-foreground pt-2.5">Stok Tersedia</label>
                   <div className="md:col-span-9">
                     <input
                       type="number"
-                      className="w-full sm:max-w-[240px] rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                      className="w-full sm:max-w-[200px] rounded-lg border border-input bg-background px-4 py-2.5 text-sm shadow-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary"
                       value={form.stockQuantity || ''}
                       min={0}
                       placeholder="0"
@@ -377,40 +384,40 @@ export function AddMenuForm({ formVariants }: { formVariants: any }) {
                   </div>
                 </div>
                 
-                <div className="grid grid-cols-1 md:grid-cols-12 gap-y-2 gap-x-6">
-                  <div className="md:col-span-3 pt-0 md:pt-2">
-                    <label className="text-sm font-medium text-foreground">Minimum Stok</label>
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+                  <div className="md:col-span-3 pt-2.5">
+                    <label className="text-sm font-medium text-foreground block">Minimum Stok</label>
                   </div>
                   <div className="md:col-span-9">
                     <input
                       type="number"
-                      className="w-full sm:max-w-[240px] rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-amber-500"
+                      className="w-full sm:max-w-[200px] rounded-lg border border-input bg-background px-4 py-2.5 text-sm shadow-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/20 focus-visible:border-amber-500"
                       value={form.minStock || ''}
                       min={0}
                       placeholder="5"
                       onChange={(e) => setForm((f) => ({ ...f, minStock: Number(e.target.value) || 5 }))}
                     />
-                    <p className="text-xs text-muted-foreground mt-1">Peringatan stok menipis akan muncul bila stok mencapai angka ini.</p>
+                    <p className="text-xs text-muted-foreground leading-relaxed mt-1">Peringatan stok menipis akan muncul bila stok mencapai angka ini.</p>
                   </div>
                 </div>
-              </>
+              </div>
             )}
           </div>
         </div>
 
         {/* Section: Variants */}
         <div className="bg-card rounded-xl border shadow-sm overflow-hidden">
-          <div className="border-b bg-muted/40 px-4 sm:px-6 py-4">
+          <div className="border-b bg-muted/50 px-5 py-4">
             <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
               <Layers className="h-4 w-4 text-purple-600" />
               Varian Produk
             </h3>
           </div>
 
-          <div className="p-4 sm:p-6 space-y-6">
+          <div className="p-4 sm:p-5 space-y-4 sm:space-y-5">
             {/* Toggle Has Variants */}
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-y-2 gap-x-6">
-              <label className="md:col-span-3 text-sm font-medium text-foreground pt-1">Produk Memiliki Varian</label>
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+              <label className="md:col-span-3 text-sm font-medium text-foreground pt-2.5">Produk Memiliki Varian</label>
               <div className="md:col-span-9 flex items-center gap-3">
                 <div className="relative shrink-0">
                   <input
@@ -430,13 +437,11 @@ export function AddMenuForm({ formVariants }: { formVariants: any }) {
                   />
                   <label 
                     htmlFor="variants-toggle"
-                    className="block w-11 h-6 bg-muted border border-transparent peer-checked:border-primary rounded-full peer-checked:bg-primary cursor-pointer transition-colors shadow-inner"
+                    className="block w-11 h-6 bg-muted border border-muted peer-checked:border-primary rounded-full peer-checked:bg-primary cursor-pointer transition-all duration-200 shadow-sm"
                   ></label>
-                  <div className="absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform pointer-events-none peer-checked:translate-x-5 shadow-sm"></div>
+                  <div className="absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform duration-200 pointer-events-none peer-checked:translate-x-5 shadow-sm"></div>
                 </div>
-                <span className="text-sm text-muted-foreground">
-                  Aktifkan jika produk memiliki varian (ukuran, warna, model)
-                </span>
+                <span className="text-sm text-muted-foreground leading-relaxed">Aktifkan jika produk memiliki varian (ukuran, warna, model)</span>
               </div>
             </div>
 
@@ -445,7 +450,7 @@ export function AddMenuForm({ formVariants }: { formVariants: any }) {
               <div className="mt-4 p-4 rounded-lg bg-purple-50/50 dark:bg-purple-900/10 border border-purple-200 dark:border-purple-800/30">
                 <button
                   onClick={() => setShowVariantForm(!showVariantForm)}
-                  className="w-full flex items-center justify-between text-sm font-medium text-purple-700 dark:text-purple-300"
+                  className="w-full flex items-center justify-between text-sm font-medium text-purple-700 dark:text-purple-300 hover:text-purple-800 dark:hover:text-purple-200 transition-colors py-2"
                 >
                   <span className="flex items-center gap-2">
                     <Plus className="h-4 w-4" />
@@ -458,7 +463,7 @@ export function AddMenuForm({ formVariants }: { formVariants: any }) {
                   <div className="mt-4 space-y-4">
                     {/* Attribute Selection */}
                     {attributes.length > 0 ? (
-                      <div className="grid grid-cols-2 gap-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         {attributes.map((attr) => {
                           const values = attributeValues.filter((v: any) => v.attribute_id === attr.id)
                           return (
@@ -467,7 +472,7 @@ export function AddMenuForm({ formVariants }: { formVariants: any }) {
                                 {attr.name}
                               </label>
                               <select
-                                className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+                                className="w-full rounded-lg border border-input bg-background px-4 py-2.5 text-sm shadow-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary"
                                 value={selectedAttributeValues[attr.id] || ""}
                                 onChange={(e) => setSelectedAttributeValues(prev => ({
                                   ...prev,
@@ -486,11 +491,11 @@ export function AddMenuForm({ formVariants }: { formVariants: any }) {
                         })}
                       </div>
                     ) : (
-                      <div className="p-3 rounded-md bg-amber-500/10 text-amber-700 text-sm flex items-start gap-2">
+                      <div className="p-3 rounded-lg bg-amber-500/10 text-amber-700 dark:text-amber-300 text-sm flex items-start gap-2">
                         <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
                         <div>
-                          <p>Belum ada atribut varian</p>
-                          <p className="text-xs mt-1">
+                          <p className="font-medium">Belum ada atribut varian</p>
+                          <p className="text-xs mt-1 leading-relaxed">
                             Expand "Atribut Varian" section di atas untuk menambahkan atribut (Warna, Ukuran, dll.)
                           </p>
                         </div>
@@ -498,26 +503,26 @@ export function AddMenuForm({ formVariants }: { formVariants: any }) {
                     )}
 
                     {/* SKU & Barcode */}
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
-                        <label className="text-xs font-medium text-muted-foreground mb-1.5 block flex items-center gap-1">
+                        <label className="text-xs font-medium text-muted-foreground mb-1.5 block flex items-center gap-1.5">
                           <Tag className="h-3 w-3" /> SKU
                         </label>
                         <input
                           type="text"
-                          className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+                          className="w-full rounded-lg border border-input bg-background px-4 py-2.5 text-sm shadow-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary"
                           placeholder="Contoh: KP-RED-M"
                           value={variantForm.sku}
                           onChange={(e) => setVariantForm(f => ({ ...f, sku: e.target.value }))}
                         />
                       </div>
                       <div>
-                        <label className="text-xs font-medium text-muted-foreground mb-1.5 block flex items-center gap-1">
+                        <label className="text-xs font-medium text-muted-foreground mb-1.5 block flex items-center gap-1.5">
                           <Barcode className="h-3 w-3" /> Barcode
                         </label>
                         <input
                           type="text"
-                          className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+                          className="w-full rounded-lg border border-input bg-background px-4 py-2.5 text-sm shadow-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary"
                           placeholder="Scan atau ketik"
                           value={variantForm.barcode}
                           onChange={(e) => setVariantForm(f => ({ ...f, barcode: e.target.value }))}
@@ -526,14 +531,14 @@ export function AddMenuForm({ formVariants }: { formVariants: any }) {
                     </div>
 
                     {/* Stock & Price Override */}
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
                         <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
                           Stok Varian
                         </label>
                         <input
                           type="number"
-                          className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+                          className="w-full rounded-lg border border-input bg-background px-4 py-2.5 text-sm shadow-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary"
                           placeholder="0"
                           value={variantForm.stockQuantity || ''}
                           onChange={(e) => setVariantForm(f => ({ ...f, stockQuantity: Number(e.target.value) || 0 }))}
@@ -544,11 +549,11 @@ export function AddMenuForm({ formVariants }: { formVariants: any }) {
                           Harga Khusus (kosong = pakai harga dasar)
                         </label>
                         <div className="relative">
-                          <span className="absolute left-3 top-2 text-xs text-muted-foreground">Rp</span>
+                          <span className="absolute left-4 top-2.5 text-xs text-muted-foreground font-medium">Rp</span>
                           <input
                             type="text"
                             inputMode="numeric"
-                            className="w-full rounded-md border bg-background pl-8 pr-3 py-2 text-sm"
+                            className="w-full rounded-lg border border-input bg-background pl-10 pr-4 py-2.5 text-sm shadow-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary"
                             placeholder={form.price.toLocaleString('id-ID')}
                             value={variantForm.price ? variantForm.price.toLocaleString('id-ID') : ''}
                             onChange={(e) => {
@@ -560,7 +565,7 @@ export function AddMenuForm({ formVariants }: { formVariants: any }) {
                       </div>
                     </div>
 
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-xs text-muted-foreground leading-relaxed">
                       * Anda bisa menambahkan varian lain setelah produk tersimpan
                     </p>
                   </div>
@@ -571,9 +576,9 @@ export function AddMenuForm({ formVariants }: { formVariants: any }) {
         </div>
       </div>
 
-      <div className="pt-6 pb-2 sm:flex sm:justify-end">
+      <div className="pt-6 pb-2 sm:flex sm:justify-end sticky bottom-0 bg-background/95 backdrop-blur-sm border-t pt-4 pb-4 -mx-4 px-4 sm:mx-0 sm:px-0 sm:border-0 sm:bg-transparent sm:backdrop-blur-none sm:sticky-0">
         <button
-          className="w-full sm:w-auto inline-flex items-center justify-center rounded-lg bg-primary text-primary-foreground px-8 py-3 text-sm font-semibold shadow-md transition-all hover:bg-primary/90 hover:shadow-lg hover:-translate-y-0.5 disabled:opacity-50 disabled:pointer-events-none disabled:transform-none gap-2"
+          className="w-full sm:w-auto inline-flex items-center justify-center rounded-lg bg-primary text-primary-foreground px-8 py-3 text-sm font-semibold shadow-md transition-all hover:bg-primary/90 hover:shadow-lg hover:-translate-y-0.5 active:scale-95 disabled:opacity-50 disabled:pointer-events-none disabled:transform-none disabled:shadow-none disabled:active:scale-100 disabled:hover:translate-y-0 gap-2"
           disabled={!form.name || form.price <= 0 || !form.categoryId || isAdding || isUploadingImage}
           onClick={async () => {
             setIsAdding(true);
