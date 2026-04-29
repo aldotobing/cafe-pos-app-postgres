@@ -247,6 +247,16 @@ export const menuApi = {
   },
 };
 
+export interface PaginatedTransactions {
+  data: Transaction[];
+  meta: {
+    total: number;
+    limit: number;
+    offset: number;
+    totalAmount: number; // Total amount of ALL filtered transactions
+  };
+}
+
 export const transactionsApi = {
   get: async (cafeId?: number): Promise<Transaction[]> => {
     let url = '/rest/transactions';
@@ -285,6 +295,64 @@ export const transactionsApi = {
       createdAt: tx.created_at,
       updatedAt: tx.updated_at
     }));
+  },
+
+  getPaginated: async (cafeId?: number, limit = 10, offset = 0, dateFilters?: { from?: string; to?: string }): Promise<PaginatedTransactions> => {
+    let url = '/rest/transactions';
+    const params = new URLSearchParams();
+    if (cafeId) params.set('cafe_id', cafeId.toString());
+    params.set('limit', limit.toString());
+    params.set('offset', offset.toString());
+    
+    // Add date filters if provided
+    if (dateFilters?.from) {
+      params.set('start_date', dateFilters.from);
+    }
+    if (dateFilters?.to) {
+      // Add one day to include the end date
+      const endDate = new Date(dateFilters.to);
+      endDate.setDate(endDate.getDate() + 1);
+      params.set('end_date', endDate.toISOString().split('T')[0]);
+    }
+    
+    if (params.toString()) url += `?${params.toString()}`;
+
+    const response = await apiRequest<any>(url);
+    
+    // Response format: { data: Transaction[], meta: { total, limit, offset } }
+    const raw = response?.data || [];
+    const meta = response?.meta || { total: 0, limit, offset };
+
+    const transactions = raw.map((tx: any) => ({
+      ...tx,
+      transactionNumber: tx.transaction_number || tx.id,
+      taxAmount: tx.tax_amount || 0,
+      serviceCharge: tx.service_charge || 0,
+      totalAmount: tx.total_amount || 0,
+      paymentMethod: tx.payment_method || 'Tunai',
+      paymentAmount: tx.payment_amount || 0,
+      changeAmount: tx.change_amount || 0,
+      orderNote: tx.order_note || '',
+      items: (tx.transaction_items || []).map((item: any) => ({
+        id: item.id || '',
+        transactionId: item.transaction_id || item.transactionId || '',
+        menuId: item.menu_id || item.menuId || '',
+        name: item.menu_name || item.menuName || item.name || '',
+        price: typeof item.price === 'number' ? item.price : 0,
+        qty: typeof item.quantity === 'number' ? item.quantity : (typeof item.qty === 'number' ? item.qty : 0),
+        discount: typeof item.discount === 'number' ? item.discount : 0,
+        note: item.note,
+        lineTotal: ((item.price || 0) * (item.quantity || item.qty || 0)) - (item.discount || 0),
+        createdAt: item.created_at || item.createdAt || new Date().toISOString(),
+      })),
+      createdAt: tx.created_at,
+      updatedAt: tx.updated_at
+    }));
+
+    return {
+      data: transactions,
+      meta
+    };
   },
   getById: async (id: string): Promise<Transaction> => {
     const response = await apiRequest<any>(`/rest/transactions/${id}`);

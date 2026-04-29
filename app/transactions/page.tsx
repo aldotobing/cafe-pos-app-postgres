@@ -4,10 +4,10 @@ import { AppShell } from "../../components/app-shell"
 import { useEffect, useMemo, useState } from "react"
 import { formatRupiah, formatTanggal } from "../../lib/format"
 import { useAuth } from '@/lib/auth-context';
-import { useTransactions, useCafeSettings } from "@/hooks/use-cafe-data"
+import { useTransactionsPaginated, useCafeSettings } from "@/hooks/use-cafe-data"
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CheckCircle2, Clock, WifiOff, Upload, Filter, Receipt, TrendingUp, Calendar, FileText, RefreshCw, Plus, Printer } from 'lucide-react';
+import { CheckCircle2, Clock, WifiOff, Upload, Filter, Receipt, TrendingUp, Calendar, FileText, RefreshCw, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import { generateTransactionReport } from '@/lib/reports/transaction-report';
 import { toast } from 'sonner';
 import { TransactionsSkeleton } from '@/components/skeletons';
@@ -25,50 +25,26 @@ export default function Page() {
 
   const { userData, loading: authLoading, user } = useAuth();
   const cafeId = userData?.cafe_id;
-  const { transactions: allTransactions, isLoading: transactionsLoading } = useTransactions(cafeId);
   const { settings } = useCafeSettings(cafeId);
   const router = useRouter();
 
-  // Pagination State
-  const [paginatedTransactions, setPaginatedTransactions] = useState<Transaction[]>([])
-  const [isLoadingMore, setIsLoadingMore] = useState(false)
-  const [offset, setOffset] = useState(0)
-  const [hasMore, setHasMore] = useState(true)
+  // Proper Pagination with API total count
+  const {
+    transactions: paginatedTransactions,
+    totalCount,
+    totalAmount, // Total amount of ALL filtered transactions from API
+    currentPage,
+    totalPages,
+    hasNextPage,
+    hasPrevPage,
+    isLoading: transactionsLoading,
+    goToNextPage,
+    goToPrevPage,
+    goToPage,
+  } = useTransactionsPaginated(cafeId, 10, { from, to });
+
   const [selectedTransactionId, setSelectedTransactionId] = useState<string | null>(null)
   const [showDetailModal, setShowDetailModal] = useState(false)
-
-  // Load paginated data
-  const loadTransactions = async (isLoadMore = false) => {
-    if (isLoadingMore || (!isLoadMore && !hasMore && paginatedTransactions.length > 0)) return;
-    
-    setIsLoadingMore(true);
-    try {
-      const currentOffset = isLoadMore ? offset : 0;
-      const response = await fetch(`/api/rest/transactions?cafeId=${userData?.cafe_id || ''}&limit=10&offset=${currentOffset}`);
-      if (response.ok) {
-        const newTransactions = await response.json();
-        
-        if (isLoadMore) {
-          setPaginatedTransactions(prev => [...prev, ...newTransactions]);
-          setOffset(prev => prev + 10);
-        } else {
-          setPaginatedTransactions(newTransactions);
-          setOffset(10);
-        }
-        setHasMore(newTransactions.length === 10);
-      }
-    } catch (e) {
-      toast.error("Gagal memuat transaksi");
-    } finally {
-      setIsLoadingMore(false);
-    }
-  };
-
-  useEffect(() => {
-    if (!authLoading && userData?.cafe_id && paginatedTransactions.length === 0) {
-      loadTransactions();
-    }
-  }, [authLoading, userData?.cafe_id]);
 
   // Fetch users list for filter dropdown
   useEffect(() => {
@@ -149,34 +125,34 @@ export default function Page() {
     }
   }, [user, userData, authLoading, router]);
 
+  // Filter transactions for table display (method & user filter only, date already handled by API)
   const filtered = useMemo(() => {
-    // Parse dates as local time, then convert to start/end of day properly
-    const fromDate = from ? new Date(`${from}T00:00:00`) : null
-    const toDate = to ? new Date(`${to}T23:59:59.999`) : null
-    const transactions = paginatedTransactions.length > 0 ? paginatedTransactions : (allTransactions || []);
-
-    let result = transactions.filter((t) => {
+    let result = paginatedTransactions.filter((t) => {
       const okMethod = method === "Semua" ? true : t.paymentMethod === method
       const okUser = userFilter === "Semua" ? true : t.created_by === userFilter
-      const dateValue = t.createdAt
-      const d = typeof dateValue === 'number' ? new Date(dateValue) : new Date(dateValue)
-
-      const okFrom = fromDate ? d >= fromDate : true
-      const okTo = toDate ? d <= toDate : true
-      return okMethod && okUser && okFrom && okTo
+      return okMethod && okUser
     })
 
     // Sort by date descending (latest first)
     result.sort((a, b) => {
       const dateA = typeof a.createdAt === 'number' ? new Date(a.createdAt) : new Date(a.createdAt);
       const dateB = typeof b.createdAt === 'number' ? new Date(b.createdAt) : new Date(b.createdAt);
-      return dateB.getTime() - dateA.getTime(); // Descending order (newest first)
+      return dateB.getTime() - dateA.getTime();
     });
 
     return result;
-  }, [allTransactions, paginatedTransactions, method, from, to, userFilter])
+  }, [paginatedTransactions, method, userFilter])
 
-  const total = filtered.reduce((sum, t) => sum + (t.totalAmount || 0), 0)
+  // Summary stats - count and totalAmount from API (ALL filtered transactions)
+  const summaryStats = useMemo(() => {
+    return {
+      count: totalCount, // Total count of ALL filtered transactions from API
+      total: totalAmount // Total amount of ALL filtered transactions from API
+    }
+  }, [totalCount, totalAmount])
+
+  // Table display total (from current page only, filtered by method/user)
+  const pageTotal = filtered.reduce((sum, t) => sum + (t.totalAmount || 0), 0)
 
   // Show loading state while checking auth
   if (authLoading || transactionsLoading) {
@@ -205,10 +181,11 @@ export default function Page() {
         <div className="hidden sm:flex items-center">
           <button
             onClick={async () => {
-              if (filtered.length === 0) {
+              if (summaryStats.count === 0) {
                 toast.error("Tidak ada data untuk diekspor.");
                 return;
               }
+              // Export currently visible transactions
               try {
                 await generateTransactionReport({
                   transactions: filtered,
@@ -245,11 +222,14 @@ export default function Page() {
             </div>
             <div>
               <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-0.5">Total Pendapatan</span>
-              <div className="text-xs sm:text-sm text-muted-foreground font-medium">{filtered.length} transaksi</div>
+              <div className="text-xs sm:text-sm text-muted-foreground font-medium">
+                {summaryStats.count} transaksi
+              </div>
             </div>
           </div>
           <div className="sm:text-right">
-            <div className="text-2xl sm:text-3xl font-bold tracking-tight">{formatRupiah(total)}</div>
+            {/* Total amount of ALL filtered transactions */}
+            <div className="text-2xl sm:text-3xl font-bold tracking-tight">{formatRupiah(summaryStats.total)}</div>
           </div>
         </div>
         <div className="absolute -right-4 -bottom-4 opacity-[0.02] pointer-events-none">
@@ -337,10 +317,11 @@ export default function Page() {
       <div className="mb-6 sm:hidden">
         <button
           onClick={async () => {
-            if (filtered.length === 0) {
+            if (summaryStats.count === 0) {
               toast.error("Tidak ada data untuk diekspor.");
               return;
             }
+            // Export currently visible transactions
             try {
                 await generateTransactionReport({
                   transactions: filtered,
@@ -362,6 +343,12 @@ export default function Page() {
       </div>
 
       {/* Transactions Table */}
+      {totalCount > 0 && (
+        <div className="mb-3 text-xs text-muted-foreground flex items-center justify-between">
+          <span>Menampilkan {filtered.length} dari {totalCount} transaksi (Total halaman: {formatRupiah(pageTotal)})</span>
+          <span>Halaman {currentPage} dari {totalPages}</span>
+        </div>
+      )}
       <motion.div
         className="overflow-hidden rounded-xl border bg-card shadow-sm"
         variants={tableVariants}
@@ -488,26 +475,68 @@ export default function Page() {
           </div>
         )}
 
-        {/* Load More Pagination */}
-        {hasMore && filtered.length >= 10 && (
-          <div className="p-4 border-t bg-muted/20 flex justify-center">
-            <button
-              onClick={() => loadTransactions(true)}
-              disabled={isLoadingMore}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border bg-background hover:bg-muted transition text-sm font-medium disabled:opacity-50 text-muted-foreground hover:text-foreground"
-            >
-              {isLoadingMore ? (
-                <>
-                  <RefreshCw className="h-4 w-4 animate-spin" />
-                  <span>Memuat...</span>
-                </>
-              ) : (
-                <>
-                  <span>Tampilkan Lebih Banyak</span>
-                  <Plus className="h-4 w-4" />
-                </>
-              )}
-            </button>
+        {/* Pagination Controls */}
+        {totalPages > 1 && (
+          <div className="p-4 border-t bg-muted/20">
+            <div className="flex items-center justify-between gap-4">
+              <button
+                onClick={goToPrevPage}
+                disabled={!hasPrevPage || transactionsLoading}
+                className="inline-flex items-center gap-1 px-3 py-2 rounded-lg border bg-background hover:bg-muted transition text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <ChevronLeft className="h-4 w-4" />
+                <span className="hidden sm:inline">Sebelumnya</span>
+              </button>
+              
+              <div className="flex items-center gap-1">
+                {(() => {
+                  // Calculate page range to show (max 5 pages)
+                  let startPage = 1;
+                  let endPage = Math.min(5, totalPages);
+                  
+                  if (totalPages > 5 && currentPage > 3) {
+                    startPage = Math.min(currentPage - 2, totalPages - 4);
+                    endPage = Math.min(startPage + 4, totalPages);
+                  }
+                  
+                  const pages = [];
+                  for (let i = startPage; i <= endPage; i++) {
+                    pages.push(i);
+                  }
+                  
+                  return pages.map((pageNum) => (
+                    <button
+                      key={`page-${pageNum}`}
+                      onClick={() => goToPage(pageNum)}
+                      disabled={transactionsLoading}
+                      className={`w-8 h-8 rounded-lg text-sm font-medium transition ${
+                        currentPage === pageNum
+                          ? 'bg-primary text-primary-foreground'
+                          : 'hover:bg-muted disabled:opacity-50'
+                      }`}
+                    >
+                      {pageNum}
+                    </button>
+                  ));
+                })()}
+              </div>
+              
+              <button
+                onClick={goToNextPage}
+                disabled={!hasNextPage || transactionsLoading}
+                className="inline-flex items-center gap-1 px-3 py-2 rounded-lg border bg-background hover:bg-muted transition text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <span className="hidden sm:inline">Selanjutnya</span>
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
+            
+            {transactionsLoading && (
+              <div className="flex items-center justify-center gap-2 mt-3 text-xs text-muted-foreground">
+                <Loader2 className="h-3 w-3 animate-spin" />
+                <span>Memuat data...</span>
+              </div>
+            )}
           </div>
         )}
       </motion.div>

@@ -12,6 +12,7 @@ import { Clock } from "./clock"
 import { UserDropdown } from "./user-dropdown"
 import { useEffect, useRef } from "react"
 import { ThemeToggle } from "./theme-toggle"
+import { StatusIndicator, useStatusIndicator } from "./status-indicator"
 
 type LinkItem = {
   href: string;
@@ -56,6 +57,9 @@ export const AppShell = ({ children }: { children: React.ReactNode }) => {
       isRestoringScroll.current = false
     }
   }, [pathname])
+
+  // Status indicator hook
+  const { status } = useStatusIndicator();
 
   // Calculate low stock count for badge
   // For items with variants, check variant stock levels; for items without, check item stock
@@ -138,6 +142,9 @@ export const AppShell = ({ children }: { children: React.ReactNode }) => {
 
           {/* RIGHT: THEME TOGGLE + CLOCK + USER */}
           <div className="flex items-center gap-2 sm:gap-3">
+            {/* Status Indicator */}
+            <StatusIndicator status={status} pulse size="md" />
+
             {/* Theme Toggle */}
             <ThemeToggle />
 

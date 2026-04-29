@@ -1,6 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, ReactNode } from "react";
+import { mutate as globalMutate } from "swr";
 import type { CartItem, MenuItem, Transaction, PaymentMethod } from "../types";
 import { transactionsApi } from "../lib/api";
 import { toast } from "sonner";
@@ -219,9 +220,30 @@ export function CartProvider({ children }: { children: ReactNode }) {
     };
 
     try {
+      // Dispatch sync start event
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("syncStart"));
+      }
+
       const createdTx = await transactionsApi.create(txData, currentCafeId);
       setCart([]);
-      
+
+      // Invalidate SWR cache and trigger revalidation
+      if (currentCafeId) {
+        // Small delay to ensure PostgreSQL transaction is fully committed
+        setTimeout(() => {
+          globalMutate(
+            (key) => typeof key === 'string' && key.includes('/api/rest/transactions') && key.includes(`cafe_id=${currentCafeId}`),
+            { revalidate: true }
+          ).then(() => {
+            // Dispatch sync end event when revalidation completes
+            if (typeof window !== "undefined") {
+              window.dispatchEvent(new CustomEvent("syncEnd"));
+            }
+          });
+        }, 300);
+      }
+
       // Dispatch event to notify components to reload variants/menu
       if (typeof window !== "undefined") {
         window.dispatchEvent(new CustomEvent("transactionCompleted"));

@@ -22,33 +22,31 @@ export async function GET(request: Request) {
   }
   
   try {
-    // Build query with optional date filters
-    let query = supabaseAdmin
-      .from('transactions')
-      .select('*, transaction_items(*)', { count: 'exact' })
-      .eq('cafe_id', cafeId)
-      .is('deleted_at', null);
-
-    // Date range filters (Postgres)
+    // Date range filters
     const createdAtGte = url.searchParams.get('created_at_gte');
     const createdAtLt = url.searchParams.get('created_at_lt');
     const startDate = url.searchParams.get('start_date');
     const endDate = url.searchParams.get('end_date');
 
-    if (createdAtGte) {
-      query = query.gte('created_at', createdAtGte);
-    } else if (startDate) {
-      query = query.gte('created_at', startDate);
+    // Build filter conditions for reuse
+    const fromDate = createdAtGte || startDate;
+    const toDate = createdAtLt || endDate;
+
+    // Query 1: Get paginated data with items
+    let dataQuery = supabaseAdmin
+      .from('transactions')
+      .select('*, transaction_items(*)', { count: 'exact' })
+      .eq('cafe_id', cafeId)
+      .is('deleted_at', null);
+
+    if (fromDate) {
+      dataQuery = dataQuery.gte('created_at', fromDate);
+    }
+    if (toDate) {
+      dataQuery = dataQuery.lt('created_at', toDate);
     }
 
-    if (createdAtLt) {
-      query = query.lt('created_at', createdAtLt);
-    } else if (endDate) {
-      query = query.lt('created_at', endDate);
-    }
-
-    // Fetch transactions dengan items (nested query)
-    const { data: transactions, error, count } = await query
+    const { data: transactions, error, count } = await dataQuery
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1);
 
@@ -57,9 +55,34 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
+    // Query 2: Get total amount for ALL filtered transactions
+    let summaryQuery = supabaseAdmin
+      .from('transactions')
+      .select('total_amount')
+      .eq('cafe_id', cafeId)
+      .is('deleted_at', null);
+
+    if (fromDate) {
+      summaryQuery = summaryQuery.gte('created_at', fromDate);
+    }
+    if (toDate) {
+      summaryQuery = summaryQuery.lt('created_at', toDate);
+    }
+
+    const { data: summaryData, error: summaryError } = await summaryQuery;
+
+    const totalAmount = summaryError || !summaryData 
+      ? 0 
+      : summaryData.reduce((sum: number, t: any) => sum + (parseFloat(t.total_amount) || 0), 0);
+
     return NextResponse.json({
       data: transactions || [],
-      meta: { total: count, limit, offset }
+      meta: { 
+        total: count, 
+        limit, 
+        offset,
+        totalAmount  // Total amount of ALL filtered transactions
+      }
     });
   } catch (error: any) {
     console.error('Transactions GET error:', error);
