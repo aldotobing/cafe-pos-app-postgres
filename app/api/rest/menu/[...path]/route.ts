@@ -98,10 +98,23 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ p
     const { path } = await params;
     const menuId = path[0];
 
+    const deletedAt = new Date().toISOString();
+
+    // Soft delete variants first (cascade soft delete)
+    const { error: variantError } = await supabaseAdmin
+      .from('product_variants')
+      .update({ deleted_at: deletedAt })
+      .eq('menu_id', menuId);
+
+    if (variantError) {
+      console.error('Menu DELETE - Variants error:', variantError);
+      // Continue with menu delete even if variant delete fails
+    }
+
     // Soft delete dengan set deleted_at
     const { data, error } = await supabaseAdmin
       .from('menu')
-      .update({ deleted_at: new Date().toISOString() })
+      .update({ deleted_at: deletedAt })
       .eq('id', menuId)
       .select()
       .single();

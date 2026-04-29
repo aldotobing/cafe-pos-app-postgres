@@ -52,6 +52,7 @@ export interface MenuItem {
   variantCount?: number
   totalVariantStock?: number
   variants?: ProductVariant[]
+  productVariants?: ProductVariant[]  // Raw data from API with snake_case fields
   createdAt?: string
   updatedAt?: string
   deleted_at?: string

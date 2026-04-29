@@ -154,7 +154,7 @@ export function ProductVariantsManager({
         variant_name: variantName,
         price: newVariant.price || null,
         hpp_price: hppPrice,
-        stock_quantity: newVariant.stockQuantity,
+        stock_quantity: 0, // Let the trigger handle stock from mutation
         track_stock: true
       }
       

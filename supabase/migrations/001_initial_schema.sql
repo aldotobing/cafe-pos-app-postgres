@@ -354,7 +354,8 @@ SELECT
     ) AS attributes
 FROM product_variants pv
 JOIN menu m ON m.id = pv.menu_id
-WHERE pv.deleted_at IS NULL;
+WHERE pv.deleted_at IS NULL 
+  AND m.deleted_at IS NULL;
 
 -- ============================================================================
 -- Comments for documentation

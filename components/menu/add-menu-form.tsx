@@ -696,6 +696,17 @@ export function AddMenuForm({ formVariants, initialAttributes = [], initialAttri
           className="w-full sm:w-auto inline-flex items-center justify-center rounded-lg bg-primary text-primary-foreground px-8 py-3 text-sm font-semibold shadow-md transition-all hover:bg-primary/90 hover:shadow-lg hover:-translate-y-0.5 active:scale-95 disabled:opacity-50 disabled:pointer-events-none disabled:transform-none disabled:shadow-none disabled:active:scale-100 disabled:hover:translate-y-0 gap-2"
           disabled={!form.name || form.price <= 0 || !form.categoryId || isAdding || isUploadingImage}
           onClick={async () => {
+            // Validate variant selection before submitting
+            if (form.hasVariants) {
+              const hasSelectedAttributes = selectedProductAttributes.size > 0;
+              const hasSelectedValues = Object.values(selectedAttributeValues).filter(Boolean).length > 0;
+              
+              if (hasSelectedAttributes && !hasSelectedValues) {
+                toast.error("Silakan pilih nilai untuk atribut varian yang dipilih");
+                return;
+              }
+            }
+            
             setIsAdding(true);
             try {
               // First create the menu item
@@ -714,34 +725,57 @@ export function AddMenuForm({ formVariants, initialAttributes = [], initialAttri
                 hasVariants: form.hasVariants,
               }, cafeId)
 
-              // If has variants and variant form is filled, create the first variant
-              let createdVariantId: string | null = null;
-              if (form.hasVariants && newMenuItem?.id && Object.keys(selectedAttributeValues).length > 0) {
-                const selectedValueIds = Object.values(selectedAttributeValues).filter(Boolean)
-                const variantName = attributeValues
-                  .filter((v: any) => selectedValueIds.includes(v.id))
-                  .map((v: any) => v.value)
-                  .join(" - ")
+              console.log('Created menu item:', newMenuItem);
+              console.log('Menu item ID:', newMenuItem?.id);
+              console.log('Menu item cafe_id:', newMenuItem?.cafe_id);
+              console.log('Current cafeId:', cafeId);
+              console.log('User data:', userData);
 
-                if (variantName) {
-                  const variantResponse = await fetch('/api/rest/product_variants', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                      menu_id: newMenuItem.id,
-                      sku: variantForm.sku || null,
-                      barcode: variantForm.barcode || null,
-                      variant_name: variantName,
-                      price: variantForm.price || null,
-                      hpp_price: form.hppPrice,
-                      stock_quantity: variantForm.stockQuantity,
-                      track_stock: form.trackStock,
-                      attribute_value_ids: selectedValueIds
-                    })
-                  });
-                  
-                  const variantData = await variantResponse.json();
-                  createdVariantId = variantData.data?.id || variantData.id;
+              // If has variants, create the first variant
+              let createdVariantId: string | null = null;
+              if (form.hasVariants && newMenuItem?.id) {
+                const selectedValueIds = Object.values(selectedAttributeValues).filter(Boolean)
+                
+                // Use cafe_id from created menu item or fallback to current cafeId
+                const variantCafeId = newMenuItem.cafe_id || cafeId;
+                
+                // Build variant name from selected attributes or use default
+                let variantName: string
+                if (selectedValueIds.length > 0) {
+                  variantName = attributeValues
+                    .filter((v: any) => selectedValueIds.includes(v.id))
+                    .map((v: any) => v.value)
+                    .join(" - ")
+                } else {
+                  // No attributes selected - create default variant
+                  variantName = "Default"
+                }
+
+                console.log('Creating variant with cafe_id:', variantCafeId, 'menu_id:', newMenuItem.id);
+                
+                const variantResponse = await fetch(`/api/rest/product_variants?cafe_id=${variantCafeId}`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    menu_id: newMenuItem.id,
+                    cafe_id: variantCafeId,
+                    sku: variantForm.sku || null,
+                    barcode: variantForm.barcode || null,
+                    variant_name: variantName,
+                    price: variantForm.price || null,
+                    hpp_price: form.hppPrice,
+                    stock_quantity: 0, // Let the trigger handle stock from mutation
+                    track_stock: form.trackStock,
+                    attribute_value_ids: selectedValueIds.length > 0 ? selectedValueIds : undefined
+                  })
+                });
+                
+                const variantData = await variantResponse.json();
+                createdVariantId = variantData.data?.id || variantData.id;
+                
+                if (!createdVariantId) {
+                  console.error('Failed to create variant:', variantData);
+                  toast.error('Gagal membuat varian produk');
                 }
               }
 
@@ -774,6 +808,7 @@ export function AddMenuForm({ formVariants, initialAttributes = [], initialAttri
               setForm({ name: "", category: categories[0]?.name || "", categoryId: categories[0]?.id || "", hppPrice: 0, marginPercent: 30, price: 0, stockQuantity: 0, minStock: 5, trackStock: true, available: true, imageUrl: "", hasVariants: false })
               setVariantForm({ sku: "", barcode: "", stockQuantity: 0, price: 0 })
               setSelectedAttributeValues({})
+              setSelectedProductAttributes(new Set())
               setShowVariantForm(false)
             } catch (error) {
               toast.error('Gagal menambahkan produk. Silakan coba lagi.');

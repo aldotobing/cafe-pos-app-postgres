@@ -58,12 +58,47 @@ export const AppShell = ({ children }: { children: React.ReactNode }) => {
   }, [pathname])
 
   // Calculate low stock count for badge
-  const lowStockCount = menu.filter(m =>
-    m.trackStock && m.stockQuantity !== undefined && m.stockQuantity > 0 && m.stockQuantity <= (m.minStock || 5)
-  ).length;
-  const outOfStockCount = menu.filter(m =>
-    m.trackStock && m.stockQuantity === 0
-  ).length;
+  // For items with variants, check variant stock levels; for items without, check item stock
+  const lowStockCount = menu.reduce((count, m) => {
+    if (!m.trackStock) return count;
+    
+    // If item has variants, check each variant
+    if (m.hasVariants && m.productVariants && m.productVariants.length > 0) {
+      const variantLowStock = m.productVariants.filter((v: any) => 
+        v.track_stock !== false && 
+        v.stock_quantity !== undefined && 
+        v.stock_quantity > 0 && 
+        v.stock_quantity <= (v.min_stock || m.minStock || 5)
+      ).length;
+      return count + variantLowStock;
+    }
+    
+    // For items without variants, check item stock
+    if (m.stockQuantity !== undefined && m.stockQuantity > 0 && m.stockQuantity <= (m.minStock || 5)) {
+      return count + 1;
+    }
+    return count;
+  }, 0);
+  
+  const outOfStockCount = menu.reduce((count, m) => {
+    if (!m.trackStock) return count;
+    
+    // If item has variants, check each variant
+    if (m.hasVariants && m.productVariants && m.productVariants.length > 0) {
+      const variantOutOfStock = m.productVariants.filter((v: any) => 
+        v.track_stock !== false && 
+        v.stock_quantity === 0
+      ).length;
+      return count + variantOutOfStock;
+    }
+    
+    // For items without variants, check item stock
+    if (m.stockQuantity === 0) {
+      return count + 1;
+    }
+    return count;
+  }, 0);
+  
   const stockAlertCount = lowStockCount + outOfStockCount;
 
   return (

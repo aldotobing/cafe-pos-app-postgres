@@ -86,6 +86,29 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
+    // Create attribute mappings if attribute_value_ids provided
+    const attributeValueIds = body.attribute_value_ids;
+    if (data?.id && Array.isArray(attributeValueIds) && attributeValueIds.length > 0) {
+      try {
+        const mappings = attributeValueIds.map((valueId: string) => ({
+          variant_id: data.id,
+          attribute_value_id: valueId,
+        }));
+        
+        const { error: mappingError } = await supabaseAdmin
+          .from('variant_attribute_mappings')
+          .insert(mappings);
+        
+        if (mappingError) {
+          console.error('Variant attribute mapping error:', mappingError);
+          // Don't fail the entire request if mapping fails
+        }
+      } catch (mappingErr) {
+        console.error('Failed to create attribute mappings:', mappingErr);
+        // Don't fail the entire request if mapping fails
+      }
+    }
+
     return NextResponse.json({ data, success: true }, { status: 201 });
   } catch (error: any) {
     console.error('Product Variants POST error:', error);

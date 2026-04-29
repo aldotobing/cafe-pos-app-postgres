@@ -6,51 +6,11 @@ import { useCategories, useMenu } from "@/hooks/use-cafe-data"
 import { useAuth } from '@/lib/auth-context';
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion';
-import { FolderOpen, Plus, Pencil, Trash2, X, Loader2, Ban } from 'lucide-react'
+import { FolderOpen, Plus, Pencil, Trash2, X, Loader2 } from 'lucide-react'
 import { toast } from "sonner"
 import type { Category } from "@/types"
 import { CategoriesSkeleton } from "@/components/skeletons"
-
-
-
-const defaultIcons = [
-  // --- F&B ---
-  '☕', '🥤', '🧋', '🫖', '🍹', '🥛', '🍶', '🧊',
-  '🍽️', '🥣', '🍱', '🍛', '🍝', '🍜', '🍕', '🍔', 
-  '🥐', '🍞', '🥯', '🥨', '🍰', '🧁', '🍩', '🍪',
-  '🍟', '🍿', '🥪', '🌮', '🥗', '🍦', '🍫', '🍬',
-  
-  // --- HARDWARE & TOOLS ---
-  '🔧', '🔨', '🪛', '🔩', '🪚', '🪜', '🧰',
-  '⚡', '🔌', '🔋', '🔦', '⛏️', '⛓️', '🧱', '🪵',
-  
-  // --- ELECTRONICS & GADGETS ---
-  '📱', '💻', '🖱️', '⌨️', '🎧', '📷', '📺', '🎮',
-  '⌚', '🖨️', '📡', '🎙️', '💿', '🎸', '🎹', '🎻',
-  
-  // --- TRANSPORT & VEHICLES ---
-  '🚗', '🛵', '🚲', '🚚', '🚜', '⛽', '🛞', '🛴',
-  
-  // --- AVIATION & TRAVEL ---
-  '✈️', '🛫', '🛬', '🛩️', '🚁', '🧳', '🌍', '🗺️', '🛂',
-  
-  // --- PROPERTY & REAL ESTATE ---
-  '🏠', '🏢', '🏬', '🏨', '🏗️', '🏘️', '🏙️', '🕌', '🏛️', '⛪',
-  
-  // --- HOME & APPAREL ---
-  '🛋️', '🛏️', '🪴', '🧹', '🧺', '👕', '👗', 
-  '👟', '🎒', '👓', '🌂', '🕯️', '💄', '💍',
-  
-  // --- OFFICE & STATIONERY ---
-  '📚', '📝', '📋', '📏', '📎', '✂️', '🖋️', '🎨',
-  
-  // --- MEDICAL & HEALTH ---
-  '💊', '🩹', '🩺', '🧪', '🧼', '🪥', '🧴',
-  
-  // --- GENERAL & SERVICES ---
-  '⭐', '🔥', '🏷️', '📦', '🎁', '✨', '🛍️', '💰',
-  '🛒', '🔑', '🔓', '🎯', '📍', '💬', '🔔', '❤️',
-]
+import { IconPicker } from "@/components/category/icon-picker"
 
 export default function CategoriesPage() {
   const { userData, loading: authLoading, user } = useAuth();
@@ -343,37 +303,10 @@ export default function CategoriesPage() {
                   {/* Icon Picker */}
                   <div>
                     <label className="text-sm font-medium mb-1.5 block">Ikon</label>
-                    <div className="border rounded-lg p-3 bg-background/50">
-                      {/* Scrollable container - responsive grid */}
-                      <div className="grid grid-cols-6 sm:grid-cols-8 gap-2 max-h-48 sm:max-h-64 overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-muted-foreground/20 scrollbar-track-muted">
-                        {/* None option */}
-                        <button
-                          onClick={() => setForm(f => ({ ...f, icon: '' }))}
-                          className={`w-full aspect-square rounded-lg flex items-center justify-center transition border-2 flex-shrink-0 ${
-                            form.icon === ''
-                              ? 'border-primary bg-primary/10 text-primary'
-                              : 'border-transparent hover:bg-muted text-muted-foreground'
-                          }`}
-                          title="Tanpa Ikon"
-                        >
-                          <Ban className="h-5 w-5 opacity-40" />
-                        </button>
-                        {/* Icons */}
-                        {defaultIcons.map(icon => (
-                          <button
-                            key={icon}
-                            onClick={() => setForm(f => ({ ...f, icon }))}
-                            className={`w-full aspect-square rounded-lg text-xl flex items-center justify-center transition border-2 flex-shrink-0 ${
-                              form.icon === icon
-                                ? 'border-primary bg-primary/10'
-                                : 'border-transparent hover:bg-muted'
-                            }`}
-                          >
-                            {icon}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
+                    <IconPicker
+                      selectedIcon={form.icon}
+                      onSelect={(icon) => setForm(f => ({ ...f, icon }))}
+                    />
                     <p className="text-xs text-muted-foreground mt-1.5">Gulir untuk melihat semua ikon</p>
                   </div>
 

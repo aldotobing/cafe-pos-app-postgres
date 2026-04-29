@@ -106,7 +106,7 @@ export const menuApi = {
     const menuItems = response?.data || (Array.isArray(response) ? response : (response ? [response] : []));
 
     // Map snake_case DB fields to camelCase TypeScript interface
-    return menuItems.filter((i: { id: any; }) => i.id).map((i: { id: any; name: any; category: any; category_id: any; price: any; available: any; image_url: any; stock_quantity: any; hpp_price: any; margin_percent: any; min_stock: any; track_stock: any; has_variants: any; created_at: any; updated_at: any; }) => {
+    return menuItems.filter((i: { id: any; }) => i.id).map((i: { id: any; name: any; category: any; category_id: any; price: any; available: any; image_url: any; stock_quantity: any; hpp_price: any; margin_percent: any; min_stock: any; track_stock: any; has_variants: any; created_at: any; updated_at: any; product_variants?: any[] }) => {
       const mapped = {
         id: i.id,
         name: i.name,
@@ -126,6 +126,8 @@ export const menuApi = {
         has_variants: i.has_variants,
         createdAt: i.created_at,
         updatedAt: i.updated_at,
+        // Product variants
+        productVariants: i.product_variants || [],
       };
 
       return mapped;
@@ -170,6 +172,8 @@ export const menuApi = {
       margin_percent: item.marginPercent || 30,
       min_stock: item.minStock || 5,
       track_stock: item.trackStock ? 1 : 0,
+      // Variant fields
+      has_variants: item.hasVariants ? 1 : 0,
     };
     
     // Only send category_id if it exists (migration may not have been run yet)
@@ -180,20 +184,22 @@ export const menuApi = {
     const response = await apiRequest<any>('/rest/menu', { method: 'POST', body: JSON.stringify(data) });
 
     // Return the server response if available, otherwise fall back to client-generated data
-    if (response) {
-      const serverItem = Array.isArray(response) ? response[0] : response;
-      if (serverItem && serverItem.id) {
-        return {
-          ...serverItem,
-          imageUrl: serverItem.image_url,
-          available: Boolean(serverItem.available),
-          stockQuantity: serverItem.stock_quantity,
-          hppPrice: serverItem.hpp_price,
-          marginPercent: serverItem.margin_percent,
-          minStock: serverItem.min_stock,
-          trackStock: Boolean(serverItem.track_stock),
-        };
-      }
+    // Server returns { data: {...}, success: true }
+    const serverItem = response?.data;
+    if (serverItem && serverItem.id) {
+      return {
+        ...serverItem,
+        imageUrl: serverItem.image_url,
+        available: Boolean(serverItem.available),
+        stockQuantity: serverItem.stock_quantity,
+        hppPrice: serverItem.hpp_price,
+        marginPercent: serverItem.margin_percent,
+        minStock: serverItem.min_stock,
+        trackStock: Boolean(serverItem.track_stock),
+        cafe_id: serverItem.cafe_id,
+        hasVariants: Boolean(serverItem.has_variants),
+        has_variants: serverItem.has_variants,
+      };
     }
 
     // Fallback if server doesn't return the created item
@@ -207,6 +213,8 @@ export const menuApi = {
       marginPercent: item.marginPercent || 30,
       minStock: item.minStock || 5,
       trackStock: item.trackStock || false,
+      hasVariants: item.hasVariants || false,
+      has_variants: item.hasVariants ? 1 : 0,
     };
   },
   update: async (id: string, item: Partial<MenuItem>): Promise<MenuItem> => {
