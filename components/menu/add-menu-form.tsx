@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Plus, Package, FolderOpen, Loader2, DollarSign, Pencil, TrendingUp, Layers, Tag, Barcode, ChevronDown, ChevronUp, AlertCircle } from "lucide-react"
 import { ImageUpload } from "@/components/ui/image-upload"
+import { BarcodePreview } from "@/components/ui/barcode-preview"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { formatRupiah } from "@/lib/utils"
@@ -11,7 +12,15 @@ import { useAuth } from "@/lib/auth-context"
 import { useMenu, useCategories } from "@/hooks/use-cafe-data"
 import { menuApi } from "@/lib/api"
 
-export function AddMenuForm({ formVariants }: { formVariants: any }) {
+import type { VariantAttribute, VariantAttributeValue } from "@/types"
+
+interface AddMenuFormProps {
+  formVariants: any
+  initialAttributes?: VariantAttribute[]
+  initialAttributeValues?: VariantAttributeValue[]
+}
+
+export function AddMenuForm({ formVariants, initialAttributes = [], initialAttributeValues = [] }: AddMenuFormProps) {
   const router = useRouter()
   const { userData } = useAuth()
   const cafeId = userData?.cafe_id
@@ -46,9 +55,21 @@ export function AddMenuForm({ formVariants }: { formVariants: any }) {
     stockQuantity: 0,
     price: 0,
   })
-  const [attributes, setAttributes] = useState<any[]>([])
-  const [attributeValues, setAttributeValues] = useState<any[]>([])
+  // Use initial attributes passed from parent (shared state)
+  const attributes = initialAttributes
+  const attributeValues = initialAttributeValues
   const [selectedAttributeValues, setSelectedAttributeValues] = useState<Record<string, string>>({})
+  
+  // State for selecting which attributes are relevant to this product
+  const [selectedProductAttributes, setSelectedProductAttributes] = useState<Set<string>>(new Set())
+  
+  // Initialize selected attributes when attributes change
+  useEffect(() => {
+    if (attributes.length > 0 && selectedProductAttributes.size === 0) {
+      // Default: select all attributes for new products
+      setSelectedProductAttributes(new Set(attributes.map(a => a.id)))
+    }
+  }, [attributes, selectedProductAttributes.size])
 
   useEffect(() => {
     if (!categoriesLoading && categories.length > 0 && !form.category) {
@@ -72,34 +93,47 @@ export function AddMenuForm({ formVariants }: { formVariants: any }) {
     }
   }, [form.hppPrice, form.price, isPriceManual]);
 
-  // Load attributes for variant creation
-  const loadAttributes = async () => {
-    try {
-      const response = await fetch(`/api/rest/variant_attributes?cafe_id=${cafeId}`)
-      const data = await response.json()
-      
-      // Handle different response formats
-      const attributesList = Array.isArray(data) ? data : (data.data || data.results || [])
-      setAttributes(attributesList)
-      
-      // Load values for each attribute
-      const allValues: any[] = []
-      for (const attr of attributesList) {
-        const valuesRes = await fetch(`/api/rest/variant_attribute_values?attribute_id=${attr.id}`)
-        const valuesData = await valuesRes.json()
-        const valuesList = Array.isArray(valuesData) ? valuesData : (valuesData.data || valuesData.results || [])
-        allValues.push(...valuesList)
-      }
-      setAttributeValues(allValues)
-    } catch (error) {
-      console.error('Failed to load attributes:', error)
+  // Helper function to abbreviate text for SKU
+  const abbreviate = (text: string): string => {
+    const words = text.trim().toUpperCase().split(/\s+/)
+    if (words.length === 1) {
+      // Single word: take first 3 characters
+      return words[0].slice(0, 3)
+    } else {
+      // Multiple words: take first letter of each word (max 3 letters)
+      return words.slice(0, 3).map(w => w[0]).join('')
     }
   }
 
   const generateSKU = () => {
-    const prefix = "VAR"
-    const timestamp = Date.now().toString(36).toUpperCase()
-    setVariantForm(prev => ({ ...prev, sku: `${prefix}-${timestamp}` }))
+    // Generate SKU based on product name + abbreviated attributes
+    const productName = form.name?.trim() || ""
+    const timestamp = Date.now().toString(36).toUpperCase().slice(-3)
+
+    // Get selected attribute value names and abbreviate them
+    const selectedValueIds = Object.values(selectedAttributeValues).filter(Boolean)
+    const selectedAttrAbbrs = attributeValues
+      .filter((v: any) => selectedValueIds.includes(v.id))
+      .map((v: any) => abbreviate(v.value))
+      .join("-")
+
+    let prefix: string
+    if (productName) {
+      // Take first 2 characters of first 2 words
+      prefix = productName
+        .split(/\s+/)
+        .slice(0, 2)
+        .map(w => w.slice(0, 2).toUpperCase())
+        .join('')
+        .slice(0, 4)
+    } else {
+      prefix = "VAR"
+    }
+
+    // Combine: PRODUCT-ABBREVIATEDATTRS-TIMESTAMP
+    const attrPart = selectedAttrAbbrs ? `-${selectedAttrAbbrs}` : ""
+    const generatedCode = `${prefix}${attrPart}-${timestamp}`
+    setVariantForm(prev => ({ ...prev, sku: generatedCode, barcode: generatedCode }))
   }
 
   return (
@@ -440,7 +474,6 @@ export function AddMenuForm({ formVariants }: { formVariants: any }) {
                     onChange={(e) => {
                       setForm(f => ({ ...f, hasVariants: e.target.checked }))
                       if (e.target.checked) {
-                        loadAttributes()
                         setShowVariantForm(true)
                       } else {
                         setShowVariantForm(false)
@@ -475,34 +508,88 @@ export function AddMenuForm({ formVariants }: { formVariants: any }) {
 
                 {showVariantForm && (
                   <div className="mt-4 space-y-4">
-                    {/* Attribute Selection */}
-                    {attributes.length > 0 ? (
+                    {/* Product Attributes Selection - Checkboxes */}
+                    {attributes.length > 0 && (
+                      <div className="p-3 rounded-lg border border-border">
+                        <label className="text-xs font-medium text-foreground mb-2 block">
+                          Pilih Atribut untuk Produk Ini:
+                        </label>
+                        <div className="flex flex-wrap gap-2">
+                          {attributes.map((attr) => (
+                            <label
+                              key={attr.id}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-input cursor-pointer hover:bg-muted transition-colors text-sm"
+                            >
+                              <input
+                                type="checkbox"
+                                checked={selectedProductAttributes.has(attr.id)}
+                                onChange={(e) => {
+                                  const newSet = new Set(selectedProductAttributes)
+                                  if (e.target.checked) {
+                                    newSet.add(attr.id)
+                                  } else {
+                                    newSet.delete(attr.id)
+                                    // Clear selected value for this attribute
+                                    setSelectedAttributeValues(prev => {
+                                      const newValues = { ...prev }
+                                      delete newValues[attr.id]
+                                      return newValues
+                                    })
+                                  }
+                                  setSelectedProductAttributes(newSet)
+                                }}
+                                className="rounded border-input"
+                              />
+                              <span className="text-xs">{attr.name}</span>
+                            </label>
+                          ))}
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-2">
+                          Centang atribut yang relevan untuk produk ini (contoh: Warna, Ukuran)
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Attribute Value Selection - Only for selected attributes */}
+                    {attributes.length > 0 && selectedProductAttributes.size > 0 ? (
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        {attributes.map((attr) => {
-                          const values = attributeValues.filter((v: any) => v.attribute_id === attr.id)
-                          return (
-                            <div key={attr.id}>
-                              <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
-                                {attr.name}
-                              </label>
-                              <select
-                                className="w-full rounded-lg border border-input bg-background px-4 py-2.5 text-sm shadow-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary"
-                                value={selectedAttributeValues[attr.id] || ""}
-                                onChange={(e) => setSelectedAttributeValues(prev => ({
-                                  ...prev,
-                                  [attr.id]: e.target.value
-                                }))}
-                              >
-                                <option value="">Pilih {attr.name}</option>
-                                {values.map((val: any) => (
-                                  <option key={val.id} value={val.id}>
-                                    {val.value}
-                                  </option>
-                                ))}
-                              </select>
-                            </div>
-                          )
-                        })}
+                        {attributes
+                          .filter(attr => selectedProductAttributes.has(attr.id))
+                          .map((attr) => {
+                            const values = attributeValues.filter((v: any) => v.attribute_id === attr.id)
+                            return (
+                              <div key={attr.id}>
+                                <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
+                                  {attr.name} <span className="text-destructive">*</span>
+                                </label>
+                                <select
+                                  className="w-full rounded-lg border border-input bg-background px-4 py-2.5 text-sm shadow-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary"
+                                  value={selectedAttributeValues[attr.id] || ""}
+                                  onChange={(e) => setSelectedAttributeValues(prev => ({
+                                    ...prev,
+                                    [attr.id]: e.target.value
+                                  }))}
+                                >
+                                  <option value="">Pilih {attr.name}</option>
+                                  {values.map((val: any) => (
+                                    <option key={val.id} value={val.id}>
+                                      {val.value}
+                                    </option>
+                                  ))}
+                                </select>
+                              </div>
+                            )
+                          })}
+                      </div>
+                    ) : attributes.length > 0 && selectedProductAttributes.size === 0 ? (
+                      <div className="p-3 rounded-lg bg-amber-500/10 text-amber-700 dark:text-amber-300 text-sm flex items-start gap-2">
+                        <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+                        <div>
+                          <p className="font-medium">Pilih minimal satu atribut</p>
+                          <p className="text-xs mt-1 leading-relaxed">
+                            Centang atribut yang ingin digunakan untuk varian produk ini
+                          </p>
+                        </div>
                       </div>
                     ) : (
                       <div className="p-3 rounded-lg bg-amber-500/10 text-amber-700 dark:text-amber-300 text-sm flex items-start gap-2">
@@ -550,6 +637,7 @@ export function AddMenuForm({ formVariants }: { formVariants: any }) {
                           value={variantForm.barcode}
                           onChange={(e) => setVariantForm(f => ({ ...f, barcode: e.target.value }))}
                         />
+                        <BarcodePreview value={variantForm.barcode} />
                       </div>
                     </div>
 

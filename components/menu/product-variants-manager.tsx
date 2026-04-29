@@ -8,6 +8,7 @@ import {
 } from "lucide-react"
 import { toast } from "sonner"
 import { formatRupiah } from "@/lib/utils"
+import { BarcodePreview } from "@/components/ui/barcode-preview"
 import type { ProductVariant, VariantAttribute, VariantAttributeValue } from "@/types"
 
 type ConfirmDialogType = 'delete' | 'deactivate-all' | 'disable-variant-mode' | null
@@ -24,6 +25,7 @@ interface ConfirmDialogState {
 
 interface ProductVariantsManagerProps {
   menuId: string
+  menuName?: string
   basePrice: number
   hppPrice: number
   hasVariants: boolean
@@ -33,6 +35,7 @@ interface ProductVariantsManagerProps {
 
 export function ProductVariantsManager({ 
   menuId, 
+  menuName,
   basePrice, 
   hppPrice,
   hasVariants,
@@ -54,6 +57,17 @@ export function ProductVariantsManager({
     stockQuantity: 0,
     selectedAttributeValues: {} as Record<string, string> // attributeId -> valueId
   })
+
+  // State for selecting which attributes are relevant to this product
+  const [selectedProductAttributes, setSelectedProductAttributes] = useState<Set<string>>(new Set())
+
+  // Initialize selected attributes when attributes change
+  useEffect(() => {
+    if (attributes.length > 0 && selectedProductAttributes.size === 0) {
+      // Default: select all attributes for new variants
+      setSelectedProductAttributes(new Set(attributes.map(a => a.id)))
+    }
+  }, [attributes, selectedProductAttributes.size])
 
   // Confirm dialog state
   const [confirmDialog, setConfirmDialog] = useState<ConfirmDialogState>({
@@ -306,10 +320,47 @@ export function ProductVariantsManager({
     }
   }
 
+  // Helper function to abbreviate text for SKU
+  const abbreviate = (text: string): string => {
+    const words = text.trim().toUpperCase().split(/\s+/)
+    if (words.length === 1) {
+      // Single word: take first 3 characters
+      return words[0].slice(0, 3)
+    } else {
+      // Multiple words: take first letter of each word (max 3 letters)
+      return words.slice(0, 3).map(w => w[0]).join('')
+    }
+  }
+
   const generateSKU = () => {
-    const prefix = "VAR"
-    const timestamp = Date.now().toString(36).toUpperCase()
-    setNewVariant(prev => ({ ...prev, sku: `${prefix}-${timestamp}` }))
+    // Generate SKU based on product name + abbreviated attributes
+    const productName = menuName?.trim() || ""
+    const timestamp = Date.now().toString(36).toUpperCase().slice(-3)
+
+    // Get selected attribute value names and abbreviate them
+    const selectedValueIds = Object.values(newVariant.selectedAttributeValues).filter(Boolean)
+    const selectedAttrAbbrs = attributeValues
+      .filter(v => selectedValueIds.includes(v.id))
+      .map(v => abbreviate(v.value))
+      .join("-")
+
+    let prefix: string
+    if (productName) {
+      // Take first 2 characters of first 2 words
+      prefix = productName
+        .split(/\s+/)
+        .slice(0, 2)
+        .map(w => w.slice(0, 2).toUpperCase())
+        .join('')
+        .slice(0, 4)
+    } else {
+      prefix = "VAR"
+    }
+
+    // Combine: PRODUCT-ABBREVIATEDATTRS-TIMESTAMP
+    const attrPart = selectedAttrAbbrs ? `-${selectedAttrAbbrs}` : ""
+    const generatedCode = `${prefix}${attrPart}-${timestamp}`
+    setNewVariant(prev => ({ ...prev, sku: generatedCode, barcode: generatedCode }))
   }
 
   if (!hasVariants) {
@@ -547,37 +598,91 @@ export function ProductVariantsManager({
                       </button>
                     </div>
 
-                    {/* Attribute Selection */}
-                    {attributes.length > 0 ? (
-                      <div className="space-y-3">
-                        {attributes.map((attr) => {
-                          const values = attributeValues.filter(v => v.attribute_id === attr.id)
-                          return (
-                            <div key={attr.id}>
-                              <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
-                                {attr.name}
-                              </label>
-                              <select
-                                className="w-full rounded-md border bg-background px-3 py-2 text-sm"
-                                value={newVariant.selectedAttributeValues[attr.id] || ""}
-                                onChange={(e) => setNewVariant(prev => ({
-                                  ...prev,
-                                  selectedAttributeValues: {
-                                    ...prev.selectedAttributeValues,
-                                    [attr.id]: e.target.value
+                    {/* Product Attributes Selection - Checkboxes */}
+                    {attributes.length > 0 && (
+                      <div className="p-3 rounded-lg border border-border">
+                        <label className="text-xs font-medium text-foreground mb-2 block">
+                          Pilih Atribut untuk Produk Ini:
+                        </label>
+                        <div className="flex flex-wrap gap-2">
+                          {attributes.map((attr) => (
+                            <label
+                              key={attr.id}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-input cursor-pointer hover:bg-muted transition-colors text-sm"
+                            >
+                              <input
+                                type="checkbox"
+                                checked={selectedProductAttributes.has(attr.id)}
+                                onChange={(e) => {
+                                  const newSet = new Set(selectedProductAttributes)
+                                  if (e.target.checked) {
+                                    newSet.add(attr.id)
+                                  } else {
+                                    newSet.delete(attr.id)
+                                    // Clear selected value for this attribute
+                                    setNewVariant(prev => {
+                                      const newValues = { ...prev.selectedAttributeValues }
+                                      delete newValues[attr.id]
+                                      return { ...prev, selectedAttributeValues: newValues }
+                                    })
                                   }
-                                }))}
-                              >
-                                <option value="">Pilih {attr.name}</option>
-                                {values.map((val) => (
-                                  <option key={val.id} value={val.id}>
-                                    {val.value}
-                                  </option>
-                                ))}
-                              </select>
-                            </div>
-                          )
-                        })}
+                                  setSelectedProductAttributes(newSet)
+                                }}
+                                className="rounded border-input"
+                              />
+                              <span className="text-xs">{attr.name}</span>
+                            </label>
+                          ))}
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-2">
+                          Centang atribut yang relevan untuk produk ini (contoh: Warna, Ukuran)
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Attribute Value Selection - Only for selected attributes */}
+                    {attributes.length > 0 && selectedProductAttributes.size > 0 ? (
+                      <div className="space-y-3">
+                        {attributes
+                          .filter(attr => selectedProductAttributes.has(attr.id))
+                          .map((attr) => {
+                            const values = attributeValues.filter(v => v.attribute_id === attr.id)
+                            return (
+                              <div key={attr.id}>
+                                <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
+                                  {attr.name} <span className="text-destructive">*</span>
+                                </label>
+                                <select
+                                  className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+                                  value={newVariant.selectedAttributeValues[attr.id] || ""}
+                                  onChange={(e) => setNewVariant(prev => ({
+                                    ...prev,
+                                    selectedAttributeValues: {
+                                      ...prev.selectedAttributeValues,
+                                      [attr.id]: e.target.value
+                                    }
+                                  }))}
+                                >
+                                  <option value="">Pilih {attr.name}</option>
+                                  {values.map((val) => (
+                                    <option key={val.id} value={val.id}>
+                                      {val.value}
+                                    </option>
+                                  ))}
+                                </select>
+                              </div>
+                            )
+                          })}
+                      </div>
+                    ) : attributes.length > 0 && selectedProductAttributes.size === 0 ? (
+                      <div className="p-3 rounded-md bg-amber-500/10 text-amber-700 text-sm flex items-start gap-2">
+                        <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+                        <div>
+                          <p className="font-medium">Pilih minimal satu atribut</p>
+                          <p className="text-xs mt-1">
+                            Centang atribut yang ingin digunakan untuk varian produk ini
+                          </p>
+                        </div>
                       </div>
                     ) : (
                       <div className="p-3 rounded-md bg-amber-500/10 text-amber-700 text-sm flex items-start gap-2">
@@ -624,6 +729,7 @@ export function ProductVariantsManager({
                           value={newVariant.barcode}
                           onChange={(e) => setNewVariant(prev => ({ ...prev, barcode: e.target.value }))}
                         />
+                        <BarcodePreview value={newVariant.barcode} />
                       </div>
                     </div>
 

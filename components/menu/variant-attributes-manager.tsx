@@ -11,9 +11,10 @@ import type { VariantAttribute, VariantAttributeValue } from "@/types"
 
 interface VariantAttributesManagerProps {
   cafeId: number
+  onChange?: () => void
 }
 
-export function VariantAttributesManager({ cafeId }: VariantAttributesManagerProps) {
+export function VariantAttributesManager({ cafeId, onChange }: VariantAttributesManagerProps) {
   const [attributes, setAttributes] = useState<VariantAttribute[]>([])
   const [attributeValues, setAttributeValues] = useState<Record<string, VariantAttributeValue[]>>({})
   const [isLoading, setIsLoading] = useState(false)
@@ -29,6 +30,11 @@ export function VariantAttributesManager({ cafeId }: VariantAttributesManagerPro
   useEffect(() => {
     loadAttributes()
   }, [cafeId])
+
+  // Notify parent when attributes change
+  const notifyChange = () => {
+    onChange?.()
+  }
 
   const loadAttributes = async () => {
     try {
@@ -85,7 +91,8 @@ export function VariantAttributesManager({ cafeId }: VariantAttributesManagerPro
       if (data.success || response.ok) {
         toast.success("Atribut berhasil ditambahkan")
         setNewAttributeName("")
-        loadAttributes()
+        await loadAttributes()
+        notifyChange()
       } else {
         toast.error(data.error || "Gagal menambahkan atribut")
       }
@@ -113,7 +120,8 @@ export function VariantAttributesManager({ cafeId }: VariantAttributesManagerPro
       
       if (data.success || response.ok) {
         toast.success("Atribut dihapus")
-        loadAttributes()
+        await loadAttributes()
+        notifyChange()
       } else {
         toast.error("Gagal menghapus atribut")
       }
@@ -144,7 +152,8 @@ export function VariantAttributesManager({ cafeId }: VariantAttributesManagerPro
       const data = await response.json()
       if (data.success || response.ok) {
         setNewValueInput(prev => ({ ...prev, [attributeId]: "" }))
-        loadAttributes()
+        await loadAttributes()
+        notifyChange()
       }
     } catch (error) {
       toast.error("Gagal menambahkan nilai")
@@ -163,7 +172,8 @@ export function VariantAttributesManager({ cafeId }: VariantAttributesManagerPro
       const data = await response.json()
       if (data.success || response.ok) {
         toast.success("Nilai dihapus")
-        loadAttributes()
+        await loadAttributes()
+        notifyChange()
       } else {
         toast.error("Gagal menghapus nilai")
       }

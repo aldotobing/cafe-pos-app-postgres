@@ -1,12 +1,13 @@
 "use client"
 
 import { AppShell } from "@/components/app-shell"
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 import { useMenu, useCategories } from "@/hooks/use-cafe-data"
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { MenuSkeleton } from "@/components/skeletons"
 import { useAuth } from '@/lib/auth-context'
+import type { VariantAttribute, VariantAttributeValue } from "@/types"
 
 import { AddMenuForm } from "@/components/menu/add-menu-form"
 import { MenuList } from "@/components/menu/menu-list"
@@ -30,6 +31,39 @@ export default function Page() {
   const [editingMenuItem, setEditingMenuItem] = useState<any>(null)
   const [viewingMenuItem, setViewingMenuItem] = useState<any>(null)
   const [canShowConfirmDialog, setCanShowConfirmDialog] = useState<string | null>(null)
+
+  // Shared attributes state for instant sync between VariantAttributesManager and AddMenuForm
+  const [sharedAttributes, setSharedAttributes] = useState<VariantAttribute[]>([])
+  const [sharedAttributeValues, setSharedAttributeValues] = useState<VariantAttributeValue[]>([])
+
+  // Load attributes function to be shared
+  const loadSharedAttributes = useCallback(async () => {
+    if (!cafeId) return
+    
+    try {
+      const response = await fetch(`/api/rest/variant_attributes?cafe_id=${cafeId}`)
+      const data = await response.json()
+      const attributesList = Array.isArray(data) ? data : (data.data || data.results || [])
+      setSharedAttributes(attributesList)
+      
+      // Load values for each attribute
+      const allValues: VariantAttributeValue[] = []
+      for (const attr of attributesList) {
+        const valuesRes = await fetch(`/api/rest/variant_attribute_values?attribute_id=${attr.id}`)
+        const valuesData = await valuesRes.json()
+        const valuesList = Array.isArray(valuesData) ? valuesData : (valuesData.data || valuesData.results || [])
+        allValues.push(...valuesList)
+      }
+      setSharedAttributeValues(allValues)
+    } catch (error) {
+      console.error('Failed to load attributes:', error)
+    }
+  }, [cafeId])
+
+  // Initial load
+  useEffect(() => {
+    loadSharedAttributes()
+  }, [loadSharedAttributes])
 
   // Listen for category changes from categories page and refresh store data
   useEffect(() => {
@@ -121,10 +155,14 @@ export default function Page() {
 
       {canEdit && (
         <>
-          <AddMenuForm formVariants={formVariants} />
+          <AddMenuForm 
+            formVariants={formVariants} 
+            initialAttributes={sharedAttributes}
+            initialAttributeValues={sharedAttributeValues}
+          />
           
           {/* Variant Attributes Section - Collapsible */}
-          <VariantAttributesSection />
+          <VariantAttributesSection onAttributesChange={loadSharedAttributes} />
         </>
       )}
 
@@ -179,7 +217,7 @@ export default function Page() {
 }
 
 // Variant Attributes Section Component
-function VariantAttributesSection() {
+function VariantAttributesSection({ onAttributesChange }: { onAttributesChange?: () => void }) {
   const { userData } = useAuth()
   const cafeId = userData?.cafe_id
   const [isExpanded, setIsExpanded] = useState(false)
@@ -236,7 +274,7 @@ function VariantAttributesSection() {
             className="overflow-hidden"
           >
             <div className="p-4 border-t">
-              <VariantAttributesManager cafeId={cafeId} />
+              <VariantAttributesManager cafeId={cafeId} onChange={onAttributesChange} />
             </div>
           </motion.div>
         )}

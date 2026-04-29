@@ -538,6 +538,7 @@ export function EditMenuModal({ menuItem, onClose, modalVariants }: EditMenuModa
             </div>
             <ProductVariantsManager
               menuId={menuItem.id}
+              menuName={menuItem.name}
               basePrice={editForm.price}
               hppPrice={editForm.hppPrice}
               hasVariants={hasVariants}
