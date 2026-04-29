@@ -413,19 +413,32 @@ export function AddMenuForm({ formVariants, initialAttributes = [], initialAttri
             {form.trackStock && (
               <div className="mt-4 p-4 rounded-lg bg-muted/30 border border-muted/50 space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
-                  <label className="md:col-span-3 text-sm font-medium text-foreground pt-2.5">Stok Tersedia</label>
+                  <label className="md:col-span-3 text-sm font-medium text-foreground pt-2.5">
+                    Stok Tersedia
+                    {form.hasVariants && (
+                      <span className="block text-xs font-normal text-muted-foreground mt-1">
+                        (Dikelola di varian)
+                      </span>
+                    )}
+                  </label>
                   <div className="md:col-span-9">
                     <input
                       type="text"
                       inputMode="numeric"
-                      className="w-full sm:max-w-[200px] rounded-lg border border-input bg-background px-4 py-2.5 text-sm shadow-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary"
-                      value={form.stockQuantity || ''}
+                      disabled={form.hasVariants}
+                      className="w-full sm:max-w-[200px] rounded-lg border border-input bg-background px-4 py-2.5 text-sm shadow-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary disabled:bg-muted/50 disabled:cursor-not-allowed disabled:text-muted-foreground"
+                      value={form.hasVariants ? 'Dikelola di varian' : (form.stockQuantity || '')}
                       placeholder="0"
                       onChange={(e) => {
                         const raw = e.target.value.replace(/\D/g, '');
                         setForm((f) => ({ ...f, stockQuantity: Number(raw) || 0 }));
                       }}
                     />
+                    {form.hasVariants && (
+                      <p className="text-xs text-muted-foreground mt-1.5">
+                        Stok akan dihitung dari stok varian yang ditambahkan di bawah
+                      </p>
+                    )}
                   </div>
                 </div>
                 
