@@ -96,6 +96,12 @@ export function AddMenuForm({ formVariants }: { formVariants: any }) {
     }
   }
 
+  const generateSKU = () => {
+    const prefix = "VAR"
+    const timestamp = Date.now().toString(36).toUpperCase()
+    setVariantForm(prev => ({ ...prev, sku: `${prefix}-${timestamp}` }))
+  }
+
   return (
     <motion.div
       className="w-full my-4 sm:my-6 space-y-4 sm:space-y-5"
@@ -455,10 +461,10 @@ export function AddMenuForm({ formVariants }: { formVariants: any }) {
 
             {/* Variant Creation Form */}
             {form.hasVariants && (
-              <div className="mt-4 p-4 rounded-lg bg-purple-50/50 dark:bg-purple-900/10 border border-purple-200 dark:border-purple-800/30">
+              <div className="mt-4 p-4 rounded-lg bg-muted/30 border border-border">
                 <button
                   onClick={() => setShowVariantForm(!showVariantForm)}
-                  className="w-full flex items-center justify-between text-sm font-medium text-purple-700 dark:text-purple-300 hover:text-purple-800 dark:hover:text-purple-200 transition-colors py-2"
+                  className="w-full flex items-center justify-between text-sm font-medium text-foreground hover:text-primary transition-colors py-2"
                 >
                   <span className="flex items-center gap-2">
                     <Plus className="h-4 w-4" />
@@ -504,7 +510,7 @@ export function AddMenuForm({ formVariants }: { formVariants: any }) {
                         <div>
                           <p className="font-medium">Belum ada atribut varian</p>
                           <p className="text-xs mt-1 leading-relaxed">
-                            Expand "Atribut Varian" section di atas untuk menambahkan atribut (Warna, Ukuran, dll.)
+                            Expand "Atribut Varian" section di bawah untuk menambahkan atribut (Warna, Ukuran, dll.)
                           </p>
                         </div>
                       </div>
@@ -516,13 +522,22 @@ export function AddMenuForm({ formVariants }: { formVariants: any }) {
                         <label className="text-xs font-medium text-muted-foreground mb-1.5 block flex items-center gap-1.5">
                           <Tag className="h-3 w-3" /> SKU
                         </label>
-                        <input
-                          type="text"
-                          className="w-full rounded-lg border border-input bg-background px-4 py-2.5 text-sm shadow-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary"
-                          placeholder="Contoh: KP-RED-M"
-                          value={variantForm.sku}
-                          onChange={(e) => setVariantForm(f => ({ ...f, sku: e.target.value }))}
-                        />
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            className="flex-1 rounded-lg border border-input bg-background px-4 py-2.5 text-sm shadow-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary"
+                            placeholder="Contoh: KP-RED-M"
+                            value={variantForm.sku}
+                            onChange={(e) => setVariantForm(f => ({ ...f, sku: e.target.value }))}
+                          />
+                          <button
+                            type="button"
+                            onClick={generateSKU}
+                            className="px-3 py-1 text-xs bg-muted rounded-lg hover:bg-muted/70 transition border border-input"
+                          >
+                            Auto
+                          </button>
+                        </div>
                       </div>
                       <div>
                         <label className="text-xs font-medium text-muted-foreground mb-1.5 block flex items-center gap-1.5">
