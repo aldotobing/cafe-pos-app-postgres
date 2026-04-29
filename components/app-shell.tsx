@@ -57,73 +57,44 @@ export const AppShell = ({ children }: { children: React.ReactNode }) => {
     }
   }, [pathname])
 
-  // Calculate low stock count for badge (including variants)
-  const stockAlerts = menu.map(m => {
-    if (!m.trackStock) return { lowStock: false, outOfStock: false, name: m.name, stock: m.stockQuantity, hasVariants: m.hasVariants };
-    
-    // If has variants, don't count based on main stock since variants manage their own stock
-    // Items with variants should be excluded from badge calculation for now
-    // TODO: Fetch variants data and calculate total stock from all variants
-    if (m.hasVariants) {
-      return {
-        lowStock: false,
-        outOfStock: false,
-        name: m.name,
-        stock: m.stockQuantity || 0,
-        minStock: m.minStock || 5,
-        hasVariants: m.hasVariants,
-        excluded: true
-      };
-    }
-    
-    // For items without variants, use main stock
-    const stock = m.stockQuantity || 0;
-    const minStock = m.minStock || 5;
-    return {
-      lowStock: stock > 0 && stock <= minStock,
-      outOfStock: stock === 0,
-      name: m.name,
-      stock,
-      minStock,
-      hasVariants: m.hasVariants,
-      excluded: false
-    };
-  });
-  
-  const lowStockCount = stockAlerts.filter(alert => alert.lowStock).length;
-  const outOfStockCount = stockAlerts.filter(alert => alert.outOfStock).length;
+  // Calculate low stock count for badge
+  const lowStockCount = menu.filter(m =>
+    m.trackStock && m.stockQuantity !== undefined && m.stockQuantity > 0 && m.stockQuantity <= (m.minStock || 5)
+  ).length;
+  const outOfStockCount = menu.filter(m =>
+    m.trackStock && m.stockQuantity === 0
+  ).length;
   const stockAlertCount = lowStockCount + outOfStockCount;
 
-  
   return (
     <div className="min-h-dvh flex flex-col bg-background">
       {/* HEADER */}
-      <header className="sticky top-0 z-30 border-b border-border/60 bg-background/80 backdrop-blur-xl">
-        <div className="flex items-center justify-between px-4 py-4 max-w-7xl mx-auto w-full">
+      <header className="sticky top-0 z-30 border-b border-border bg-background/80 backdrop-blur-xl">
+        <div className="flex items-center justify-between px-4 py-3 max-w-7xl mx-auto w-full">
           {/* LEFT: LOGO + NAME */}
-          <Link href="/dashboard" className="flex items-center gap-4 min-w-0 group">
+          <Link href="/dashboard" className="flex items-center gap-3 min-w-0">
             {settings?.logoUrl ? (
               <img
                 src={settings.logoUrl}
                 alt={settings.name || "Logo"}
-                className="h-10 w-10 rounded-xl object-cover border border-border bg-muted shadow-sm transition-transform group-hover:scale-105"
+                className="h-8 w-8 rounded-md object-cover border border-border bg-muted"
               />
             ) : (
-              <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground text-base font-bold shadow-md shadow-primary/20 transition-transform group-hover:scale-105">
-                {settings?.name?.substring(0, 2).toUpperCase() || "KS"}
+              <span className="inline-flex h-8 w-8 items-center justify-center rounded-md bg-primary text-primary-foreground text-sm font-semibold">
+                KS
               </span>
             )}
             <div className="flex flex-col leading-tight min-w-0">
-              <span className="font-bold text-[15px] tracking-tight truncate max-w-[140px] sm:max-w-[200px]">
+              <span className="font-semibold text-sm truncate max-w-[140px] sm:max-w-[180px]">
                 {settings?.name || "KasirKu POS"}
               </span>
               {settings?.address && (
-                <span className="text-xs text-muted-foreground/80 truncate max-w-[140px] sm:max-w-[200px] font-medium">
+                <span className="text-xs text-muted-foreground truncate max-w-[140px] sm:max-w-[180px]">
                   {settings?.address}
                 </span>
               )}
               {settings?.tagline && !settings?.address && (
-                <span className="text-xs text-muted-foreground/80 truncate max-w-[140px] sm:max-w-[200px] font-medium">
+                <span className="text-xs text-muted-foreground truncate max-w-[140px] sm:max-w-[180px]">
                   {settings?.tagline}
                 </span>
               )}
@@ -155,8 +126,8 @@ export const AppShell = ({ children }: { children: React.ReactNode }) => {
         </div>
 
         {/* NAV: DESKTOP */}
-        <nav className="hidden md:flex items-center justify-center border-t border-border/50 bg-background/40 backdrop-blur-md">
-          <div className="flex items-center gap-1.5 px-6 py-2.5">
+        <nav className="hidden md:flex items-center justify-center border-t border-border/50 bg-background/50">
+          <div className="flex items-center gap-1 px-4 py-2">
             {[
               ...links.filter(l => !l.hiddenForRoles?.includes(userData?.role || '')),
               ...(userData?.role === 'superadmin' ? [{ href: "/superadmin/user-management", label: "Superadmin", icon: ShieldCheck }] : [])
@@ -170,22 +141,16 @@ export const AppShell = ({ children }: { children: React.ReactNode }) => {
                   key={l.href}
                   href={l.href}
                   className={cn(
-                    "inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[14px] font-semibold transition-all duration-200 whitespace-nowrap relative group",
+                    "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors whitespace-nowrap relative",
                     isActive
-                      ? "bg-primary text-primary-foreground shadow-md shadow-primary/20 scale-[1.02]"
-                      : "text-muted-foreground hover:text-foreground hover:bg-muted/80 hover:scale-[1.02]"
+                      ? "bg-primary/15 text-primary"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
                   )}
                 >
-                  <Icon className={cn(
-                    "h-[18px] w-[18px] shrink-0 transition-transform duration-200",
-                    isActive ? "scale-110" : "group-hover:scale-110"
-                  )} strokeWidth={isActive ? 2 : 1.75} />
+                  <Icon className="h-4 w-4 shrink-0" strokeWidth={1.75} />
                   <span>{l.label}</span>
                   {showBadge && (
-                    <span className={cn(
-                      "absolute -top-1.5 -right-1.5 h-5 min-w-[1.25rem] rounded-full text-white text-[10px] font-bold flex items-center justify-center px-1.5 shadow-lg ring-2 ring-background animate-pulse",
-                      isActive ? "bg-red-500" : "bg-red-600"
-                    )}>
+                    <span className="absolute -top-1 -right-1 h-4 min-w-[1rem] rounded-full bg-red-500 text-white text-[9px] font-bold flex items-center justify-center px-1 shadow-sm">
                       {stockAlertCount > 9 ? '9+' : stockAlertCount}
                     </span>
                   )}
@@ -196,8 +161,8 @@ export const AppShell = ({ children }: { children: React.ReactNode }) => {
         </nav>
 
         {/* NAV MOBILE */}
-        <nav className="md:hidden bg-background/60 backdrop-blur-xl border-t border-border/50">
-          <div ref={mobileNavRef} className="flex overflow-x-auto scrollbar-hide px-4 py-3 gap-2">
+        <nav className="md:hidden bg-background/50 border-t border-border/50">
+          <div ref={mobileNavRef} className="flex overflow-x-auto scrollbar-hide px-4 py-2 gap-1.5">
             {[
               ...links.filter(l => !l.hiddenForRoles?.includes(userData?.role || '')),
               ...(userData?.role === 'superadmin' ? [{ href: "/superadmin/user-management", label: "Superadmin", icon: ShieldCheck }] : [])
@@ -246,31 +211,22 @@ export const AppShell = ({ children }: { children: React.ReactNode }) => {
                   href={l.href}
                   onClick={handleNavClick}
                   className={cn(
-                    "relative flex flex-col items-center justify-center rounded-2xl py-2.5 px-3 flex-shrink-0 transition-all duration-300",
-                    "min-w-[76px]",
+                    "relative flex flex-col items-center justify-center rounded-xl py-2 flex-shrink-0 transition-all duration-200",
+                    "w-[calc((100vw-56px)/5)]",
                     isActive
-                      ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25 scale-105"
-                      : "text-muted-foreground hover:text-foreground hover:bg-muted/40"
+                      ? "bg-primary/15 text-primary"
+                      : "text-muted-foreground hover:text-foreground"
                   )}
                 >
                   <span className="relative">
-                    <Icon className={cn(
-                      "h-6 w-6 mb-1 transition-transform duration-300",
-                      isActive ? "scale-110" : ""
-                    )} strokeWidth={isActive ? 2 : 1.75} />
+                    <Icon className="h-5 w-5 mb-0.5" strokeWidth={1.75} />
                     {showBadge && (
-                      <span className={cn(
-                        "absolute -top-2 -right-2 h-4.5 w-4.5 rounded-full text-white text-[9px] font-bold flex items-center justify-center ring-2 ring-background shadow-sm",
-                        isActive ? "bg-red-500" : "bg-red-600"
-                      )}>
+                      <span className="absolute -top-1.5 -right-1.5 h-3.5 w-3.5 rounded-full bg-red-500 text-white text-[8px] font-bold flex items-center justify-center">
                         {stockAlertCount > 9 ? '9+' : stockAlertCount}
                       </span>
                     )}
                   </span>
-                  <span className={cn(
-                    "text-[11px] font-bold text-center leading-none tracking-tight",
-                    isActive ? "text-primary-foreground" : "text-muted-foreground"
-                  )}>{l.label}</span>
+                  <span className="text-[10px] font-medium text-center leading-tight truncate">{l.label}</span>
                 </Link>
               )
             })}
