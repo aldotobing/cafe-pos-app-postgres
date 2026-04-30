@@ -108,42 +108,39 @@ export const AppShell = ({ children }: { children: React.ReactNode }) => {
   return (
     <div className="min-h-dvh flex flex-col bg-background">
       {/* HEADER */}
-      <header className="sticky top-0 z-30 border-b border-border bg-background/80 backdrop-blur-xl">
-        <div className="flex items-center justify-between px-4 py-3 max-w-7xl mx-auto w-full">
+      <header className="sticky top-0 z-30 border-b border-border/50 bg-background/95 backdrop-blur-xl shadow-sm">
+        <div className="flex items-center justify-between px-4 sm:px-6 py-3 max-w-7xl mx-auto w-full">
           {/* LEFT: LOGO + NAME */}
-          <Link href="/dashboard" className="flex items-center gap-3 min-w-0">
+          <Link href="/dashboard" className="flex items-center gap-2.5 min-w-0 group">
             {settings?.logoUrl ? (
               <img
                 src={settings.logoUrl}
                 alt={settings.name || "Logo"}
-                className="h-8 w-8 rounded-md object-cover border border-border bg-muted"
+                className="h-9 w-9 rounded-lg object-cover border border-border/50 bg-muted transition-transform group-hover:scale-105"
               />
             ) : (
-              <span className="inline-flex h-8 w-8 items-center justify-center rounded-md bg-primary text-primary-foreground text-sm font-semibold">
+              <span className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground text-sm font-semibold">
                 KS
               </span>
             )}
             <div className="flex flex-col leading-tight min-w-0">
-              <span className="font-semibold text-sm truncate max-w-[140px] sm:max-w-[180px]">
+              <span className="font-semibold text-sm truncate max-w-[140px] sm:max-w-[200px]">
                 {settings?.name || "KasirKu POS"}
               </span>
-              {settings?.address && (
-                <span className="text-xs text-muted-foreground truncate max-w-[140px] sm:max-w-[180px]">
-                  {settings?.address}
-                </span>
-              )}
-              {settings?.tagline && !settings?.address && (
-                <span className="text-xs text-muted-foreground truncate max-w-[140px] sm:max-w-[180px]">
-                  {settings?.tagline}
+              {(settings?.address || settings?.tagline) && (
+                <span className="text-xs text-muted-foreground/80 truncate max-w-[140px] sm:max-w-[200px]">
+                  {settings?.address || settings?.tagline}
                 </span>
               )}
             </div>
           </Link>
 
           {/* RIGHT: THEME TOGGLE + CLOCK + USER */}
-          <div className="flex items-center gap-2 sm:gap-3">
+          <div className="flex items-center gap-1.5 sm:gap-2">
             {/* Status Indicator */}
-            <StatusIndicator status={status} pulse size="md" />
+            <div className="hidden sm:block">
+              <StatusIndicator status={status} pulse size="md" />
+            </div>
 
             {/* Theme Toggle */}
             <ThemeToggle />
@@ -152,6 +149,9 @@ export const AppShell = ({ children }: { children: React.ReactNode }) => {
             <div className="hidden lg:block">
               <Clock />
             </div>
+
+            {/* Divider */}
+            <div className="hidden sm:block w-px h-6 bg-border/60 mx-1" />
 
             {/* User dropdown */}
             <UserDropdown
@@ -168,8 +168,8 @@ export const AppShell = ({ children }: { children: React.ReactNode }) => {
         </div>
 
         {/* NAV: DESKTOP */}
-        <nav className="hidden md:flex items-center justify-center border-t border-border/50 bg-background/50">
-          <div className="flex items-center gap-1 px-4 py-2">
+        <nav className="hidden md:flex items-center justify-center border-t border-border/40 bg-muted/30">
+          <div className="flex items-center gap-1 px-3 py-2">
             {[
               ...links.filter(l => !l.hiddenForRoles?.includes(userData?.role || '')),
               ...(userData?.role === 'superadmin' ? [{ href: "/superadmin/user-management", label: "Superadmin", icon: ShieldCheck }] : [])
@@ -183,16 +183,22 @@ export const AppShell = ({ children }: { children: React.ReactNode }) => {
                   key={l.href}
                   href={l.href}
                   className={cn(
-                    "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors whitespace-nowrap relative",
+                    "group inline-flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200 whitespace-nowrap relative",
                     isActive
-                      ? "bg-primary/15 text-primary"
-                      : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                      ? "bg-background text-primary shadow-sm"
+                      : "text-muted-foreground hover:text-foreground hover:bg-background/50"
                   )}
                 >
-                  <Icon className="h-4 w-4 shrink-0" strokeWidth={1.75} />
-                  <span>{l.label}</span>
+                  <Icon 
+                    className={cn(
+                      "h-4 w-4 shrink-0 transition-transform duration-200",
+                      isActive ? "text-primary" : "text-muted-foreground group-hover:text-foreground"
+                    )} 
+                    strokeWidth={isActive ? 2.5 : 2} 
+                  />
+                  <span className={cn("tracking-tight", isActive && "font-semibold")}>{l.label}</span>
                   {showBadge && (
-                    <span className="absolute -top-1 -right-1 h-4 min-w-[1rem] rounded-full bg-red-500 text-white text-[9px] font-bold flex items-center justify-center px-1 shadow-sm">
+                    <span className="absolute -top-0.5 -right-0.5 h-4 min-w-[1rem] rounded-full bg-destructive text-destructive-foreground text-[9px] font-semibold flex items-center justify-center px-1 shadow-sm">
                       {stockAlertCount > 9 ? '9+' : stockAlertCount}
                     </span>
                   )}
@@ -203,8 +209,8 @@ export const AppShell = ({ children }: { children: React.ReactNode }) => {
         </nav>
 
         {/* NAV MOBILE */}
-        <nav className="md:hidden bg-background/50 border-t border-border/50">
-          <div ref={mobileNavRef} className="flex overflow-x-auto scrollbar-hide px-4 py-2 gap-1.5">
+        <nav className="md:hidden bg-muted/30 border-t border-border/40">
+          <div ref={mobileNavRef} className="flex overflow-x-auto scrollbar-hide px-2 py-1.5 gap-0.5">
             {[
               ...links.filter(l => !l.hiddenForRoles?.includes(userData?.role || '')),
               ...(userData?.role === 'superadmin' ? [{ href: "/superadmin/user-management", label: "Superadmin", icon: ShieldCheck }] : [])
@@ -253,22 +259,29 @@ export const AppShell = ({ children }: { children: React.ReactNode }) => {
                   href={l.href}
                   onClick={handleNavClick}
                   className={cn(
-                    "relative flex flex-col items-center justify-center rounded-xl py-2 flex-shrink-0 transition-all duration-200",
-                    "w-[calc((100vw-56px)/5)]",
+                    "relative flex flex-col items-center justify-center rounded-md py-1.5 px-2 flex-shrink-0 transition-all duration-200 min-w-[60px]",
                     isActive
-                      ? "bg-primary/15 text-primary"
-                      : "text-muted-foreground hover:text-foreground"
+                      ? "bg-background text-primary shadow-sm"
+                      : "text-muted-foreground/80 hover:text-foreground hover:bg-background/40"
                   )}
                 >
                   <span className="relative">
-                    <Icon className="h-5 w-5 mb-0.5" strokeWidth={1.75} />
+                    <Icon 
+                      className={cn(
+                        "h-[18px] w-[18px] mb-0.5 transition-all",
+                        isActive ? "stroke-[2.5px]" : "stroke-[2px]"
+                      )} 
+                    />
                     {showBadge && (
-                      <span className="absolute -top-1.5 -right-1.5 h-3.5 w-3.5 rounded-full bg-red-500 text-white text-[8px] font-bold flex items-center justify-center">
-                        {stockAlertCount > 9 ? '9+' : stockAlertCount}
+                      <span className="absolute -top-0.5 -right-0.5 h-3 w-3 rounded-full bg-destructive text-destructive-foreground text-[7px] font-semibold flex items-center justify-center">
+                        {stockAlertCount > 9 ? '9' : stockAlertCount}
                       </span>
                     )}
                   </span>
-                  <span className="text-[10px] font-medium text-center leading-tight truncate">{l.label}</span>
+                  <span className={cn(
+                    "text-[10px] leading-none tracking-tight",
+                    isActive ? "font-semibold" : "font-medium"
+                  )}>{l.label}</span>
                 </Link>
               )
             })}
@@ -277,7 +290,7 @@ export const AppShell = ({ children }: { children: React.ReactNode }) => {
       </header>
 
       {/* MAIN */}
-      <main className="w-full px-4 py-4 sm:py-6">{children}</main>
+      <main className="w-full px-4 sm:px-6 py-4 sm:py-6">{children}</main>
     </div>
   )
 }

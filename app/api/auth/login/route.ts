@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
 import { ratelimit, getClientIP } from "@/lib/rate-limit";
+import { supabaseAdmin } from "@/lib/supabase-server";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!
@@ -48,8 +49,8 @@ export async function POST(request: Request) {
       )
     }
 
-    // Get user profile untuk additional data
-    const { data: profile } = await supabase
+    // Get user profile dengan supabaseAdmin (bypass RLS)
+    const { data: profile } = await supabaseAdmin
       .from('user_profiles')
       .select('*')
       .eq('user_id', data.user.id)
@@ -63,8 +64,8 @@ export async function POST(request: Request) {
       )
     }
 
-    // Update last_login
-    await supabase
+    // Update last_login dengan supabaseAdmin (bypass RLS)
+    await supabaseAdmin
       .from('user_profiles')
       .update({ last_login: new Date().toISOString() })
       .eq('user_id', data.user.id)

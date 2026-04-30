@@ -105,7 +105,9 @@ export async function POST(request: Request) {
 
     if (profileError) {
       console.error('Profile creation error:', profileError);
-      // Don't throw, user is created in auth
+      // Rollback: delete auth user if profile creation fails
+      await supabase.auth.admin.deleteUser(authUser.user.id);
+      throw new Error(`Failed to create user profile: ${profileError.message}`);
     }
 
     return NextResponse.json({ 

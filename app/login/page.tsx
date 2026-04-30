@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/lib/auth-context';
 import { Zap, Mail, Lock, User, Eye, EyeOff, ArrowRight, CheckCircle2, Loader2 } from 'lucide-react';
+import { ErrorMessage, getErrorMessage } from '@/components/ui/error-message';
 
 type LoadingPhase = 'verifying' | 'ready' | null;
 
@@ -54,7 +55,7 @@ function LoginForm() {
 
       router.push(redirectTo);
     } catch (err: any) {
-      setError('Gagal masuk ke akun demo. Silakan coba lagi.');
+      setError(getErrorMessage(err));
     } finally {
       setDemoLoading(false);
     }
@@ -86,7 +87,7 @@ function LoginForm() {
         setError(
           <span>
             Akun Anda menunggu persetujuan. Silakan hubungi{' '}
-            <a 
+            <a
               href={`mailto:aldo_tobing@hotmail.com?subject=Aktivasi Akun Kasirku&body=Halo Admin, saya ingin meminta aktivasi untuk akun saya dengan email: ${email}`}
               className="text-[var(--gold)] hover:underline font-bold"
             >
@@ -94,11 +95,8 @@ function LoginForm() {
             </a>.
           </span>
         );
-      } else if (err.code === 'ACCOUNT_DISABLED' || err.message?.includes('dinonaktifkan')) {
-        setError('Akun Anda telah dinonaktifkan. Silakan hubungi admin.');
       } else {
-        // Tampilkan pesan error asli jika ada, atau fallback ke pesan default
-        setError(err.message || 'Email atau password salah');
+        setError(getErrorMessage(err));
       }
       setLoading(false);
       setLoadingPhase(null);
@@ -120,16 +118,19 @@ function LoginForm() {
         setFullName('');
       });
     } catch (err: any) {
-      setError(err.message || 'Gagal mendaftar. Silakan coba lagi.');
+      setError(getErrorMessage(err));
     } finally {
       setLoading(false);
       setLoadingPhase(null);
     }
   };
 
-  const loadingMessages = {
+  const loadingMessages = authMode === 'login' ? {
     verifying: 'Memverifikasi kredensial...',
     ready: 'Berhasil masuk!'
+  } : {
+    verifying: 'Membuat akun...',
+    ready: 'Pendaftaran berhasil!'
   };
 
   return (
@@ -147,15 +148,15 @@ function LoginForm() {
         }
       `}</style>
 
-      <div className="min-h-screen bg-[var(--ink)] flex items-center justify-center p-4 selection:bg-[var(--gold)] selection:text-[var(--ink)] overflow-hidden">
-        {/* Background grain */}
-        <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', opacity: 0.035, backgroundImage: "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='1'/%3E%3C/svg%3E\")" }} />
+      <div className="min-h-screen bg-[var(--ink)] flex items-center justify-center p-6 selection:bg-[var(--gold)] selection:text-[var(--ink)] overflow-hidden">
+        {/* Subtle background gradient */}
+        <div className="fixed inset-0 bg-gradient-to-br from-[var(--ink)] via-[var(--ink-soft)] to-[var(--ink)] pointer-events-none" />
 
-        {/* Ambient glow */}
+        {/* Ambient glow - more subtle */}
         <motion.div
-          className="fixed top-1/4 left-1/2 -translate-x-1/2 w-[500px] h-[500px] bg-[var(--gold)]/5 rounded-full blur-[120px] pointer-events-none"
-          animate={{ opacity: [0.3, 0.6, 0.3] }}
-          transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+          className="fixed top-1/3 left-1/2 -translate-x-1/2 w-[400px] h-[400px] bg-[var(--gold)]/3 rounded-full blur-[100px] pointer-events-none"
+          animate={{ opacity: [0.2, 0.4, 0.2] }}
+          transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
         />
 
         <motion.div
@@ -165,85 +166,49 @@ function LoginForm() {
           transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
         >
           {/* Card */}
-          <div className="bg-[var(--ink-soft)] border border-[var(--line)] p-8 sm:p-10 rounded-[32px] shadow-2xl relative overflow-hidden">
+          <div className="bg-[var(--ink-soft)]/80 border border-[var(--line)] p-8 sm:p-10 rounded-2xl shadow-xl relative overflow-hidden backdrop-blur-sm">
             {/* Loading Overlay */}
             <AnimatePresence>
               {loading && loadingPhase && (
                 <motion.div
-                  className="absolute inset-0 z-50 bg-[var(--ink-soft)]/95 backdrop-blur-sm flex flex-col items-center justify-center"
+                  className="absolute inset-0 z-50 bg-[var(--ink-soft)]/90 backdrop-blur-sm flex flex-col items-center justify-center"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
-                  transition={{ duration: 0.3 }}
+                  transition={{ duration: 0.2 }}
                 >
-                  {/* Animated ring */}
-                  <div className="relative mb-6">
-                    {/* Outer glow ring */}
+                  {/* Simple spinner */}
+                  <div className="relative mb-4">
                     <motion.div
-                      className="absolute inset-0 rounded-full border-2 border-[var(--gold)]/20"
-                      animate={{ scale: [1, 1.3], opacity: [0.6, 0] }}
-                      transition={{ duration: 1.5, repeat: Infinity, ease: "easeOut" }}
+                      className="h-10 w-10 rounded-full border-2 border-[var(--gold)]/20 border-t-[var(--gold)]"
+                      animate={{ rotate: 360 }}
+                      transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
                     />
-                    {/* Middle ring */}
-                    <motion.div
-                      className="absolute inset-0 rounded-full border border-[var(--gold)]/30"
-                      animate={{ scale: [1, 1.15], opacity: [0.4, 0] }}
-                      transition={{ duration: 1.5, repeat: Infinity, ease: "easeOut", delay: 0.3 }}
-                    />
-                    {/* Spinner */}
-                    <div className="h-16 w-16 rounded-full border-2 border-[var(--gold)]/20 border-t-[var(--gold)] flex items-center justify-center"
-                      style={{ animation: 'spin 1s linear infinite' }}
-                    >
-                      {loadingPhase === 'ready' ? (
-                        <motion.div
-                          initial={{ scale: 0, rotate: -90 }}
-                          animate={{ scale: 1, rotate: 0 }}
-                          transition={{ type: "spring", stiffness: 300, damping: 20 }}
-                        >
-                          <CheckCircle2 className="h-7 w-7 text-emerald-400" />
-                        </motion.div>
-                      ) : (
-                        <div className="h-2.5 w-2.5 rounded-full bg-[var(--gold)]" />
-                      )}
-                    </div>
+                    {loadingPhase === 'ready' && (
+                      <motion.div
+                        className="absolute inset-0 flex items-center justify-center"
+                        initial={{ scale: 0, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                      >
+                        <CheckCircle2 className="h-5 w-5 text-emerald-400" />
+                      </motion.div>
+                    )}
                   </div>
 
                   {/* Loading text */}
                   <AnimatePresence mode="wait">
                     <motion.p
                       key={loadingPhase}
-                      initial={{ opacity: 0, y: 6 }}
+                      initial={{ opacity: 0, y: 4 }}
                       animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -6 }}
-                      transition={{ duration: 0.2 }}
-                      className="text-sm font-medium text-[var(--cream)] text-center"
+                      exit={{ opacity: 0, y: -4 }}
+                      transition={{ duration: 0.15 }}
+                      className="text-sm text-[var(--cream)] text-center"
                     >
                       {loadingMessages[loadingPhase]}
                     </motion.p>
                   </AnimatePresence>
-
-                  {/* Progress dots */}
-                  <div className="flex items-center gap-2 mt-4">
-                    {(['verifying', 'ready'] as const).map((phase, i) => {
-                      const phases = ['verifying', 'ready'];
-                      const currentIndex = phases.indexOf(loadingPhase);
-                      const isActive = i <= currentIndex;
-                      return (
-                        <motion.div
-                          key={phase}
-                          className={`h-1.5 rounded-full transition-all duration-300 ${
-                            isActive ? 'w-6 bg-[var(--gold)]' : 'w-1.5 bg-[var(--line)]'
-                          }`}
-                          initial={false}
-                          animate={{
-                            width: isActive ? 24 : 6,
-                            backgroundColor: isActive ? 'var(--gold)' : 'rgba(255,255,255,0.08)'
-                          }}
-                          transition={{ duration: 0.3 }}
-                        />
-                      );
-                    })}
-                  </div>
                 </motion.div>
               )}
             </AnimatePresence>
@@ -255,8 +220,12 @@ function LoginForm() {
             >
               {/* Header */}
               <div className="text-center mb-8">
-                <h1 className="font-['Playfair_Display',serif] text-4xl font-bold text-[var(--cream)] mb-3">Welcome Back</h1>
-                <p className="text-[var(--cream-dim)] text-base font-normal">Masuk sesuai role Anda</p>
+                <h1 className="text-3xl font-semibold text-[var(--cream)] mb-2 tracking-tight">
+                  {authMode === 'login' ? 'Selamat Datang' : 'Buat Akun'}
+                </h1>
+                <p className="text-[var(--cream-dim)] text-sm">
+                  {authMode === 'login' ? 'Masuk ke akun Anda' : 'Daftar untuk mulai menggunakan'}
+                </p>
               </div>
 
               {/* Demo Account Button */}
@@ -265,7 +234,7 @@ function LoginForm() {
                 disabled={loading || demoLoading}
                 whileHover={{ scale: loading ? 1 : 1.01 }}
                 whileTap={{ scale: loading ? 1 : 0.99 }}
-                className="w-full mb-7 relative overflow-hidden rounded-2xl border border-[var(--gold)]/20 bg-[var(--gold)]/5 hover:bg-[var(--gold)]/8 transition-all p-4 text-left group disabled:opacity-50"
+                className="w-full mb-6 relative overflow-hidden rounded-xl border border-[var(--gold)]/20 bg-[var(--gold)]/5 hover:bg-[var(--gold)]/10 transition-all p-4 text-left group disabled:opacity-50"
               >
                 <AnimatePresence mode="wait">
                   {demoLoading ? (
@@ -302,51 +271,28 @@ function LoginForm() {
                 </AnimatePresence>
               </motion.button>
 
-              {/* Divider */}
-              <div className="flex items-center gap-3 mb-6">
-                <div className="flex-1 h-px bg-[var(--line)]" />
-                <span className="text-[10px] uppercase tracking-[0.15em] text-[var(--cream-dim)] font-medium">atau</span>
-                <div className="flex-1 h-px bg-[var(--line)]" />
-              </div>
+              {/* Divider - only show in login mode */}
+              {authMode === 'login' && (
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="flex-1 h-px bg-[var(--line)]" />
+                  <span className="text-[10px] uppercase tracking-[0.12em] text-[var(--cream-dim)] font-medium">atau</span>
+                  <div className="flex-1 h-px bg-[var(--line)]" />
+                </div>
+              )}
 
               {/* Error / Success */}
-              <AnimatePresence mode="wait">
-                {error && (
-                  <motion.div
-                    className="mb-5 p-3.5 bg-red-500/10 border border-red-500/20 rounded-xl text-sm text-red-300 flex items-start gap-2.5"
-                    initial={{ opacity: 0, y: -8, height: 0 }}
-                    animate={{ opacity: 1, y: 0, height: 'auto' }}
-                    exit={{ opacity: 0, y: -8, height: 0 }}
-                  >
-                    <div className="h-5 w-5 rounded-full bg-red-500/20 flex items-center justify-center shrink-0 mt-0.5">
-                      <span className="text-red-400 text-[10px] font-bold">!</span>
-                    </div>
-                    <span>{error}</span>
-                  </motion.div>
-                )}
-                {success && (
-                  <motion.div
-                    className="mb-5 p-3.5 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-sm text-emerald-300 flex items-start gap-2.5"
-                    initial={{ opacity: 0, y: -8, height: 0 }}
-                    animate={{ opacity: 1, y: 0, height: 'auto' }}
-                    exit={{ opacity: 0, y: -8, height: 0 }}
-                  >
-                    <CheckCircle2 className="h-5 w-5 text-emerald-400 shrink-0 mt-0.5" />
-                    <span>{success}</span>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+              <ErrorMessage error={error} success={success} className="mb-5" variant="dark" />
 
               {/* Form */}
               <AnimatePresence mode="wait">
                 <motion.form
                   key={authMode}
-                  initial={{ opacity: 0, x: authMode === 'login' ? -8 : 8 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: authMode === 'login' ? 8 : -8 }}
+                  initial={{ opacity: 0, y: authMode === 'login' ? -4 : 4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: authMode === 'login' ? 4 : -4 }}
                   transition={{ duration: 0.2 }}
                   onSubmit={authMode === 'login' ? handleSignIn : handleSignup}
-                  className="space-y-4"
+                  className="space-y-5"
                 >
                   <AnimatePresence>
                     {authMode === 'signup' && (
@@ -358,7 +304,7 @@ function LoginForm() {
                         className="overflow-hidden"
                       >
                         <div className="space-y-2">
-                          <label className="text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--cream-dim)] ml-1">Nama Lengkap</label>
+                          <label className="text-xs font-medium text-[var(--cream-dim)]">Nama Lengkap</label>
                           <div className="relative">
                             <User className={`absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 transition-colors ${focusedField === 'fullname' ? 'text-[var(--gold)]' : 'text-[var(--cream-dim)]'}`} />
                             <input
@@ -369,7 +315,7 @@ function LoginForm() {
                               required
                               type="text"
                               placeholder="Nama lengkap Anda"
-                              className="w-full bg-black/30 border border-[var(--line)] text-[var(--cream)] placeholder:text-[var(--cream-dim)] pl-11 pr-4 py-3.5 rounded-xl focus:border-[var(--gold)] focus:ring-1 focus:ring-[var(--gold)] focus:outline-none transition-all text-sm disabled:opacity-50"
+                              className="w-full bg-black/20 border border-[var(--line)] text-[var(--cream)] placeholder:text-[var(--cream-dim)]/50 pl-11 pr-4 py-3 rounded-lg focus:border-[var(--gold)]/50 focus:ring-1 focus:ring-[var(--gold)]/20 focus:outline-none transition-all text-sm disabled:opacity-50"
                               disabled={loading}
                             />
                           </div>
@@ -378,8 +324,8 @@ function LoginForm() {
                     )}
                   </AnimatePresence>
 
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--cream-dim)] ml-1">Alamat Email</label>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-[var(--cream-dim)]">Email</label>
                     <div className="relative">
                       <Mail className={`absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 transition-colors ${focusedField === 'email' ? 'text-[var(--gold)]' : 'text-[var(--cream-dim)]'}`} />
                       <input
@@ -391,14 +337,14 @@ function LoginForm() {
                         required
                         type="email"
                         placeholder="nama@email.com"
-                        className="w-full bg-black/30 border border-[var(--line)] text-[var(--cream)] placeholder:text-[var(--cream-dim)] pl-11 pr-4 py-3.5 rounded-xl focus:border-[var(--gold)] focus:ring-1 focus:ring-[var(--gold)] focus:outline-none transition-all text-sm disabled:opacity-50"
+                        className="w-full bg-black/20 border border-[var(--line)] text-[var(--cream)] placeholder:text-[var(--cream-dim)]/50 pl-11 pr-4 py-3 rounded-lg focus:border-[var(--gold)]/50 focus:ring-1 focus:ring-[var(--gold)]/20 focus:outline-none transition-all text-sm disabled:opacity-50"
                         disabled={loading}
                       />
                     </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--cream-dim)] ml-1">Kata Sandi</label>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-[var(--cream-dim)]">Password</label>
                     <div className="relative">
                       <Lock className={`absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 transition-colors ${focusedField === 'password' ? 'text-[var(--gold)]' : 'text-[var(--cream-dim)]'}`} />
                       <input
@@ -409,7 +355,7 @@ function LoginForm() {
                         required
                         type={showPassword ? 'text' : 'password'}
                         placeholder="••••••••"
-                        className="w-full bg-black/30 border border-[var(--line)] text-[var(--cream)] placeholder:text-[var(--cream-dim)] pl-11 pr-12 py-3.5 rounded-xl focus:border-[var(--gold)] focus:ring-1 focus:ring-[var(--gold)] focus:outline-none transition-all text-sm disabled:opacity-50"
+                        className="w-full bg-black/20 border border-[var(--line)] text-[var(--cream)] placeholder:text-[var(--cream-dim)]/50 pl-11 pr-12 py-3 rounded-lg focus:border-[var(--gold)]/50 focus:ring-1 focus:ring-[var(--gold)]/20 focus:outline-none transition-all text-sm disabled:opacity-50"
                         disabled={loading}
                       />
                       <button
@@ -427,7 +373,7 @@ function LoginForm() {
                     disabled={loading}
                     whileTap={{ scale: loading ? 1 : 0.98 }}
                     type="submit"
-                    className="w-full py-3.5 mt-2 bg-[var(--gold)] text-black font-bold rounded-xl hover:bg-[var(--gold-soft)] transition-all text-sm shadow-lg shadow-[var(--gold)]/10 flex items-center justify-center gap-2 disabled:opacity-70"
+                    className="w-full py-3 mt-2 bg-[var(--gold)] text-black font-semibold rounded-lg hover:bg-[var(--gold-soft)] transition-all text-sm flex items-center justify-center gap-2 disabled:opacity-70"
                   >
                     <>
                       <span>{authMode === 'login' ? 'Masuk' : 'Daftar'}</span>
@@ -438,7 +384,7 @@ function LoginForm() {
               </AnimatePresence>
 
               {/* Toggle */}
-              <p className="text-center text-sm text-[var(--cream-dim)] mt-8">
+              <p className="text-center text-sm text-[var(--cream-dim)] mt-6">
                 {authMode === 'login' ? "Belum punya akun? " : "Sudah punya akun? "}
                 <button
                   onClick={() => {
@@ -446,27 +392,21 @@ function LoginForm() {
                     setSuccess('');
                     setAuthMode(authMode === 'login' ? 'signup' : 'login');
                   }}
-                  className="text-[var(--gold)] font-semibold hover:text-[var(--gold-soft)] transition-colors ml-1"
+                  className="text-[var(--gold)] font-medium hover:text-[var(--gold-soft)] transition-colors ml-1"
                 >
-                  {authMode === 'login' ? 'Daftar Sekarang' : 'Masuk Sekarang'}
+                  {authMode === 'login' ? 'Daftar' : 'Masuk'}
                 </button>
               </p>
             </motion.div>
           </div>
 
           {/* Footer */}
-          <p className="text-center text-[11px] text-[var(--cream-dim)] mt-6">
-            © 2026 Kasirku — POS System
+          <p className="text-center text-xs text-[var(--cream-dim)]/60 mt-6">
+            Kasirku POS
           </p>
         </motion.div>
       </div>
 
-      {/* Spinner keyframes */}
-      <style>{`
-        @keyframes spin {
-          to { transform: rotate(360deg); }
-        }
-      `}</style>
     </>
   );
 }

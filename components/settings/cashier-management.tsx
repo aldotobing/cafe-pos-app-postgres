@@ -11,7 +11,7 @@ interface Cashier {
   email: string
   full_name: string
   role: string
-  is_active: number
+  is_active: number | boolean
   created_at: string
 }
 
@@ -45,16 +45,14 @@ export function CashierManagement({ userId, cafeId }: CashierManagementProps) {
   // Fetch cashiers list
   const fetchCashiers = async () => {
     if (!cafeId) return
-    
+
     try {
       const response = await fetch(`/api/rest/users?role=cashier&cafe_id=${cafeId}`)
       if (response.ok) {
-        const data = await response.json()
-        // Get all cashiers for this cafe (both active and inactive)
-        const allCashiers = Array.isArray(data) 
-          ? data.filter((u: any) => u.role === 'cashier' && Number(u.cafe_id) === Number(cafeId))
-          : []
-        setCashiers(allCashiers)
+        const result = await response.json()
+        // API returns { data: [], meta: {} }
+        const data = result.data || (Array.isArray(result) ? result : [])
+        setCashiers(data)
       }
     } catch (error) {
       console.error('Error fetching cashiers:', error)
@@ -271,19 +269,19 @@ export function CashierManagement({ userId, cafeId }: CashierManagementProps) {
                 initial={{ opacity: 0, y: 5 }}
                 animate={{ opacity: 1, y: 0 }}
                 className={`flex items-center justify-between p-3 rounded-lg border transition-colors ${
-                  cashier.is_active === 1
+                  cashier.is_active === true || cashier.is_active === 1
                     ? 'bg-background/50 hover:bg-background'
                     : 'bg-muted/30 opacity-70'
                 }`}
               >
                 <div className="flex-1 min-w-0">
-                  <p className={`font-medium text-sm truncate ${cashier.is_active !== 1 && 'text-muted-foreground'}`}>
+                  <p className={`font-medium text-sm truncate ${cashier.is_active !== true && cashier.is_active !== 1 && 'text-muted-foreground'}`}>
                     {cashier.full_name}
                   </p>
                   <p className="text-xs text-muted-foreground truncate">{cashier.email}</p>
                 </div>
                 <div className="flex items-center gap-2 ml-2">
-                  {cashier.is_active === 1 ? (
+                  {cashier.is_active === true || cashier.is_active === 1 ? (
                     <>
                       <span className="text-xs px-2 py-1 rounded-full bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
                         Aktif
