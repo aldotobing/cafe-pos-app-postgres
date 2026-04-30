@@ -279,16 +279,7 @@ export function MobileCart() {
                     const menuMap = new Map(menu.map((m: any) => [m.id, m]));
                     const tx = await checkout(payment, orderNote, user?.id, userData?.full_name, userData?.cafe_id || 1, settings, menuMap);
                     if (tx) {
-                      toast.success('Transaksi berhasil!', {
-                        description: `Total: ${formatRupiah(tx.totalAmount || tx.total_amount || 0)}`,
-                        action: {
-                          label: 'Lihat Struk',
-                          onClick: () => {
-                            setReceiptTransactionId(tx.id)
-                            setShowReceiptModal(true)
-                          }
-                        }
-                      })
+                      toast.success('Transaksi berhasil disimpan!')
                       setReceiptTransactionId(tx.id)
                       setShowReceiptModal(true)
                     }
