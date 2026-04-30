@@ -54,9 +54,10 @@ export default function StatistikPage() {
   }, [date]);
 
   // Use SWR for fetching and caching
+  // NOTE: Use large limit (1000) to fetch all transactions for statistik calculation
   const { data: txs, error, isLoading: isFetching, isValidating, mutate } = useSWR(
     !authLoading && userData?.cafe_id 
-      ? `/api/rest/transactions?cafe_id=${userData.cafe_id}&created_at_gte=${dateParams.startDateStr}&created_at_lt=${dateParams.endDateStr}`
+      ? `/api/rest/transactions?cafe_id=${userData.cafe_id}&created_at_gte=${dateParams.startDateStr}&created_at_lt=${dateParams.endDateStr}&limit=1000`
       : null,
     null, // Use global fetcher
     swrConfigForTransactions

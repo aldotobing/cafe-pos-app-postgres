@@ -6,7 +6,7 @@ import { useMenu } from "@/hooks/use-cafe-data"
 import { useAuth } from '@/lib/auth-context';
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion';
-import { TrendingUp, DollarSign, Package, BarChart3, ArrowUpRight, Calendar as CalendarIcon, RefreshCw, Info, ChevronLeft, ChevronRight } from 'lucide-react'
+import { TrendingUp, DollarSign, Package, BarChart3, ArrowUpRight, Calendar as CalendarIcon, RefreshCw, Info, ChevronLeft, ChevronRight, ChevronFirst, ChevronLast } from 'lucide-react'
 import { formatRupiah } from "@/lib/format"
 import { DateRange } from 'react-day-picker';
 import { addDays, format, startOfDay } from 'date-fns';
@@ -70,9 +70,11 @@ export default function ProfitReportPage() {
   }, [date]);
 
   // Use SWR for fetching and caching
+  // NOTE: Use large limit (1000) to fetch all transactions for profit calculation
+  // while still protecting DB from unbounded queries
   const { data: txs, error, isLoading: isFetching, isValidating, mutate } = useSWR(
     !authLoading && userData?.cafe_id
-      ? `/api/rest/transactions?cafe_id=${userData.cafe_id}&created_at_gte=${dateParams.startDateStr}&created_at_lt=${dateParams.endDateStr}`
+      ? `/api/rest/transactions?cafe_id=${userData.cafe_id}&created_at_gte=${dateParams.startDateStr}&created_at_lt=${dateParams.endDateStr}&limit=1000`
       : null,
     null, // Use global fetcher
     swrConfigForTransactions
@@ -159,15 +161,27 @@ export default function ProfitReportPage() {
 
   // Compute profit data from fetched transactions and local menu state
   const profitData = useMemo(() => {
+    console.log('[DEBUG] profitData calculation:', {
+      transactionsCount: transactions?.length || 0,
+      menuCount: menu?.length || 0,
+      firstTransaction: transactions?.[0],
+    });
+
     if (!transactions || !menu.length) return [];
 
     // Aggregate sales
     const salesMap: Record<string, { qty: number, revenue: number }> = {};
     transactions.forEach((tx: any) => {
-      if (!tx.items) return;
+      if (!tx.items) {
+        console.log('[DEBUG] Transaction has no items:', tx.id);
+        return;
+      }
       tx.items.forEach((item: any) => {
         const menuId = (item.menuId || item.menu_id)?.toString();
-        if (!menuId) return;
+        if (!menuId) {
+          console.log('[DEBUG] Item has no menuId:', item);
+          return;
+        }
 
         if (!salesMap[menuId]) {
           salesMap[menuId] = { qty: 0, revenue: 0 };
@@ -183,7 +197,9 @@ export default function ProfitReportPage() {
       });
     });
 
-    return menu.map(m => {
+    console.log('[DEBUG] salesMap:', salesMap);
+
+    const result = menu.map(m => {
       const sale = salesMap[m.id] || { qty: 0, revenue: 0 };
       const hppPrice = m.hppPrice ?? 0;
       const cogs = hppPrice * sale.qty;
@@ -203,6 +219,9 @@ export default function ProfitReportPage() {
       };
     }).filter(item => item.totalQtySold > 0)
       .sort((a, b) => b.totalRevenue - a.totalRevenue); // Default sort by revenue
+
+    console.log('[DEBUG] profitData result count:', result.length);
+    return result;
   }, [transactions, menu]);
 
   // Pagination logic
@@ -360,7 +379,7 @@ export default function ProfitReportPage() {
           <div className="space-y-6">
             {/* Summary Cards */}
               {/* Summary Cards */}
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className={`grid grid-cols-2 lg:grid-cols-4 gap-4 ${(isFetching || isValidating) ? 'opacity-70' : ''}`}>
                 <motion.div
                   className="rounded-xl border bg-card p-4 relative"
                   initial={{ opacity: 0, y: 10 }}
@@ -377,7 +396,14 @@ export default function ProfitReportPage() {
                     <DollarSign className="h-4 w-4 text-muted-foreground" />
                     <span className="text-xs text-muted-foreground">Total Pendapatan (Bruto)</span>
                   </div>
-                  <div className="text-xl font-bold">{formatRupiah(summary.grandTotal)}</div>
+                  {(isFetching || isValidating) ? (
+                    <div className="flex items-center gap-2">
+                      <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                      <span className="text-sm text-muted-foreground">Memuat...</span>
+                    </div>
+                  ) : (
+                    <div className="text-xl font-bold">{formatRupiah(summary.grandTotal)}</div>
+                  )}
                 </motion.div>
 
                 <motion.div
@@ -396,7 +422,14 @@ export default function ProfitReportPage() {
                     <Package className="h-4 w-4 text-muted-foreground" />
                     <span className="text-xs text-muted-foreground">Total HPP</span>
                   </div>
-                  <div className="text-xl font-bold text-amber-600">{formatRupiah(summary.totalCOGS)}</div>
+                  {(isFetching || isValidating) ? (
+                    <div className="flex items-center gap-2">
+                      <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                      <span className="text-sm text-muted-foreground">Memuat...</span>
+                    </div>
+                  ) : (
+                    <div className="text-xl font-bold text-amber-600">{formatRupiah(summary.totalCOGS)}</div>
+                  )}
                 </motion.div>
 
                 <motion.div
@@ -415,9 +448,16 @@ export default function ProfitReportPage() {
                     <TrendingUp className="h-4 w-4 text-muted-foreground" />
                     <span className="text-xs text-muted-foreground">Laba Kotor</span>
                   </div>
-                  <div className={`text-xl font-bold ${summary.totalProfit >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                    {formatRupiah(summary.totalProfit)}
-                  </div>
+                  {(isFetching || isValidating) ? (
+                    <div className="flex items-center gap-2">
+                      <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                      <span className="text-sm text-muted-foreground">Memuat...</span>
+                    </div>
+                  ) : (
+                    <div className={`text-xl font-bold ${summary.totalProfit >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                      {formatRupiah(summary.totalProfit)}
+                    </div>
+                  )}
                 </motion.div>
 
                 <motion.div
@@ -436,9 +476,16 @@ export default function ProfitReportPage() {
                     <BarChart3 className="h-4 w-4 text-muted-foreground" />
                     <span className="text-xs text-muted-foreground">Margin Rata-rata</span>
                   </div>
-                  <div className={`text-xl font-bold ${summary.avgMargin >= 50 ? 'text-emerald-600' : summary.avgMargin >= 30 ? 'text-amber-600' : 'text-red-600'}`}>
-                    {summary.avgMargin.toFixed(1)}%
-                  </div>
+                  {(isFetching || isValidating) ? (
+                    <div className="flex items-center gap-2">
+                      <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                      <span className="text-sm text-muted-foreground">Memuat...</span>
+                    </div>
+                  ) : (
+                    <div className={`text-xl font-bold ${summary.avgMargin >= 50 ? 'text-emerald-600' : summary.avgMargin >= 30 ? 'text-amber-600' : 'text-red-600'}`}>
+                      {summary.avgMargin.toFixed(1)}%
+                    </div>
+                  )}
                 </motion.div>
               </div>
 
@@ -656,64 +703,118 @@ export default function ProfitReportPage() {
 
                 {/* Pagination Controls */}
                 {profitData.length > itemsPerPage && (
-                  <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-4 py-4 border-t bg-muted/20">
-                    <div className="text-xs text-muted-foreground order-2 sm:order-1">
-                      Menampilkan <span className="font-medium text-foreground">{(currentPage - 1) * itemsPerPage + 1}</span> - <span className="font-medium text-foreground">{Math.min(currentPage * itemsPerPage, profitData.length)}</span> dari <span className="font-medium text-foreground">{profitData.length}</span> item
-                    </div>
-                    
-                    <div className="flex items-center gap-1 order-1 sm:order-2">
+                  <div className={`p-4 border-t bg-muted/20 ${(isFetching || isValidating) ? 'opacity-60' : ''}`}>
+                    <div className="flex items-center justify-center gap-2">
+                      {/* First Page */}
                       <Button
                         variant="outline"
                         size="sm"
-                        className="h-8 w-8 p-0"
+                        className="h-9 w-9 p-0"
+                        onClick={() => setCurrentPage(1)}
+                        disabled={currentPage === 1 || isFetching || isValidating}
+                        title="Halaman Pertama"
+                      >
+                        <ChevronFirst className="h-4 w-4" />
+                      </Button>
+                      
+                      {/* Previous */}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-9 w-9 p-0"
                         onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                        disabled={currentPage === 1}
+                        disabled={currentPage === 1 || isFetching || isValidating}
+                        title="Sebelumnya"
                       >
                         <ChevronLeft className="h-4 w-4" />
                       </Button>
                       
-                      <div className="flex items-center gap-1 mx-2">
-                        {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                          // Show pages around current page
-                          let pageNum = i + 1;
-                          if (totalPages > 5) {
-                            if (currentPage > 3) {
-                              pageNum = currentPage - 3 + i + 1;
-                            }
-                            if (pageNum > totalPages) {
-                              pageNum = totalPages - 4 + i;
+                      {/* Page Numbers */}
+                      <div className="flex items-center gap-1 mx-1">
+                        {(() => {
+                          const pages = [];
+                          
+                          // Always show first page
+                          if (currentPage > 3) {
+                            pages.push(1);
+                            if (currentPage > 4) {
+                              pages.push('ellipsis-start');
                             }
                           }
                           
-                          if (pageNum <= 0) return null;
-                          if (pageNum > totalPages) return null;
-
-                          return (
-                            <Button
-                              key={pageNum}
-                              variant={currentPage === pageNum ? "default" : "outline"}
-                              size="sm"
-                              className={cn(
-                                "h-8 w-8 p-0 text-xs",
-                                currentPage === pageNum ? "pointer-events-none" : ""
-                              )}
-                              onClick={() => setCurrentPage(pageNum)}
-                            >
-                              {pageNum}
-                            </Button>
-                          );
-                        })}
+                          // Calculate range around current page
+                          const rangeStart = Math.max(1, currentPage - 1);
+                          const rangeEnd = Math.min(totalPages, currentPage + 1);
+                          
+                          for (let i = rangeStart; i <= rangeEnd; i++) {
+                            if (!pages.includes(i)) {
+                              pages.push(i);
+                            }
+                          }
+                          
+                          // Always show last page
+                          if (currentPage < totalPages - 2) {
+                            if (currentPage < totalPages - 3) {
+                              pages.push('ellipsis-end');
+                            }
+                            if (!pages.includes(totalPages)) {
+                              pages.push(totalPages);
+                            }
+                          }
+                          
+                          return pages.map((pageNum) => {
+                            if (pageNum === 'ellipsis-start' || pageNum === 'ellipsis-end') {
+                              return (
+                                <span key={pageNum} className="w-8 h-8 flex items-center justify-center text-muted-foreground">
+                                  …
+                                </span>
+                              );
+                            }
+                            
+                            return (
+                              <Button
+                                key={`page-${pageNum}`}
+                                variant={currentPage === pageNum ? "default" : "outline"}
+                                size="sm"
+                                className="h-8 w-8 p-0 text-xs"
+                                onClick={() => setCurrentPage(pageNum as number)}
+                                disabled={isFetching || isValidating}
+                              >
+                                {pageNum}
+                              </Button>
+                            );
+                          });
+                        })()}
                       </div>
 
+                      {/* Next */}
                       <Button
                         variant="outline"
                         size="sm"
-                        className="h-8 w-8 p-0"
+                        className="h-9 w-9 p-0"
                         onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                        disabled={currentPage === totalPages}
+                        disabled={currentPage === totalPages || isFetching || isValidating}
+                        title="Selanjutnya"
                       >
                         <ChevronRight className="h-4 w-4" />
                       </Button>
+                      
+                      {/* Last Page */}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-9 w-9 p-0"
+                        onClick={() => setCurrentPage(totalPages)}
+                        disabled={currentPage === totalPages || isFetching || isValidating}
+                        title="Halaman Terakhir"
+                      >
+                        <ChevronLast className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    
+                    {/* Page Info */}
+                    <div className="text-center mt-2 text-xs text-muted-foreground">
+                      Menampilkan <span className="font-medium text-foreground">{(currentPage - 1) * itemsPerPage + 1}</span> - <span className="font-medium text-foreground">{Math.min(currentPage * itemsPerPage, profitData.length)}</span> dari <span className="font-medium text-foreground">{profitData.length}</span> item
                     </div>
                   </div>
                 )}

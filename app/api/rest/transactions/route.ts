@@ -32,7 +32,7 @@ export async function GET(request: Request) {
     const fromDate = createdAtGte || startDate;
     const toDate = createdAtLt || endDate;
 
-    // Query 1: Get paginated data with items
+    // Query 1: Get data with items (paginated or all if limit=-1)
     let dataQuery = supabaseAdmin
       .from('transactions')
       .select('*, transaction_items(*)', { count: 'exact' })
@@ -46,9 +46,15 @@ export async function GET(request: Request) {
       dataQuery = dataQuery.lt('created_at', toDate);
     }
 
-    const { data: transactions, error, count } = await dataQuery
+    // Apply pagination with safe upper bound
+    // limit = 0 means use default (10)
+    // limit > 1000 capped at 1000 to protect DB performance
+    const safeLimit = limit > 0 ? Math.min(limit, 1000) : 10;
+    dataQuery = dataQuery
       .order('created_at', { ascending: false })
-      .range(offset, offset + limit - 1);
+      .range(offset, offset + safeLimit - 1);
+
+    const { data: transactions, error, count } = await dataQuery;
 
     if (error) {
       console.error('Transactions GET error:', error);
