@@ -258,10 +258,11 @@ export interface PaginatedTransactions {
 }
 
 export const transactionsApi = {
-  get: async (cafeId?: number): Promise<Transaction[]> => {
+  get: async (cafeId?: number, limit?: number): Promise<Transaction[]> => {
     let url = '/rest/transactions';
     const params = new URLSearchParams();
     if (cafeId) params.set('cafe_id', cafeId.toString());
+    if (limit) params.set('limit', limit.toString());
     if (params.toString()) url += `?${params.toString()}`;
 
     const response = await apiRequest<any>(url);

@@ -54,7 +54,7 @@ export function useCategories(cafeId?: number) {
 export function useTransactions(cafeId?: number, limit?: number, offset?: number) {
   const { data, error, mutate } = useSWR<Transaction[]>(
     cafeId ? `/api/rest/transactions?cafe_id=${cafeId}${limit ? `&limit=${limit}` : ''}${offset ? `&offset=${offset}` : ''}` : null,
-    () => transactionsApi.get(cafeId)
+    () => transactionsApi.get(cafeId, limit)
   );
 
   // Ensure transactions is always an array even if SWR data is malformed

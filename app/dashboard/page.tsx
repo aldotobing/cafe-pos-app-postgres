@@ -42,7 +42,8 @@ export default function DashboardPage() {
   const { user, userData, loading: authLoading } = useAuth();
   const cafeId = userData?.cafe_id;
   const { menu, isLoading: menuLoading } = useMenu(cafeId);
-  const { transactions, isLoading: transactionsLoading } = useTransactions(cafeId);
+  // Use limit=1000 to fetch all transactions for dashboard stats
+  const { transactions, isLoading: transactionsLoading } = useTransactions(cafeId, 1000);
   const router = useRouter();
   const [isMounted, setIsMounted] = useState(false);
 
