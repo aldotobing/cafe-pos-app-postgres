@@ -30,14 +30,20 @@ export async function POST(request: Request) {
       }
     }
 
-    // Trigger notification in background
-    notifyCafeAdmins(
-      Number(cafeId),
-      title,
-      body,
-      url || '/transactions',
-      excludeUserId
-    ).catch(e => console.error('[Push API] Error triggering notification:', e));
+    // Must await — Vercel kills the function after response is sent,
+    // so fire-and-forget promises never complete on serverless.
+    try {
+      await notifyCafeAdmins(
+        Number(cafeId),
+        title,
+        body,
+        url || '/transactions',
+        excludeUserId
+      );
+      console.log('[Push API] notifyCafeAdmins completed successfully');
+    } catch (e) {
+      console.error('[Push API] Error triggering notification:', e);
+    }
 
     return NextResponse.json({ success: true });
   } catch (error) {
