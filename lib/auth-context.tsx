@@ -122,10 +122,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signOutUser = async (): Promise<{ success: boolean; error?: string }> => {
     setSigningOut(true);
     try {
-      // 1. Clear PWA install prompt dismissal (so new user sees it)
+      // 1. Clear localStorage items
       try {
         if (typeof window !== 'undefined') {
           localStorage.removeItem('pwa-install-dismissed-at');
+          localStorage.removeItem('cart');
+          localStorage.removeItem('cafe-settings');
+          localStorage.removeItem('cafe-cache');
+        }
+      } catch (e) {
+        // Ignore
+      }
+
+      // 2. Clear sessionStorage
+      try {
+        if (typeof window !== 'undefined') {
+          sessionStorage.clear();
         }
       } catch (e) {
         // Ignore
