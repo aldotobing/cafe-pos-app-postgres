@@ -259,7 +259,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
             title: "Transaksi Baru!",
             body: `Pesanan senilai ${new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(total)} baru masuk.`,
             url: "/transactions",
-            excludeUserId: currentUserId,
           }),
         })
           .then((res) => {

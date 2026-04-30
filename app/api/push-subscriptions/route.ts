@@ -29,31 +29,33 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Missing required subscription fields' }, { status: 400 });
     }
 
-    // Delete existing for this user first
-    await supabaseAdmin
-      .from('push_subscriptions')
-      .delete()
-      .eq('user_id', userId);
-
-    // Insert new subscription
+    // Upsert by endpoint — each device has a unique endpoint,
+    // so re-subscribing on the same device updates in place,
+    // while other devices' subscriptions are preserved.
     const { error } = await supabaseAdmin
       .from('push_subscriptions')
-      .insert({
-        endpoint,
-        p256dh_key: p256dh,
-        auth_key: auth,
-        user_id: userId,
-        cafe_id: Number(cafeId),
-      } as any);
+      .upsert(
+        {
+          endpoint,
+          p256dh_key: p256dh,
+          auth_key: auth,
+          user_id: userId,
+          cafe_id: Number(cafeId),
+          updated_at: new Date().toISOString(),
+          deleted_at: null,
+        } as any,
+        { onConflict: 'endpoint' }
+      );
 
     if (error) {
-      console.error('Push Subscription Error:', error);
+      console.error('[Push API] Push Subscription Upsert Error:', error);
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
+    console.log(`[Push API] Subscription saved for user ${userId} on endpoint ${endpoint.substring(0, 50)}...`);
     return NextResponse.json({ success: true });
   } catch (error: any) {
-    console.error('Push Subscription Exception:', error);
+    console.error('[Push API] Push Subscription Exception:', error);
     return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
   }
 }

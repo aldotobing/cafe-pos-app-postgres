@@ -73,6 +73,7 @@ export const PushNotificationService = {
       const response = await fetch('/api/push-subscriptions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({
           subscription,
           userId,
@@ -111,6 +112,7 @@ export const PushNotificationService = {
           await fetch('/api/push-subscriptions', {
             method: 'DELETE',
             headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
             body: JSON.stringify({ endpoint: subscription.endpoint }),
           });
         } catch (e) {

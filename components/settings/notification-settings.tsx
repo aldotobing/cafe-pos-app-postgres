@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Bell, BellOff, Info, FlaskConical, Loader2 } from "lucide-react"
 import { motion } from "framer-motion"
 import { toast } from "sonner"
@@ -16,6 +16,23 @@ interface NotificationSettingsProps {
 
 export function NotificationSettings({ localSettings, setLocalSettings, setSettings, userId, cafeId }: NotificationSettingsProps) {
   const [isPushEnabling, setIsPushEnabling] = useState(false)
+  const [isSubscribed, setIsSubscribed] = useState(false)
+
+  // Check initial subscription status on mount
+  useEffect(() => {
+    async function checkSubscription() {
+      try {
+        if ('serviceWorker' in navigator) {
+          const registration = await navigator.serviceWorker.ready;
+          const subscription = await registration.pushManager.getSubscription();
+          setIsSubscribed(!!subscription);
+        }
+      } catch (e) {
+        console.error('Error checking subscription:', e);
+      }
+    }
+    checkSubscription();
+  }, []);
 
   const handlePushToggle = async () => {
     if (!userId || !cafeId) return
@@ -24,12 +41,14 @@ export function NotificationSettings({ localSettings, setLocalSettings, setSetti
     try {
       const currentStatus = await PushNotificationService.getSubscriptionStatus()
 
-      if (localSettings.enablePushNotifications === true) {
+      if (isSubscribed) {
+        // Unsubscribe this device
         await PushNotificationService.unsubscribeUser()
-        const updatedSettings = { ...localSettings, enablePushNotifications: false }
-        setLocalSettings(updatedSettings)
-        await setSettings(updatedSettings)
-        toast.success('Notifikasi push dinonaktifkan')
+        setIsSubscribed(false)
+        
+        // Optionally, if you still want to ensure the cafe setting is true when any device is active, 
+        // we can leave the cafe settings alone here. We won't set it to false so we don't break other devices.
+        toast.success('Notifikasi push dinonaktifkan di perangkat ini')
       } else {
         if (currentStatus === 'unsupported') {
           toast.error('Browser Anda tidak mendukung notifikasi push')
@@ -50,10 +69,16 @@ export function NotificationSettings({ localSettings, setLocalSettings, setSetti
         )
 
         if (success) {
-          const updatedSettings = { ...localSettings, enablePushNotifications: true }
-          setLocalSettings(updatedSettings)
-          await setSettings(updatedSettings)
-          toast.success('Notifikasi push berhasil diaktifkan')
+          setIsSubscribed(true)
+          
+          // Ensure global setting is ON if we are subscribing a device
+          if (!localSettings.enablePushNotifications) {
+            const updatedSettings = { ...localSettings, enablePushNotifications: true }
+            setLocalSettings(updatedSettings)
+            await setSettings(updatedSettings)
+          }
+          
+          toast.success('Notifikasi push diaktifkan di perangkat ini')
         } else {
           toast.error('Gagal mengaktifkan notifikasi. Pastikan Anda memberikan izin.')
         }
@@ -66,7 +91,7 @@ export function NotificationSettings({ localSettings, setLocalSettings, setSetti
     }
   }
 
-  const isEnabled = localSettings.enablePushNotifications === true
+  const isEnabled = isSubscribed
 
   return (
     <motion.div
