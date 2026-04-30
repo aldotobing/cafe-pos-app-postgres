@@ -253,6 +253,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         fetch("/api/trigger-notification", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
+          credentials: "include",
           body: JSON.stringify({
             cafeId: currentCafeId,
             title: "Transaksi Baru!",
@@ -260,7 +261,13 @@ export function CartProvider({ children }: { children: ReactNode }) {
             url: "/transactions",
             excludeUserId: currentUserId,
           }),
-        }).catch((e) => console.error("Error triggering push:", e));
+        })
+          .then((res) => {
+            if (!res.ok) {
+              console.error(`[Push] trigger-notification failed: ${res.status}`);
+            }
+          })
+          .catch((e) => console.error("[Push] Error triggering push:", e));
       }
 
       return createdTx;

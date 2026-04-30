@@ -75,7 +75,7 @@ export const cafeSettingsApi = {
       tax_percent: settings.taxPercent,
       service_percent: settings.servicePercent,
       currency: settings.currency,
-      enable_push_notifications: settings.enablePushNotifications ? 1 : 0,
+      enable_push_notifications: !!settings.enablePushNotifications,
       cafe_id: cafeId,
     };
     return apiRequest<CafeSettings>('/cafe_settings', { method: 'POST', body: JSON.stringify(settingsData) });
@@ -85,7 +85,7 @@ export const cafeSettingsApi = {
     if (settingsData.logoUrl !== undefined) settingsData.logo_url = settingsData.logoUrl;
     if (settingsData.taxPercent !== undefined) settingsData.tax_percent = settingsData.taxPercent;
     if (settingsData.servicePercent !== undefined) settingsData.service_percent = settingsData.servicePercent;
-    if (settingsData.enablePushNotifications !== undefined) settingsData.enable_push_notifications = settingsData.enablePushNotifications ? 1 : 0;
+    if (settingsData.enablePushNotifications !== undefined) settingsData.enable_push_notifications = !!settingsData.enablePushNotifications;
     settingsData.updated_at = new Date().toISOString();
     ['logoUrl', 'taxPercent', 'servicePercent', 'enablePushNotifications', 'createdAt', 'created_at', 'updatedAt', 'cafe_id', 'tagline', 'id'].forEach(f => delete settingsData[f]);
     return apiRequest<CafeSettings>(`/cafe_settings/${id}`, { method: 'PUT', body: JSON.stringify(settingsData) });
