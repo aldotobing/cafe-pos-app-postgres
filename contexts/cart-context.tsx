@@ -257,7 +257,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
           body: JSON.stringify({
             cafeId: currentCafeId,
             title: "Transaksi Baru!",
-            body: `Pesanan senilai ${total} baru masuk.`,
+            body: `Pesanan senilai ${new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(total)} baru masuk.`,
             url: "/transactions",
             excludeUserId: currentUserId,
           }),
