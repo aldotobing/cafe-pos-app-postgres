@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
-import { User, LogOut, Settings, ChevronDown, Loader2, ArrowUpDown, TriangleAlert, WifiOff, Upload } from 'lucide-react';
+import { User, LogOut, Settings, ChevronDown, Loader2, TriangleAlert } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface UserDropdownProps {
@@ -46,117 +46,104 @@ export function UserDropdown({ fullName, email, role, avatarUrl, onLogout, signi
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showLogoutConfirm, showReloadConfirm]);
 
+  const getRoleLabel = (role: string) => {
+    const labels: Record<string, string> = {
+      admin: 'Owner',
+      cashier: 'Kasir',
+      superadmin: 'Super Admin'
+    };
+    return labels[role?.toLowerCase()] || role || 'User';
+  };
+
   return (
     <div className="relative" ref={dropdownRef}>
       <button
-        className="flex items-center gap-2.5 rounded-xl px-4 py-2.5 hover:bg-accent/70 transition-all focus:outline-none border border-transparent hover:border-border/40"
+        className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-accent transition-colors focus:outline-none"
         onClick={() => setIsOpen(!isOpen)}
         aria-expanded={isOpen}
         aria-haspopup="true"
       >
-        <div className="flex items-center gap-2">
-          {avatarUrl ? (
-            <img
-              src={avatarUrl}
-              alt={fullName}
-              className="h-10 w-10 rounded-full object-cover"
-              referrerPolicy="no-referrer"
-              loading="lazy"
-              onError={(e) => {
-                const target = e.target as HTMLImageElement;
-                target.style.display = 'none';
-                const nextSibling = target.nextElementSibling as HTMLElement | null;
-                if (nextSibling) {
-                  nextSibling.style.display = 'flex';
-                }
-              }}
-            />
-          ) : (
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 border border-primary/20">
-              <User size={18} className="text-primary" />
-            </div>
-          )}
-          <div className="hidden sm:flex flex-col items-start leading-tight">
-            <span className="text-sm font-medium text-foreground truncate max-w-[110px]">
-              {fullName || 'User'}
-            </span>
-            <p className="text-xs text-muted-foreground">{role || 'Role'}</p>
+        {avatarUrl ? (
+          <img
+            src={avatarUrl}
+            alt={fullName}
+            className="h-8 w-8 rounded-full object-cover"
+            referrerPolicy="no-referrer"
+            loading="lazy"
+            onError={(e) => {
+              const target = e.target as HTMLImageElement;
+              target.style.display = 'none';
+              const nextSibling = target.nextElementSibling as HTMLElement | null;
+              if (nextSibling) {
+                nextSibling.style.display = 'flex';
+              }
+            }}
+          />
+        ) : (
+          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted">
+            <User size={16} className="text-muted-foreground" />
           </div>
+        )}
+        <div className="hidden sm:flex flex-col items-start">
+          <span className="text-sm font-medium text-foreground">{fullName || 'User'}</span>
+          <span className="text-xs text-muted-foreground">{getRoleLabel(role)}</span>
         </div>
         <ChevronDown
-          size={16}
-          className={`text-muted-foreground transition-transform duration-200 ${isOpen ? 'rotate-180' : ''
-            }`}
+          size={14}
+          className={`text-muted-foreground transition-transform ${isOpen ? 'rotate-180' : ''}`}
         />
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-52 bg-card rounded-xl shadow-lg border border-border z-50 overflow-hidden">
-          <div className="px-4 py-2 border-b border-border flex items-center gap-3">
-            {avatarUrl ? (
-              <img
-                src={avatarUrl}
-                alt={fullName}
-                className="h-10 w-10 rounded-full object-cover"
-                referrerPolicy="no-referrer"
-                loading="lazy"
-                onError={(e) => {
-                  const target = e.target as HTMLImageElement;
-                  target.style.display = 'none';
-                  const nextSibling = target.nextElementSibling as HTMLElement | null;
-                  if (nextSibling) {
-                    nextSibling.style.display = 'flex';
-                  }
-                }}
-              />
-            ) : (
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 border border-primary/20">
-                <User size={20} className="text-primary" />
-              </div>
-            )}
-            <div>
-              <p className="text-sm font-semibold text-foreground truncate max-w-[120px]">{fullName || 'User'}</p>
-              <p className="text-xs text-muted-foreground truncate max-w-[120px]">{email || 'Email'}</p>
-              <p className="text-xs text-muted-foreground">{role || 'Role'}</p>
-            </div>
+        <div className="absolute right-0 mt-2 w-56 bg-popover rounded-lg shadow-lg border z-50 overflow-hidden">
+          {/* User Info */}
+          <div className="px-4 py-3 border-b">
+            <p className="text-sm font-semibold text-foreground">{fullName || 'User'}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">{email || 'Email'}</p>
+            <p className="text-xs text-muted-foreground/70 mt-0.5">{getRoleLabel(role)}</p>
           </div>
-          
-          <button
-            className="w-full flex items-center gap-2 px-4 py-2 text-sm text-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
-            onClick={() => {
-              setIsOpen(false);
-              setShowReloadConfirm(true);
-            }}
-          >
-            <TriangleAlert size={16} className="text-amber-500" />
-            <span>Force Reload</span>
-          </button>
 
-          <Link
-            href="/settings"
-            className="w-full flex items-center gap-2 px-4 py-2 text-sm text-foreground hover:bg-accent hover:text-accent-foreground transition-colors block"
-            onClick={() => setIsOpen(false)}
-          >
-            <Settings size={16} />
-            <span>Pengaturan</span>
-          </Link>
-          <button
-            className="w-full flex items-center gap-2 px-4 py-2 text-sm text-foreground hover:bg-accent hover:text-accent-foreground transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            onClick={() => {
-              // Clear previous error when opening modal
-              onClearError?.();
-              setIsOpen(false);
-              setShowLogoutConfirm(true);
-            }}
-            disabled={signingOut}
-          >
-            {signingOut ? (
-              <Loader2 size={16} className="animate-spin" />
-            ) : (
-              <LogOut size={16} />
-            )}
-            <span>{signingOut ? 'Keluar...' : 'Keluar'}</span>
-          </button>
+          {/* Menu Items */}
+          <div className="py-1">
+            <button
+              className="w-full flex items-center gap-2 px-4 py-2 text-sm text-foreground hover:bg-accent transition-colors"
+              onClick={() => {
+                setIsOpen(false);
+                setShowReloadConfirm(true);
+              }}
+            >
+              <TriangleAlert size={16} className="text-amber-500" />
+              <span>Muat Ulang</span>
+            </button>
+
+            <Link
+              href="/settings"
+              className="w-full flex items-center gap-2 px-4 py-2 text-sm text-foreground hover:bg-accent transition-colors block"
+              onClick={() => setIsOpen(false)}
+            >
+              <Settings size={16} />
+              <span>Pengaturan</span>
+            </Link>
+
+            <div className="h-px bg-border mx-3 my-1" />
+
+            <button
+              className="w-full flex items-center gap-2 px-4 py-2 text-sm text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-50"
+              onClick={() => {
+                onClearError?.();
+                setIsOpen(false);
+                setShowLogoutConfirm(true);
+              }}
+              disabled={signingOut}
+            >
+              {signingOut ? (
+                <Loader2 size={16} className="animate-spin" />
+              ) : (
+                <LogOut size={16} />
+              )}
+              <span>{signingOut ? 'Keluar...' : 'Keluar'}</span>
+            </button>
+          </div>
         </div>
       )}
       

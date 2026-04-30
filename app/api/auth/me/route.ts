@@ -49,6 +49,7 @@ export async function GET(request: Request) {
         ...profile,
         id: profile.user_id, // Map user_id to id for frontend compatibility
         cafe: profile.cafes,
+        email: user.email, // Include email from auth user
       } : null
     });
   } catch (error) {
