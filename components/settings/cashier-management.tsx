@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Users, UserPlus, Loader2, CheckCircle2, AlertCircle, Plus, X, UserX, UserCheck } from "lucide-react"
+import { Users, UserPlus, Loader2, CheckCircle2, AlertCircle, Plus, X, UserX, UserCheck, Eye, EyeOff } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import { SectionCard } from "./section-card"
 import { SettingsField, SettingsInput } from "./settings-field"
@@ -24,8 +24,10 @@ export function CashierManagement({ userId, cafeId }: CashierManagementProps) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [fullName, setFullName] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [isCreating, setIsCreating] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+  const [errors, setErrors] = useState<{ email?: string; password?: string; fullName?: string }>({})
   const [cashiers, setCashiers] = useState<Cashier[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -117,9 +119,34 @@ export function CashierManagement({ userId, cafeId }: CashierManagementProps) {
     }
   }
 
+  const validateForm = () => {
+    const newErrors: { email?: string; password?: string; fullName?: string } = {}
+    
+    if (!fullName.trim()) {
+      newErrors.fullName = 'Nama lengkap wajib diisi'
+    }
+    
+    if (!email.trim()) {
+      newErrors.email = 'Email wajib diisi'
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      newErrors.email = 'Format email tidak valid'
+    }
+    
+    if (!password) {
+      newErrors.password = 'Password wajib diisi'
+    } else if (password.length < 6) {
+      newErrors.password = 'Password minimal 6 karakter'
+    }
+    
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
+  }
+
   const createCashier = async () => {
-    if (!email || !password || !fullName || !cafeId) {
-      setMessage({ type: 'error', text: 'Silakan isi semua field dan pastikan kafe sudah dibuat.' })
+    if (!validateForm() || !cafeId) {
+      if (!cafeId) {
+        setMessage({ type: 'error', text: 'Pastikan kafe sudah dibuat terlebih dahulu.' })
+      }
       return
     }
 
@@ -191,57 +218,130 @@ export function CashierManagement({ userId, cafeId }: CashierManagementProps) {
             transition={{ duration: 0.2 }}
             className="overflow-hidden"
           >
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pb-4 border-b border-border mb-4">
-              <SettingsField label="Nama Lengkap">
-                <SettingsInput
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  placeholder="Nama lengkap kasir"
-                />
-              </SettingsField>
-
-              <SettingsField label="Email">
-                <SettingsInput
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="Email kasir"
-                  type="email"
-                />
-              </SettingsField>
-
-              <div className="sm:col-span-2">
-                <SettingsField label="Password" hint="Minimal 6 karakter">
-                  <SettingsInput
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Password kasir"
-                    type="password"
+            <div className="bg-muted/30 rounded-xl p-4 sm:p-5 mb-4 border">
+              <h4 className="text-sm font-semibold mb-4 flex items-center gap-2">
+                <UserPlus className="h-4 w-4 text-primary" />
+                Informasi Kasir Baru
+              </h4>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* Nama Lengkap */}
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium">
+                    Nama Lengkap <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={fullName}
+                    onChange={(e) => {
+                      setFullName(e.target.value)
+                      if (errors.fullName) setErrors(prev => ({ ...prev, fullName: undefined }))
+                    }}
+                    placeholder="Masukkan nama lengkap"
+                    className={`w-full px-3 py-2.5 rounded-lg border bg-background text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-primary/20 ${
+                      errors.fullName ? 'border-red-500 focus:border-red-500' : 'border-input focus:border-primary'
+                    }`}
                   />
-                </SettingsField>
-              </div>
-            </div>
+                  {errors.fullName && (
+                    <p className="text-xs text-red-500 flex items-center gap-1">
+                      <AlertCircle className="h-3 w-3" />
+                      {errors.fullName}
+                    </p>
+                  )}
+                </div>
 
-            <div className="mb-4">
-              <motion.button
-                onClick={createCashier}
-                disabled={isCreating}
-                className="w-full py-2.5 bg-primary text-primary-foreground rounded-md hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm font-medium"
-                whileHover={!isCreating ? { scale: 1.01, y: -1 } : {}}
-                whileTap={!isCreating ? { scale: 0.99 } : {}}
-                transition={{ duration: 0.05 }}
-              >
-                {isCreating ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    <span>Membuat...</span>
-                  </>
-                ) : (
-                  <>
-                    <UserPlus className="h-4 w-4" />
-                    <span>Buat Akun Kasir</span>
-                  </>
-                )}
-              </motion.button>
+                {/* Email */}
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium">
+                    Email <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => {
+                      setEmail(e.target.value)
+                      if (errors.email) setErrors(prev => ({ ...prev, email: undefined }))
+                    }}
+                    placeholder="kasir@example.com"
+                    className={`w-full px-3 py-2.5 rounded-lg border bg-background text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-primary/20 ${
+                      errors.email ? 'border-red-500 focus:border-red-500' : 'border-input focus:border-primary'
+                    }`}
+                  />
+                  {errors.email && (
+                    <p className="text-xs text-red-500 flex items-center gap-1">
+                      <AlertCircle className="h-3 w-3" />
+                      {errors.email}
+                    </p>
+                  )}
+                </div>
+
+                {/* Password */}
+                <div className="sm:col-span-2 space-y-1.5">
+                  <label className="text-sm font-medium">
+                    Password <span className="text-red-500">*</span>
+                    <span className="text-xs text-muted-foreground font-normal ml-1">(minimal 6 karakter)</span>
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      value={password}
+                      onChange={(e) => {
+                        setPassword(e.target.value)
+                        if (errors.password) setErrors(prev => ({ ...prev, password: undefined }))
+                      }}
+                      placeholder="Buat password yang aman"
+                      className={`w-full px-3 py-2.5 pr-10 rounded-lg border bg-background text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-primary/20 ${
+                        errors.password ? 'border-red-500 focus:border-red-500' : 'border-input focus:border-primary'
+                      }`}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                      tabIndex={-1}
+                    >
+                      {showPassword ? (
+                        <EyeOff className="h-4 w-4" />
+                      ) : (
+                        <Eye className="h-4 w-4" />
+                      )}
+                    </button>
+                  </div>
+                  {errors.password && (
+                    <p className="text-xs text-red-500 flex items-center gap-1">
+                      <AlertCircle className="h-3 w-3" />
+                      {errors.password}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* Submit Button */}
+              <div className="mt-5 pt-4 border-t">
+                <motion.button
+                  onClick={createCashier}
+                  disabled={isCreating}
+                  className="w-full py-2.5 bg-primary text-primary-foreground rounded-lg hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm font-medium shadow-sm"
+                  whileHover={!isCreating ? { scale: 1.01 } : {}}
+                  whileTap={!isCreating ? { scale: 0.99 } : {}}
+                  transition={{ duration: 0.05 }}
+                >
+                  {isCreating ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <span>Membuat Akun...</span>
+                    </>
+                  ) : (
+                    <>
+                      <UserPlus className="h-4 w-4" />
+                      <span>Buat Akun Kasir</span>
+                    </>
+                  )}
+                </motion.button>
+                <p className="text-xs text-muted-foreground text-center mt-2">
+                  Kasir akan dapat login menggunakan email dan password di atas
+                </p>
+              </div>
             </div>
           </motion.div>
         )}
