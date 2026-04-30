@@ -193,7 +193,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
     const currentCafeId = cafeId !== null && cafeId !== undefined ? Number(cafeId) : 1;
     const currentUserId = userId || "unknown";
-    
+
     const txData = {
       subtotal,
       taxAmount: tax,
@@ -256,8 +256,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
           credentials: "include",
           body: JSON.stringify({
             cafeId: currentCafeId,
-            title: "Transaksi Baru!",
-            body: `Pesanan senilai ${new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(total)} baru masuk.`,
+            title: "KasirKu",
+            body: `Transaksi Baru! Pesanan senilai ${new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(total)} baru masuk.`,
             url: "/transactions",
           }),
         })
