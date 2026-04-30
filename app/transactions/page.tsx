@@ -7,7 +7,7 @@ import { useAuth } from '@/lib/auth-context';
 import { useTransactionsPaginated, useCafeSettings } from "@/hooks/use-cafe-data"
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CheckCircle2, Clock, WifiOff, Upload, Filter, Receipt, TrendingUp, Calendar, FileText, RefreshCw, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
+import { CheckCircle2, Clock, WifiOff, Upload, Filter, Receipt, TrendingUp, Calendar, FileText, RefreshCw, ChevronLeft, ChevronRight, ChevronFirst, ChevronLast, Loader2 } from 'lucide-react';
 import { generateTransactionReport } from '@/lib/reports/transaction-report';
 import { toast } from 'sonner';
 import { TransactionsSkeleton } from '@/components/skeletons';
@@ -37,11 +37,15 @@ export default function Page() {
     totalPages,
     hasNextPage,
     hasPrevPage,
-    isLoading: transactionsLoading,
+    isLoading,
+    isValidating, // True when switching pages / re-fetching
     goToNextPage,
     goToPrevPage,
     goToPage,
   } = useTransactionsPaginated(cafeId, 10, { from, to });
+
+  // Combined loading state: initial load OR page switch
+  const isFetching = isLoading || isValidating;
 
   const [selectedTransactionId, setSelectedTransactionId] = useState<string | null>(null)
   const [showDetailModal, setShowDetailModal] = useState(false)
@@ -154,8 +158,8 @@ export default function Page() {
   // Table display total (from current page only, filtered by method/user)
   const pageTotal = filtered.reduce((sum, t) => sum + (t.totalAmount || 0), 0)
 
-  // Show loading state while checking auth
-  if (authLoading || transactionsLoading) {
+  // Show full-page loading only for auth check, not for data fetching
+  if (authLoading) {
     return <TransactionsSkeleton />;
   }
 
@@ -209,7 +213,7 @@ export default function Page() {
 
       {/* Summary Section */}
       <motion.div
-        className="mb-6 rounded-xl sm:rounded-2xl p-4 sm:p-5 bg-card border shadow-sm relative overflow-hidden"
+        className={`mb-6 rounded-xl sm:rounded-2xl p-4 sm:p-5 bg-card border shadow-sm relative overflow-hidden ${isFetching ? 'opacity-70' : ''}`}
         variants={summaryVariants}
         initial="hidden"
         animate="visible"
@@ -222,14 +226,25 @@ export default function Page() {
             </div>
             <div>
               <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-0.5">Total Pendapatan</span>
-              <div className="text-xs sm:text-sm text-muted-foreground font-medium">
-                {summaryStats.count} transaksi
+              <div className="text-xs sm:text-sm text-muted-foreground font-medium flex items-center gap-2">
+                {isFetching ? (
+                  <>
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                    <span>Memuat...</span>
+                  </>
+                ) : (
+                  <span>{summaryStats.count} transaksi</span>
+                )}
               </div>
             </div>
           </div>
           <div className="sm:text-right">
             {/* Total amount of ALL filtered transactions */}
-            <div className="text-2xl sm:text-3xl font-bold tracking-tight">{formatRupiah(summaryStats.total)}</div>
+            {isFetching ? (
+              <div className="text-2xl sm:text-3xl font-bold tracking-tight text-muted-foreground">-</div>
+            ) : (
+              <div className="text-2xl sm:text-3xl font-bold tracking-tight">{formatRupiah(summaryStats.total)}</div>
+            )}
           </div>
         </div>
         <div className="absolute -right-4 -bottom-4 opacity-[0.02] pointer-events-none">
@@ -350,12 +365,22 @@ export default function Page() {
         </div>
       )}
       <motion.div
-        className="overflow-hidden rounded-xl border bg-card shadow-sm"
+        className="overflow-hidden rounded-xl border bg-card shadow-sm relative"
         variants={tableVariants}
         initial="hidden"
         animate="visible"
         transition={{ delay: 0.2, duration: 0.3, ease: "easeOut" }}
       >
+        {/* Loading Overlay */}
+        {isFetching && (
+          <div className="absolute inset-0 bg-background/80 backdrop-blur-sm z-20 flex items-center justify-center">
+            <div className="flex flex-col items-center gap-3">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <span className="text-sm text-muted-foreground">Memuat data...</span>
+            </div>
+          </div>
+        )}
+        
         {filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
             <motion.div
@@ -477,66 +502,122 @@ export default function Page() {
 
         {/* Pagination Controls */}
         {totalPages > 1 && (
-          <div className="p-4 border-t bg-muted/20">
-            <div className="flex items-center justify-between gap-4">
+          <div className={`p-4 border-t bg-muted/20 ${isFetching ? 'opacity-60' : ''}`}>
+            <div className="flex items-center justify-center gap-2">
+              {/* First Page */}
               <button
-                onClick={goToPrevPage}
-                disabled={!hasPrevPage || transactionsLoading}
-                className="inline-flex items-center gap-1 px-3 py-2 rounded-lg border bg-background hover:bg-muted transition text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                onClick={() => goToPage(1)}
+                disabled={currentPage === 1 || isFetching}
+                className={`inline-flex items-center justify-center w-9 h-9 rounded-lg border transition disabled:opacity-50 disabled:cursor-not-allowed ${
+                  isFetching ? 'bg-muted' : 'bg-background hover:bg-muted'
+                }`}
+                title="Halaman Pertama"
               >
-                <ChevronLeft className="h-4 w-4" />
-                <span className="hidden sm:inline">Sebelumnya</span>
+                <ChevronFirst className="h-4 w-4" />
               </button>
               
-              <div className="flex items-center gap-1">
+              {/* Previous */}
+              <button
+                onClick={goToPrevPage}
+                disabled={!hasPrevPage || isFetching}
+                className={`inline-flex items-center justify-center w-9 h-9 rounded-lg border transition disabled:opacity-50 disabled:cursor-not-allowed ${
+                  isFetching ? 'bg-muted' : 'bg-background hover:bg-muted'
+                }`}
+                title="Sebelumnya"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+              
+              {/* Page Numbers */}
+              <div className="flex items-center gap-1 mx-1">
                 {(() => {
-                  // Calculate page range to show (max 5 pages)
-                  let startPage = 1;
-                  let endPage = Math.min(5, totalPages);
-                  
-                  if (totalPages > 5 && currentPage > 3) {
-                    startPage = Math.min(currentPage - 2, totalPages - 4);
-                    endPage = Math.min(startPage + 4, totalPages);
-                  }
-                  
                   const pages = [];
-                  for (let i = startPage; i <= endPage; i++) {
-                    pages.push(i);
+                  
+                  // Always show first page
+                  if (currentPage > 3) {
+                    pages.push(1);
+                    if (currentPage > 4) {
+                      pages.push('ellipsis-start');
+                    }
                   }
                   
-                  return pages.map((pageNum) => (
-                    <button
-                      key={`page-${pageNum}`}
-                      onClick={() => goToPage(pageNum)}
-                      disabled={transactionsLoading}
-                      className={`w-8 h-8 rounded-lg text-sm font-medium transition ${
-                        currentPage === pageNum
-                          ? 'bg-primary text-primary-foreground'
-                          : 'hover:bg-muted disabled:opacity-50'
-                      }`}
-                    >
-                      {pageNum}
-                    </button>
-                  ));
+                  // Calculate range around current page
+                  const rangeStart = Math.max(1, currentPage - 1);
+                  const rangeEnd = Math.min(totalPages, currentPage + 1);
+                  
+                  for (let i = rangeStart; i <= rangeEnd; i++) {
+                    if (!pages.includes(i)) {
+                      pages.push(i);
+                    }
+                  }
+                  
+                  // Always show last page
+                  if (currentPage < totalPages - 2) {
+                    if (currentPage < totalPages - 3) {
+                      pages.push('ellipsis-end');
+                    }
+                    if (!pages.includes(totalPages)) {
+                      pages.push(totalPages);
+                    }
+                  }
+                  
+                  return pages.map((pageNum, idx) => {
+                    if (pageNum === 'ellipsis-start' || pageNum === 'ellipsis-end') {
+                      return (
+                        <span key={pageNum} className="w-8 h-8 flex items-center justify-center text-muted-foreground">
+                          …
+                        </span>
+                      );
+                    }
+                    
+                    return (
+                      <button
+                        key={`page-${pageNum}`}
+                        onClick={() => goToPage(pageNum as number)}
+                        disabled={isFetching}
+                        className={`w-8 h-8 rounded-lg text-sm font-medium transition ${
+                          currentPage === pageNum
+                            ? 'bg-primary text-primary-foreground'
+                            : 'hover:bg-muted disabled:opacity-50'
+                        }`}
+                      >
+                        {pageNum}
+                      </button>
+                    );
+                  });
                 })()}
               </div>
               
+              {/* Next */}
               <button
                 onClick={goToNextPage}
-                disabled={!hasNextPage || transactionsLoading}
-                className="inline-flex items-center gap-1 px-3 py-2 rounded-lg border bg-background hover:bg-muted transition text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={!hasNextPage || isFetching}
+                className={`inline-flex items-center justify-center w-9 h-9 rounded-lg border transition disabled:opacity-50 disabled:cursor-not-allowed ${
+                  isFetching ? 'bg-muted' : 'bg-background hover:bg-muted'
+                }`}
+                title="Selanjutnya"
               >
-                <span className="hidden sm:inline">Selanjutnya</span>
                 <ChevronRight className="h-4 w-4" />
+              </button>
+              
+              {/* Last Page */}
+              <button
+                onClick={() => goToPage(totalPages)}
+                disabled={currentPage === totalPages || isFetching}
+                className={`inline-flex items-center justify-center w-9 h-9 rounded-lg border transition disabled:opacity-50 disabled:cursor-not-allowed ${
+                  isFetching ? 'bg-muted' : 'bg-background hover:bg-muted'
+                }`}
+                title="Halaman Terakhir"
+              >
+                <ChevronLast className="h-4 w-4" />
               </button>
             </div>
             
-            {transactionsLoading && (
-              <div className="flex items-center justify-center gap-2 mt-3 text-xs text-muted-foreground">
-                <Loader2 className="h-3 w-3 animate-spin" />
-                <span>Memuat data...</span>
-              </div>
-            )}
+            {/* Page Info with Loading Indicator */}
+            <div className="text-center mt-2 text-xs text-muted-foreground flex items-center justify-center gap-2">
+              {isFetching && <Loader2 className="h-3 w-3 animate-spin" />}
+              <span>Halaman {currentPage} dari {totalPages}</span>
+            </div>
           </div>
         )}
       </motion.div>

@@ -77,6 +77,7 @@ export interface UsePaginatedTransactionsReturn {
   hasNextPage: boolean;
   hasPrevPage: boolean;
   isLoading: boolean;
+  isValidating: boolean; // True when re-fetching (e.g., switching pages)
   isError: any;
   mutate: () => void;
   goToPage: (page: number) => void;
@@ -91,7 +92,7 @@ export function useTransactionsPaginated(
 ): UsePaginatedTransactionsReturn {
   const [offset, setOffset] = useState(0);
   
-  const { data, error, mutate } = useSWR<PaginatedTransactions>(
+  const { data, error, mutate, isValidating } = useSWR<PaginatedTransactions>(
     cafeId ? ['paginated-transactions', cafeId, limit, offset, dateFilters?.from, dateFilters?.to] : null,
     () => transactionsApi.getPaginated(cafeId, limit, offset, dateFilters),
     {
@@ -134,6 +135,7 @@ export function useTransactionsPaginated(
     hasNextPage,
     hasPrevPage,
     isLoading: !error && !data,
+    isValidating, // True when re-fetching (switching pages)
     isError: error,
     mutate,
     goToPage,
