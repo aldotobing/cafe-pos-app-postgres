@@ -35,7 +35,7 @@ import {
 } from '@/components/ui';
 import { format, parseISO } from 'date-fns';
 import { id } from 'date-fns/locale';
-import { Calendar as CalendarIcon, Plus, Trash2, Edit2, RefreshCw, Search, X, Wallet, TrendingDown, Filter, ArrowUpRight, ArrowDownRight, TrendingUp, AlertTriangle } from 'lucide-react';
+import { Calendar as CalendarIcon, Plus, Trash2, Edit2, RefreshCw, Search, X, Wallet, TrendingUp, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -272,86 +272,74 @@ export default function ExpensesPage() {
           </Button>
         </div>
 
-        {/* Filters Card - Desktop Optimized */}
-        <div className="bg-card rounded-xl border border-border p-4">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-              <Filter className="w-4 h-4" />
-              <span>Filter Pengeluaran</span>
-              {isValidating && (
-                <RefreshCw className="w-3 h-3 animate-spin text-primary ml-2" />
-              )}
-            </div>
-            
-            <div className="flex flex-col md:flex-row gap-3 w-full md:w-auto">
-              {/* Date Range */}
-              <div className="flex gap-2 items-center">
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button variant="outline" className="w-[140px] justify-start h-9">
-                      <CalendarIcon className="w-4 h-4 mr-2 text-muted-foreground" />
-                      {format(startDate, 'dd/MM/yyyy')}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={startDate}
-                      onSelect={(date) => date && setStartDate(date)}
-                    />
-                  </PopoverContent>
-                </Popover>
-                
-                <span className="text-muted-foreground">-</span>
-                
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button variant="outline" className="w-[140px] justify-start h-9">
-                      <CalendarIcon className="w-4 h-4 mr-2 text-muted-foreground" />
-                      {format(endDate, 'dd/MM/yyyy')}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={endDate}
-                      onSelect={(date) => date && setEndDate(date)}
-                    />
-                  </PopoverContent>
-                </Popover>
-              </div>
-              
-              {/* Category Filter & Refresh */}
-              <div className="flex gap-2">
-                <Select value={selectedCategory || 'all'} onValueChange={(value: string) => setSelectedCategory(value === 'all' ? '' : value)}>
-                  <SelectTrigger className="w-[180px] h-9">
-                    <SelectValue placeholder="Semua Kategori" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Semua Kategori</SelectItem>
-                    {categories?.map(cat => (
-                      <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                
-                {selectedCategory && (
-                  <Button variant="ghost" size="sm" className="h-9 px-2" onClick={() => setSelectedCategory('')}>
-                    <X className="w-4 h-4" />
-                  </Button>
-                )}
-                
-                <Button 
-                  variant="outline" 
-                  size="icon"
-                  className="h-9 w-9 flex-shrink-0"
-                  onClick={() => mutate()}
-                  disabled={isValidating}
-                >
-                  <RefreshCw className={cn("w-4 h-4", isValidating && "animate-spin")} />
+        {/* Filters - Right Aligned & Mobile Responsive */}
+        <div className="flex flex-col md:flex-row md:justify-end gap-3">
+          {/* Date Range */}
+          <div className="flex gap-2 items-center w-full md:w-auto">
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="flex-1 md:w-[140px] justify-start h-9">
+                  <CalendarIcon className="w-4 h-4 mr-2 text-muted-foreground" />
+                  {format(startDate, 'dd/MM/yyyy')}
                 </Button>
-              </div>
-            </div>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={startDate}
+                  onSelect={(date) => date && setStartDate(date)}
+                />
+              </PopoverContent>
+            </Popover>
+            
+            <span className="text-muted-foreground hidden sm:inline">-</span>
+            
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="flex-1 md:w-[140px] justify-start h-9">
+                  <CalendarIcon className="w-4 h-4 mr-2 text-muted-foreground" />
+                  {format(endDate, 'dd/MM/yyyy')}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={endDate}
+                  onSelect={(date) => date && setEndDate(date)}
+                />
+              </PopoverContent>
+            </Popover>
+          </div>
+          
+          {/* Category Filter & Refresh */}
+          <div className="flex gap-2 w-full md:w-auto">
+            <Select value={selectedCategory || 'all'} onValueChange={(value: string) => setSelectedCategory(value === 'all' ? '' : value)}>
+              <SelectTrigger className="flex-1 md:w-[180px] h-9">
+                <SelectValue placeholder="Semua Kategori" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Semua Kategori</SelectItem>
+                {categories?.map(cat => (
+                  <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            
+            {selectedCategory && (
+              <Button variant="ghost" size="sm" className="h-9 px-2" onClick={() => setSelectedCategory('')}>
+                <X className="w-4 h-4" />
+              </Button>
+            )}
+            
+            <Button 
+              variant="outline" 
+              size="icon"
+              className="h-9 w-9 flex-shrink-0"
+              onClick={() => mutate()}
+              disabled={isValidating}
+            >
+              <RefreshCw className={cn("w-4 h-4", isValidating && "animate-spin")} />
+            </Button>
           </div>
         </div>
 
@@ -373,148 +361,79 @@ export default function ExpensesPage() {
           </div>
         )}
 
-        {/* Summary Card - Mobile Optimized */}
-        <div className="bg-card rounded-xl border border-border shadow-subtle p-4">
-          {/* Header */}
+        {/* Summary Card - Compact & Elegant */}
+        <div className="bg-card rounded-xl border border-border shadow-subtle p-3">
+          {/* Header with Date Range */}
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-xs sm:text-sm font-semibold uppercase tracking-wider text-muted-foreground/70">
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground/70">
               Ringkasan Keuangan
             </h3>
-            <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-md flex items-center justify-center bg-chart-2/10">
-              <TrendingDown className="w-3 h-3 sm:w-4 sm:h-4 text-chart-2 opacity-70" />
-            </div>
+            <span className="text-xs text-muted-foreground">
+              {format(startDate, 'dd MMM')} - {format(endDate, 'dd MMM')}
+            </span>
           </div>
           
-          {/* Date Range */}
-          <p className="text-xs text-muted-foreground mb-3">
-            {format(startDate, 'dd MMM')} - {format(endDate, 'dd MMM yyyy')}
-          </p>
-          
-          {/* Revenue vs Expenses Comparison */}
-          <div className="grid grid-cols-2 gap-2 sm:gap-3 mb-3">
-            <div className="space-y-1">
-              <p className="text-xs text-muted-foreground font-medium">Pendapatan</p>
-              <p className="font-bold text-foreground leading-tight text-base sm:text-lg">
+          {/* Metrics Grid - Mobile: 2x2, Desktop: 3 cols */}
+          <div className="grid grid-cols-2 md:flex md:items-center md:gap-3 gap-3">
+            {/* Revenue */}
+            <div className="min-w-0">
+              <p className="text-xs text-muted-foreground font-medium mb-0.5">Pendapatan</p>
+              <p className="font-semibold text-foreground text-sm truncate">
                 {formatRupiah(totalRevenue)}
               </p>
             </div>
             
-            <div className="space-y-1">
-              <p className="text-xs text-muted-foreground font-medium">Pengeluaran</p>
-              <p className="font-bold text-foreground leading-tight text-base sm:text-lg">
+            {/* Separator - Desktop only */}
+            <div className="hidden md:block w-px h-8 bg-border/60" />
+            
+            {/* Expenses */}
+            <div className="min-w-0">
+              <p className="text-xs text-muted-foreground font-medium mb-0.5">Pengeluaran</p>
+              <p className="font-semibold text-foreground text-sm truncate">
                 {formatRupiah(totalExpenses)}
               </p>
             </div>
-          </div>
-          
-          {/* Divider */}
-          <div className="h-px bg-border/60 my-3" />
-          
-          {/* Net Profit with Indicator */}
-          <div className="flex items-center justify-between">
-            <div className="space-y-1">
-              <p className="text-xs text-muted-foreground font-medium">Laba/Rugi</p>
-              <p className={cn(
-                "font-bold leading-tight text-lg sm:text-xl",
-                netProfit >= 0 ? 'text-emerald-600' : 'text-red-600'
-              )}>
-                {formatRupiah(netProfit)}
-              </p>
-            </div>
             
-            <div className={cn(
-              "flex items-center gap-1.5 px-2 py-1 sm:px-2.5 sm:py-1.5 rounded-lg text-xs font-semibold",
-              netProfit >= 0 
-                ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300' 
-                : 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300'
-            )}>
-              {netProfit >= 0 ? (
-                <ArrowUpRight className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
-              ) : (
-                <ArrowDownRight className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
-              )}
-              <span>{Math.abs(profitMargin)}%</span>
+            {/* Separator - Desktop only */}
+            <div className="hidden md:block w-px h-8 bg-border/60" />
+            
+            {/* Net Profit - Full width on mobile, normal on desktop */}
+            <div className="col-span-2 md:col-span-1 min-w-0">
+              <p className="text-xs text-muted-foreground font-medium mb-0.5">Laba/Rugi</p>
+              <div className="flex items-center gap-2">
+                <p className={cn(
+                  "font-bold text-sm truncate",
+                  netProfit >= 0 ? 'text-emerald-600' : 'text-red-600'
+                )}>
+                  {formatRupiah(netProfit)}
+                </p>
+                <span className={cn(
+                  "text-xs font-semibold px-1.5 py-0.5 rounded shrink-0",
+                  netProfit >= 0 
+                    ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300' 
+                    : 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300'
+                )}>
+                  {netProfit >= 0 ? '+' : ''}{Math.abs(profitMargin)}%
+                </span>
+              </div>
             </div>
           </div>
         </div>
 
         {/* Expenses Table - Mobile Optimized */}
-        <div className="bg-card rounded-xl border border-border overflow-hidden">
-          {/* Mobile Card View */}
-          <div className="md:hidden">
-            {expenses.length === 0 ? (
-              <div className="py-12 text-center text-muted-foreground">
-                <div className="flex flex-col items-center gap-3">
-                  <div className="w-12 h-12 rounded-full bg-muted/50 flex items-center justify-center">
-                    <Wallet className="w-6 h-6 text-muted-foreground" />
-                  </div>
-                  <div>
-                    <p className="font-medium">Belum ada pengeluaran</p>
-                    <p className="text-sm text-muted-foreground">Tambah pengeluaran pertama Anda</p>
-                  </div>
-                </div>
+        <div className="bg-card rounded-xl border border-border overflow-hidden relative">
+          {/* Loading Overlay */}
+          {isValidating && (
+            <div className="absolute inset-0 bg-background/60 backdrop-blur-[1px] z-10 flex items-center justify-center">
+              <div className="flex items-center gap-2 bg-background border rounded-lg px-4 py-2 shadow-lg">
+                <RefreshCw className="w-5 h-5 animate-spin text-primary" />
+                <span className="text-sm font-medium">Memuat data...</span>
               </div>
-            ) : (
-              <div className="divide-y divide-border/50">
-                <AnimatePresence>
-                  {expenses.map((expense: Expense, index: number) => (
-                    <motion.div
-                      key={expense.id}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -10 }}
-                      transition={{ delay: index * 0.03 }}
-                      className="p-4 hover:bg-muted/30 transition-colors"
-                    >
-                      <div className="flex items-start justify-between mb-2">
-                        <div className="flex items-center gap-2">
-                          <div 
-                            className="w-2 h-2 rounded-full ring-2 ring-white" 
-                            style={{ backgroundColor: getCategoryColor(expense.category_id || '') }}
-                          />
-                          <span className="text-sm font-medium">{getCategoryName(expense.category_id || '')}</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <Button 
-                            variant="ghost" 
-                            size="icon"
-                            className="h-7 w-7 text-muted-foreground hover:text-foreground"
-                            onClick={() => handleEdit(expense)}
-                          >
-                            <Edit2 className="w-3.5 h-3.5" />
-                          </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="icon"
-                            className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                            onClick={() => handleDelete(expense.id)}
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </Button>
-                        </div>
-                      </div>
-                      <div className="space-y-1">
-                        <p className="text-sm text-muted-foreground line-clamp-2">
-                          {expense.description || '-'}
-                        </p>
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs text-muted-foreground">
-                            {format(parseISO(expense.expense_date), 'dd MMM yyyy', { locale: id })}
-                          </span>
-                          <span className="text-sm font-semibold text-foreground">
-                            {formatRupiah(expense.amount)}
-                          </span>
-                        </div>
-                      </div>
-                    </motion.div>
-                  ))}
-                </AnimatePresence>
-              </div>
-            )}
-          </div>
+            </div>
+          )}
           
-          {/* Desktop Table View */}
-          <div className="hidden md:block overflow-x-auto">
+          {/* Table View - All Screen Sizes */}
+          <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr className="border-b border-border bg-muted/50">
@@ -563,7 +482,7 @@ export default function ExpensesPage() {
                             <span className="text-sm font-medium">{getCategoryName(expense.category_id || '')}</span>
                           </div>
                         </td>
-                        <td className="py-3.5 px-4 text-sm text-muted-foreground max-w-xs truncate">
+                        <td className="py-3.5 px-4 text-sm text-muted-foreground max-w-[120px] md:max-w-xs truncate">
                           {expense.description || '-'}
                         </td>
                         <td className="py-3.5 px-4 text-sm font-semibold text-right tabular-nums">
