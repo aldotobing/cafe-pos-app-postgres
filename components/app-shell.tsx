@@ -2,7 +2,7 @@
 
 import type React from "react"
 import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { usePathname, useSearchParams } from "next/navigation"
 import { LayoutGrid, Settings, ShoppingCart, History, TrendingUp, BarChart3, Package, FolderOpen, ShoppingBag, Warehouse, ShieldCheck, Users, Building2 } from "lucide-react"
 import { cn } from "../lib/utils"
 import { useCafeSettings, useMenu } from "../hooks/use-cafe-data"
@@ -36,19 +36,32 @@ const superadminLinks: LinkItem[] = [
   { href: "/superadmin", label: "Platform", icon: ShieldCheck },
   { href: "/superadmin/users", label: "Pengguna", icon: Users },
   { href: "/superadmin/cafes", label: "Cafe", icon: Building2 },
-  { href: "/reports/profit", label: "Laporan", icon: BarChart3 },
-  { href: "/settings", label: "Pengaturan", icon: Settings },
 ]
 
 export const AppShell = ({ children }: { children: React.ReactNode }) => {
   const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const urlCafeId = searchParams.get('cafe_id')
   const { userData, signOutUser, signingOut, error, clearError } = useAuth()
-  const { settings } = useCafeSettings(userData?.cafe_id)
-  const { menu } = useMenu(userData?.cafe_id)
+  
+  const isSuperadmin = userData?.role === 'superadmin'
+  const cafeId = (isSuperadmin && urlCafeId) ? Number(urlCafeId) : userData?.cafe_id
+  
+  const { settings } = useCafeSettings(cafeId)
+  const { menu } = useMenu(cafeId)
 
   // Use superadmin navigation if user is superadmin
-  const isSuperadmin = userData?.role === 'superadmin'
-  const currentLinks = isSuperadmin ? superadminLinks : links
+  // If superadmin is viewing a specific cafe, show cafe links with the cafe_id preserved
+  const isImpersonating = isSuperadmin && !!urlCafeId
+  
+  const currentLinks = isImpersonating 
+    ? [
+        { href: "/superadmin/cafes", label: "Kembali", icon: Building2 },
+        ...links.map(l => ({ ...l, href: `${l.href}?cafe_id=${urlCafeId}` }))
+      ]
+    : isSuperadmin 
+      ? superadminLinks 
+      : links
 
   const mobileNavRef = useRef<HTMLDivElement>(null)
   const isRestoringScroll = useRef(false)
@@ -201,9 +214,9 @@ export const AppShell = ({ children }: { children: React.ReactNode }) => {
         <nav className="hidden md:flex items-center justify-center border-t border-border/40 bg-muted/30">
           <div className="flex items-center gap-1 px-3 py-2">
             {currentLinks.map((l) => {
-              const isActive = pathname === l.href
+              const isActive = pathname === l.href.split('?')[0]
               const Icon = l.icon
-              const showBadge = l.href === '/stock' && stockAlertCount > 0;
+              const showBadge = l.href.startsWith('/stock') && stockAlertCount > 0;
 
               return (
                 <Link
@@ -239,7 +252,7 @@ export const AppShell = ({ children }: { children: React.ReactNode }) => {
         <nav className="md:hidden bg-muted/30 border-t border-border/40">
           <div ref={mobileNavRef} className="flex overflow-x-auto scrollbar-hide px-2 py-1.5 gap-0.5">
             {currentLinks.map((l, index) => {
-              const isActive = pathname === l.href
+              const isActive = pathname === l.href.split('?')[0]
               const Icon = l.icon
 
               const handleNavClick = () => {
@@ -275,7 +288,7 @@ export const AppShell = ({ children }: { children: React.ReactNode }) => {
                 }
               }
 
-              const showBadge = l.href === '/stock' && stockAlertCount > 0;
+              const showBadge = l.href.startsWith('/stock') && stockAlertCount > 0;
 
               return (
                 <Link

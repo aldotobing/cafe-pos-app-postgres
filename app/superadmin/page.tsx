@@ -19,7 +19,10 @@ import {
   Wifi,
   RefreshCw,
   UserCheck,
-  AlertCircle
+  AlertCircle,
+  Megaphone,
+  Send,
+  X
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from "@/lib/utils";
@@ -38,6 +41,10 @@ export default function SuperadminDashboard() {
   const [metrics, setMetrics] = useState<Metrics | null>(null);
   const [loading, setLoading] = useState(true);
   const [liveUpdateActive, setLiveUpdateActive] = useState(false);
+  const [showBroadcastModal, setShowBroadcastModal] = useState(false);
+  const [broadcastTitle, setBroadcastTitle] = useState('');
+  const [broadcastBody, setBroadcastBody] = useState('');
+  const [isBroadcasting, setIsBroadcasting] = useState(false);
   const router = useRouter();
 
   const fetchMetrics = async () => {
@@ -70,6 +77,38 @@ export default function SuperadminDashboard() {
     const interval = setInterval(fetchMetrics, 60000);
     return () => clearInterval(interval);
   }, [userData?.role]);
+
+  const handleBroadcast = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!broadcastTitle.trim() || !broadcastBody.trim()) {
+      toast.error('Judul dan isi pengumuman tidak boleh kosong');
+      return;
+    }
+
+    setIsBroadcasting(true);
+    try {
+      const res = await fetch('/api/superadmin/broadcast', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: broadcastTitle,
+          body: broadcastBody,
+          url: '/dashboard'
+        })
+      });
+
+      if (!res.ok) throw new Error('Gagal mengirim siaran');
+      
+      toast.success('Pengumuman berhasil disiarkan ke seluruh pengguna');
+      setShowBroadcastModal(false);
+      setBroadcastTitle('');
+      setBroadcastBody('');
+    } catch (err: any) {
+      toast.error(err.message || 'Gagal menyiarkan pengumuman');
+    } finally {
+      setIsBroadcasting(false);
+    }
+  };
 
   if (authLoading || loading) {
     return (
@@ -115,6 +154,13 @@ export default function SuperadminDashboard() {
                 <span className="hidden sm:inline">Live Update</span>
               </div>
             )}
+            <button
+              onClick={() => setShowBroadcastModal(true)}
+              className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-amber-500 hover:bg-amber-600 text-white transition shadow-sm text-sm font-medium"
+            >
+              <Megaphone className="w-4 h-4" />
+              <span className="hidden sm:inline">Siaran Global</span>
+            </button>
             <button
               onClick={fetchMetrics}
               className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition shadow-sm text-sm font-medium"
@@ -248,16 +294,16 @@ export default function SuperadminDashboard() {
               <div className="bg-muted/50 p-4 rounded-lg">
                 <div className="flex items-center gap-2 mb-2">
                   <DollarSign className="w-4 h-4 text-amber-500" />
-                  <span className="text-xs text-muted-foreground">Revenue Minggu Ini</span>
+                  <span className="text-xs text-muted-foreground">Laba Bulan Ini</span>
                 </div>
-                <p className="text-lg font-bold">{formatCurrency(metrics?.revenue.week || 0)}</p>
+                <p className="text-2xl font-bold">{formatCurrency(metrics?.revenue.month || 0)}</p>
               </div>
               <div className="bg-muted/50 p-4 rounded-lg">
                 <div className="flex items-center gap-2 mb-2">
-                  <ShoppingCart className="w-4 h-4 text-purple-500" />
-                  <span className="text-xs text-muted-foreground">Transaksi Bulan Ini</span>
+                  <AlertCircle className="w-4 h-4 text-rose-500" />
+                  <span className="text-xs text-muted-foreground">Menunggu Persetujuan</span>
                 </div>
-                <p className="text-2xl font-bold">{formatNumber(metrics?.transactions.month || 0)}</p>
+                <p className="text-2xl font-bold">{formatNumber(metrics?.approvals.pending || 0)}</p>
               </div>
             </div>
           </motion.div>
@@ -313,11 +359,11 @@ export default function SuperadminDashboard() {
               <span className="text-sm font-medium">Kelola Pengguna</span>
             </button>
             <button
-              onClick={() => router.push('/superadmin/users')}
+              onClick={() => router.push('/superadmin/cafes')}
               className="flex flex-col items-center gap-2 p-4 rounded-lg bg-muted/50 hover:bg-muted transition"
             >
-              <ShieldCheck className="w-6 h-6 text-emerald-600" />
-              <span className="text-sm font-medium">Setujui Akun</span>
+              <Building2 className="w-6 h-6 text-emerald-600" />
+              <span className="text-sm font-medium">Kelola Cafe</span>
             </button>
             <button
               onClick={() => router.push('/reports/profit')}
@@ -336,6 +382,93 @@ export default function SuperadminDashboard() {
           </div>
         </motion.div>
       </div>
+
+      {/* Broadcast Modal */}
+      {showBroadcastModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            className="bg-card w-full max-w-md rounded-xl shadow-xl overflow-hidden border border-border/50"
+          >
+            <div className="flex items-center justify-between p-4 border-b border-border/50">
+              <div className="flex items-center gap-2">
+                <Megaphone className="w-5 h-5 text-amber-500" />
+                <h2 className="font-semibold">Siaran Global (Push Notification)</h2>
+              </div>
+              <button
+                onClick={() => setShowBroadcastModal(false)}
+                className="p-1 rounded-lg hover:bg-muted text-muted-foreground transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <form onSubmit={handleBroadcast} className="p-4 space-y-4">
+              <div className="bg-amber-500/10 text-amber-600 text-xs p-3 rounded-lg flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                <p>Notifikasi ini akan dikirimkan ke semua perangkat admin cafe yang telah mengizinkan notifikasi browser.</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-1.5">Judul Pengumuman</label>
+                <input
+                  type="text"
+                  required
+                  value={broadcastTitle}
+                  onChange={(e) => setBroadcastTitle(e.target.value)}
+                  placeholder="Misal: Pemeliharaan Server Malam Ini"
+                  className="w-full px-3 py-2 rounded-lg border border-border/50 bg-background focus:outline-none focus:ring-2 focus:ring-primary/20"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-1.5">Isi Pesan</label>
+                <textarea
+                  required
+                  rows={4}
+                  value={broadcastBody}
+                  onChange={(e) => setBroadcastBody(e.target.value)}
+                  placeholder="Tulis pesan pengumuman..."
+                  className="w-full px-3 py-2 rounded-lg border border-border/50 bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowBroadcastModal(false)}
+                  className="px-4 py-2 rounded-lg hover:bg-muted font-medium text-sm transition"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={isBroadcasting}
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg bg-amber-500 hover:bg-amber-600 text-white font-medium text-sm transition disabled:opacity-50"
+                >
+                  {isBroadcasting ? (
+                    <>
+                      <motion.div
+                        animate={{ rotate: 360 }}
+                        transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
+                        className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full"
+                      />
+                      <span>Mengirim...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Send className="w-4 h-4" />
+                      <span>Kirim Siaran</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </motion.div>
+        </div>
+      )}
     </AppShell>
   );
 }

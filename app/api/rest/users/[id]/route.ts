@@ -76,6 +76,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
     if (body.full_name !== undefined) updateData.full_name = body.full_name;
     if (body.role !== undefined && user.role === 'superadmin') updateData.role = body.role;
     if (body.cafe_id !== undefined && user.role === 'superadmin') updateData.cafe_id = body.cafe_id;
+    if (body.trial_end_date !== undefined && user.role === 'superadmin') updateData.trial_end_date = body.trial_end_date;
 
     const { data, error } = await supabaseAdmin
       .from('user_profiles')

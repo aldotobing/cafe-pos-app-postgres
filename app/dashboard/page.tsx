@@ -6,7 +6,7 @@ import { formatRupiah } from "../../lib/format"
 import { useMenu, useTransactions } from "@/hooks/use-cafe-data"
 import { TrendingUp, CreditCard, Package, DollarSign } from "lucide-react"
 import { useAuth } from '@/lib/auth-context';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { motion, Variants } from 'framer-motion';
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader"
 import { QuickActions } from "@/components/dashboard/QuickActions"
@@ -40,7 +40,9 @@ const itemVariants: Variants = {
 
 export default function DashboardPage() {
   const { user, userData, loading: authLoading } = useAuth();
-  const cafeId = userData?.cafe_id;
+  const searchParams = useSearchParams();
+  const urlCafeId = searchParams.get('cafe_id');
+  const cafeId = (userData?.role === 'superadmin' && urlCafeId) ? Number(urlCafeId) : userData?.cafe_id;
   const { menu, isLoading: menuLoading } = useMenu(cafeId);
   // Use limit=1000 to fetch all transactions for dashboard stats
   const { transactions, isLoading: transactionsLoading } = useTransactions(cafeId, 1000);

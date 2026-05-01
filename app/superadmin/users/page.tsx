@@ -25,7 +25,8 @@ import {
   RefreshCw,
   ChevronLeft,
   ChevronRight,
-  Filter
+  Filter,
+  CalendarPlus
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from "@/lib/utils";
@@ -108,6 +109,30 @@ export default function UserManagement() {
       toast.success(currentActive ? 'Pengguna dinonaktifkan' : 'Pengguna diaktifkan');
     } catch (err) {
       toast.error('Gagal memperbarui status aktif');
+    }
+  };
+
+  const extendTrial = async (userId: string, currentEndDate?: string) => {
+    try {
+      const baseDate = currentEndDate && new Date(currentEndDate) > new Date() 
+        ? new Date(currentEndDate) 
+        : new Date();
+      baseDate.setDate(baseDate.getDate() + 30);
+      const newEndDate = baseDate.toISOString();
+
+      const response = await fetch(`/api/rest/users/${userId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ trial_end_date: newEndDate })
+      });
+      if (!response.ok) throw new Error('Failed to update trial end date');
+      
+      setUsers(users.map(user =>
+        user.id === userId ? { ...user, trial_end_date: newEndDate } : user
+      ));
+      toast.success('Trial berhasil diperpanjang 30 hari');
+    } catch (err) {
+      toast.error('Gagal memperpanjang masa trial');
     }
   };
 
@@ -474,6 +499,13 @@ export default function UserManagement() {
                             <td className="px-4 py-3">
                               <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                 <button
+                                  onClick={() => extendTrial(user.id, user.trial_end_date)}
+                                  className="p-2 rounded-lg transition hover:bg-amber-500/10 text-amber-600"
+                                  title="Perpanjang Trial 30 Hari"
+                                >
+                                  <CalendarPlus className="w-4 h-4" />
+                                </button>
+                                <button
                                   onClick={() => toggleApproval(user.id, user.is_approved)}
                                   className={cn(
                                     "p-2 rounded-lg transition",
@@ -607,6 +639,13 @@ export default function UserManagement() {
                               </div>
 
                               <div className="flex gap-2 pt-2">
+                                <button
+                                  onClick={() => extendTrial(user.id, user.trial_end_date)}
+                                  className="flex items-center justify-center p-2 rounded-lg bg-amber-500/10 text-amber-600 hover:bg-amber-500/20 transition shrink-0"
+                                  title="Perpanjang Trial 30 Hari"
+                                >
+                                  <CalendarPlus className="w-4 h-4" />
+                                </button>
                                 <button
                                   onClick={() => toggleApproval(user.id, user.is_approved)}
                                   className={cn(

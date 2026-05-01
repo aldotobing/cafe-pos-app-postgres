@@ -7,7 +7,7 @@ import { cafeSettingsApi } from "@/lib/api"
 import { Save, Loader2, Settings } from "lucide-react"
 import { toast } from "sonner"
 import { useAuth } from '@/lib/auth-context'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { motion } from 'framer-motion'
 
 import { GeneralSettings } from "@/components/settings/general-settings"
@@ -17,7 +17,9 @@ import { CashierManagement } from "@/components/settings/cashier-management"
 
 export default function Page() {
   const { userData, loading: authLoading, user } = useAuth()
-  const cafeId = userData?.cafe_id;
+  const searchParams = useSearchParams()
+  const urlCafeId = searchParams.get('cafe_id')
+  const cafeId = (userData?.role === 'superadmin' && urlCafeId) ? Number(urlCafeId) : userData?.cafe_id;
   const { settings, isLoading: settingsLoading, mutate: mutateSettings } = useCafeSettings(cafeId)
   const router = useRouter()
   const [localSettings, setLocalSettings] = useState<any>({})
@@ -79,7 +81,7 @@ export default function Page() {
     )
   }
 
-  const canEdit = userData?.role === "admin"
+  const canEdit = userData?.role === "admin" || userData?.role === "superadmin"
 
   const handleInputChange = (field: keyof typeof localSettings) => (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.type === 'number' ? Number(e.target.value) || 0 : e.target.value;
@@ -183,7 +185,7 @@ export default function Page() {
         </div>
 
         {/* Right Column: Admin-only sections */}
-        {userData?.role === 'admin' && (
+        {(userData?.role === 'admin' || userData?.role === 'superadmin') && (
           <div className="flex flex-col gap-5">
             <NotificationSettings
               localSettings={localSettings}
@@ -199,7 +201,7 @@ export default function Page() {
 
             <CashierManagement
               userId={user?.id}
-              cafeId={userData?.cafe_id}
+              cafeId={cafeId}
             />
           </div>
         )}

@@ -131,3 +131,62 @@ export async function notifyCafeAdmins(cafeId: number, title: string, body: stri
     console.error('[Push] Error in notifyCafeAdmins:', error);
   }
 }
+
+export async function notifyAllUsers(title: string, body: string, url: string = '/') {
+  if (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) {
+    console.warn('[Push] VAPID keys not configured. Skipping global broadcast.');
+    return;
+  }
+
+  try {
+    // Fetch all active subscriptions across the platform
+    const { data: allSubscriptions, error: subError } = await supabaseAdmin
+      .from('push_subscriptions')
+      .select('*')
+      .is('deleted_at', null);
+
+    if (subError) {
+      console.error('[Push] Error fetching all subscriptions:', subError.message);
+      return;
+    }
+
+    if (!allSubscriptions || allSubscriptions.length === 0) {
+      console.log(`[Push] No subscriptions found for global broadcast.`);
+      return;
+    }
+
+    console.log(`[Push] Broadcasting to ${allSubscriptions.length} subscription(s)...`);
+    
+    const notificationPayload = JSON.stringify({
+      title,
+      body,
+      url
+    });
+
+    const sendPromises = allSubscriptions.map(async (sub: any) => {
+      const pushSubscription = {
+        endpoint: sub.endpoint,
+        keys: {
+          p256dh: sub.p256dh_key,
+          auth: sub.auth_key
+        }
+      };
+
+      try {
+        await webpush.sendNotification(pushSubscription, notificationPayload);
+      } catch (error: any) {
+        if (error.statusCode === 404 || error.statusCode === 410) {
+          await supabaseAdmin
+            .from('push_subscriptions')
+            .delete()
+            .eq('id', sub.id);
+        }
+      }
+    });
+
+    await Promise.all(sendPromises);
+    console.log('[Push] Global broadcast completed.');
+  } catch (error) {
+    console.error('[Push] Error in notifyAllUsers:', error);
+  }
+}
