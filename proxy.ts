@@ -12,6 +12,7 @@ import type { NextRequest } from 'next/server'
 
 // Public routes yang tidak perlu authentication check
 const PUBLIC_ROUTES = [
+  '/',
   '/login',
   '/signup',
   '/api/auth/login',

@@ -252,9 +252,11 @@ export default function HomePage() {
         <header style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 50, padding: '20px 0', background: isScrolled ? 'var(--header-bg)' : 'transparent', backdropFilter: 'blur(16px)', borderBottom: isScrolled ? '1px solid var(--line)' : 'none', transition: 'all 0.3s' }}>
           <div className="container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <Link href="/" className="logo-link">
-              <span style={{ width: 32, height: 32, borderRadius: 8, background: 'var(--gold)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <svg width="18" height="18" viewBox="0 0 14 14" fill="none"><rect x="1" y="1" width="5" height="5" rx="1" fill="var(--text-primary)" /><rect x="8" y="1" width="5" height="5" rx="1" fill="var(--text-primary)" /><rect x="1" y="8" width="5" height="5" rx="1" fill="var(--text-primary)" /><rect x="8" y="8" width="5" height="5" rx="1" fill="var(--text-primary)" opacity="0.4" /></svg>
-              </span>
+              <img 
+                src="/logo.png" 
+                alt="KasirKu Logo" 
+                style={{ width: 32, height: 32, borderRadius: 8, objectFit: 'cover' }}
+              />
               KasirKu
             </Link>
             <nav className="nav-desktop">
