@@ -111,22 +111,46 @@ export function ProductVariantsManager({
 
   const loadAttributes = async () => {
     try {
-      const response = await fetch(`/api/rest/variant_attributes?cafe_id=${cafeId}`)
+      // Single API call to get all attributes with their values
+      const response = await fetch(`/api/rest/variant_attributes/with-values?cafe_id=${cafeId}`)
       const data = await response.json()
 
-      // Handle different response formats
+      if (!response.ok) {
+        console.error('Failed to load attributes:', data.error)
+        return
+      }
+
+      // Transform data from the new endpoint format
       const attributesList = Array.isArray(data) ? data : (data.data || data.results || [])
 
-      setAttributes(attributesList)
+      // Extract attributes (without nested values)
+      const attrs: VariantAttribute[] = attributesList.map((attr: any) => ({
+        id: attr.id,
+        cafe_id: attr.cafe_id,
+        name: attr.name,
+        sortOrder: attr.sort_order,
+        isActive: attr.is_active,
+        createdAt: attr.created_at,
+        updatedAt: attr.updated_at,
+        deleted_at: attr.deleted_at,
+        version: attr.version,
+      }))
+      setAttributes(attrs)
       
-      // Load values for each attribute
+      // Flatten all values from nested data
       const allValues: VariantAttributeValue[] = []
-      for (const attr of attributesList) {
-        const valuesRes = await fetch(`/api/rest/variant_attribute_values?attribute_id=${attr.id}`)
-        const valuesData = await valuesRes.json()
-        const valuesList = Array.isArray(valuesData) ? valuesData : (valuesData.data || valuesData.results || [])
-        allValues.push(...valuesList)
-      }
+      attributesList.forEach((attr: any) => {
+        const values = (attr.values || []).map((val: any) => ({
+          id: val.id,
+          attributeId: attr.id,
+          value: val.value,
+          sortOrder: val.sort_order,
+          isActive: val.is_active,
+          createdAt: val.created_at,
+          updatedAt: val.updated_at,
+        }))
+        allValues.push(...values)
+      })
       setAttributeValues(allValues)
     } catch (error) {
       // Silent fail
