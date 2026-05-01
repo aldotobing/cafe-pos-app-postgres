@@ -56,8 +56,33 @@ export async function GET(request: Request) {
     // Calculate total
     const totalAmount = expenses?.reduce((sum: number, exp: any) => sum + (exp.amount || 0), 0) || 0;
 
+    // Get unique created_by user IDs
+    const userIds = [...new Set(expenses?.map((exp: any) => exp.created_by).filter(Boolean))];
+    
+    // Fetch user names from user_profiles if there are user IDs
+    let userMap: Record<string, string> = {};
+    if (userIds.length > 0) {
+      const { data: profiles, error: profilesError } = await (supabaseAdmin as any)
+        .from('user_profiles')
+        .select('user_id, full_name')
+        .in('user_id', userIds);
+      
+      if (!profilesError && profiles) {
+        userMap = profiles.reduce((acc: Record<string, string>, p: any) => {
+          acc[p.user_id] = p.full_name || 'Unknown';
+          return acc;
+        }, {});
+      }
+    }
+
+    // Merge user names with expenses
+    const expensesWithCreator = expenses?.map((exp: any) => ({
+      ...exp,
+      created_by_name: userMap[exp.created_by] || '-'
+    }));
+
     return NextResponse.json({
-      data: expenses || [],
+      data: expensesWithCreator || [],
       total: totalAmount,
       count: expenses?.length || 0
     });
@@ -97,7 +122,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Expense date is required' }, { status: 400 });
     }
 
-    // Insert expense
+    // Insert expense with creator info
     const { data: expense, error } = await (supabaseAdmin as any)
       .from('expenses')
       .insert({
@@ -113,9 +138,15 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Failed to create expense' }, { status: 500 });
     }
 
+    // Add created_by_name to response
+    const expenseWithCreator = {
+      ...expense,
+      created_by_name: user.fullName || user.email || 'Unknown'
+    };
+
     return NextResponse.json({
       message: 'Expense created successfully',
-      data: expense
+      data: expenseWithCreator
     }, { status: 201 });
 
   } catch (error) {

@@ -197,12 +197,20 @@ export default function ExpensesPage() {
       }
       
       toast.success('Pengeluaran berhasil dihapus');
+      
+      // Small delay to show loading state before closing
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
       mutate();
       setDeleteDialogOpen(false);
       setExpenseToDelete(null);
+      
+      // Reset loading state after dialog animation completes
+      setTimeout(() => {
+        setIsDeleting(false);
+      }, 300);
     } catch (error) {
       toast.error('Gagal menghapus pengeluaran');
-    } finally {
       setIsDeleting(false);
     }
   };
@@ -441,13 +449,14 @@ export default function ExpensesPage() {
                   <th className="text-left py-3 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider">Kategori</th>
                   <th className="text-left py-3 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider">Deskripsi</th>
                   <th className="text-right py-3 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider">Jumlah</th>
+                  <th className="text-left py-3 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider">Dibuat Oleh</th>
                   <th className="text-center py-3 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider">Aksi</th>
                 </tr>
               </thead>
               <tbody>
                 {expenses.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="py-12 text-center text-muted-foreground">
+                    <td colSpan={6} className="py-12 text-center text-muted-foreground">
                       <div className="flex flex-col items-center gap-3">
                         <div className="w-12 h-12 rounded-full bg-muted/50 flex items-center justify-center">
                           <Wallet className="w-6 h-6 text-muted-foreground" />
@@ -487,6 +496,9 @@ export default function ExpensesPage() {
                         </td>
                         <td className="py-3.5 px-4 text-sm font-semibold text-right tabular-nums">
                           {formatRupiah(expense.amount)}
+                        </td>
+                        <td className="py-3.5 px-4 text-sm text-muted-foreground whitespace-nowrap">
+                          {expense.created_by_name || '-'}
                         </td>
                         <td className="py-3.5 px-4">
                           <div className="flex items-center justify-center gap-0.5">
@@ -697,32 +709,32 @@ export default function ExpensesPage() {
               Apakah Anda yakin ingin menghapus pengeluaran ini? Tindakan ini tidak dapat dibatalkan.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <div className="flex gap-2 px-4 py-3 border-t">
-            <button
+          <AlertDialogFooter className="px-4 py-3 border-t">
+            <AlertDialogCancel 
               onClick={cancelDelete}
               disabled={isDeleting}
-              className="flex-1 px-4 py-2 rounded-lg border border-input bg-transparent hover:bg-accent hover:text-accent-foreground transition text-sm disabled:opacity-50"
+              className="flex-1 px-4 py-2 h-auto rounded-lg border border-input bg-background hover:bg-accent hover:text-accent-foreground text-sm disabled:opacity-50"
             >
               Batal
-            </button>
-            <button
+            </AlertDialogCancel>
+            <AlertDialogAction 
               onClick={confirmDelete}
               disabled={isDeleting}
-              className="flex-1 px-4 py-2 rounded-lg bg-destructive text-destructive-foreground hover:bg-destructive/90 transition text-sm font-medium flex items-center justify-center gap-2 disabled:opacity-50"
+              className="flex-1 px-4 py-2 h-auto rounded-lg bg-destructive text-destructive-foreground hover:bg-destructive/90 text-sm font-medium inline-flex items-center justify-center"
             >
               {isDeleting ? (
                 <>
-                  <RefreshCw className="h-4 w-4 animate-spin" />
+                  <RefreshCw className="h-4 w-4 animate-spin mr-2 shrink-0" />
                   <span>Menghapus...</span>
                 </>
               ) : (
                 <>
-                  <Trash2 className="h-4 w-4" />
+                  <Trash2 className="h-4 w-4 mr-2 shrink-0" />
                   <span>Hapus</span>
                 </>
               )}
-            </button>
-          </div>
+            </AlertDialogAction>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </AppShell>

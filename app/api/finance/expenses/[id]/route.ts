@@ -56,9 +56,20 @@ export async function PUT(
       return NextResponse.json({ error: 'Failed to update expense' }, { status: 500 });
     }
 
+    // Fetch creator name
+    let createdByName = '-';
+    if (expense?.created_by) {
+      const { data: profile } = await (supabaseAdmin as any)
+        .from('user_profiles')
+        .select('full_name')
+        .eq('user_id', expense.created_by)
+        .single();
+      createdByName = profile?.full_name || 'Unknown';
+    }
+
     return NextResponse.json({
       message: 'Expense updated successfully',
-      data: expense
+      data: { ...expense, created_by_name: createdByName }
     });
 
   } catch (error) {

@@ -38,7 +38,7 @@ export interface Expense {
     
     // Metadata
     created_by?: string;
-    created_by_name?: string; // Joined data
+    created_by_name?: string; // Denormalized creator name
     created_at: string;
     updated_at: string;
     deleted_at?: string;
