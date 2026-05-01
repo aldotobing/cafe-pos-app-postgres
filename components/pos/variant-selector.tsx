@@ -8,6 +8,11 @@ import { toast } from "sonner"
 import type { ProductVariant } from "@/types"
 import { ImageIcon } from "lucide-react"
 
+interface SelectedVariant {
+  variant: ProductVariant
+  quantity: number
+}
+
 interface VariantSelectorProps {
   menuItem: any
   isOpen: boolean
@@ -17,15 +22,13 @@ interface VariantSelectorProps {
 
 export function VariantSelector({ menuItem, isOpen, onClose, onAddToCart }: VariantSelectorProps) {
   const [variants, setVariants] = useState<ProductVariant[]>([])
-  const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(null)
-  const [quantity, setQuantity] = useState(1)
+  const [selectedVariants, setSelectedVariants] = useState<SelectedVariant[]>([])
   const [isLoading, setIsLoading] = useState(false)
 
   useEffect(() => {
     if (isOpen && menuItem) {
       loadVariants()
-      setSelectedVariant(null)
-      setQuantity(1)
+      setSelectedVariants([])
     }
   }, [isOpen, menuItem])
 
@@ -53,38 +56,71 @@ export function VariantSelector({ menuItem, isOpen, onClose, onAddToCart }: Vari
   }
 
   const handleAddToCart = () => {
-    if (!selectedVariant) {
-      toast.error("Pilih varian terlebih dahulu")
+    if (selectedVariants.length === 0) {
+      toast.error("Pilih minimal satu varian")
       return
     }
 
-    // Check stock if tracking is enabled
-    if (selectedVariant.trackStock || selectedVariant.track_stock) {
-      const stock = selectedVariant.stockQuantity || selectedVariant.stock_quantity || 0
-      if (stock < quantity) {
-        toast.error(`Stok tidak mencukupi. Tersisa: ${stock}`)
-        return
+    // Check stock for all selected variants
+    for (const { variant, quantity } of selectedVariants) {
+      if (variant.trackStock || variant.track_stock) {
+        const stock = variant.stockQuantity || variant.stock_quantity || 0
+        if (stock < quantity) {
+          toast.error(`${variant.variantName || variant.variant_name}: Stok tidak mencukupi. Tersisa: ${stock}`)
+          return
+        }
       }
     }
 
-    onAddToCart(menuItem, selectedVariant, quantity)
+    // Add all selected variants to cart
+    selectedVariants.forEach(({ variant, quantity }) => {
+      onAddToCart(menuItem, variant, quantity)
+    })
+
+    const totalItems = selectedVariants.reduce((sum, { quantity }) => sum + quantity, 0)
+    toast.success(`${totalItems} item ditambahkan ke pesanan`)
     onClose()
   }
 
-  const increaseQty = () => {
-    if (!selectedVariant) return
-    const stock = selectedVariant.stockQuantity || selectedVariant.stock_quantity || 0
-    const isTrackingStock = !!(selectedVariant.trackStock || selectedVariant.track_stock)
-    
-    setQuantity(prev => {
-      if (isTrackingStock && prev >= stock) {
-        toast.error(`Stok tidak mencukupi. Tersisa: ${stock}`)
-        return prev
-      }
-      return prev + 1
-    })
+  const toggleVariant = (variant: ProductVariant) => {
+    const existing = selectedVariants.find(sv => sv.variant.id === variant.id)
+    if (existing) {
+      setSelectedVariants(prev => prev.filter(sv => sv.variant.id !== variant.id))
+    } else {
+      setSelectedVariants(prev => [...prev, { variant, quantity: 1 }])
+    }
   }
-  const decreaseQty = () => setQuantity(prev => (prev > 1 ? prev - 1 : 1))
+
+  const updateQuantity = (variantId: string, delta: number) => {
+    setSelectedVariants(prev => prev.map(sv => {
+      if (sv.variant.id === variantId) {
+        const stock = sv.variant.stockQuantity || sv.variant.stock_quantity || 0
+        const isTrackingStock = !!(sv.variant.trackStock || sv.variant.track_stock)
+        const newQty = Math.max(1, sv.quantity + delta)
+        
+        if (isTrackingStock && newQty > stock) {
+          toast.error(`Stok tidak mencukupi. Tersisa: ${stock}`)
+          return sv
+        }
+        return { ...sv, quantity: newQty }
+      }
+      return sv
+    }))
+  }
+
+  const getSelectedQuantity = (variantId: string) => {
+    return selectedVariants.find(sv => sv.variant?.id === variantId)?.quantity || 1
+  }
+
+  const isSelected = (variantId: string) => {
+    return selectedVariants.some(sv => sv.variant?.id === variantId)
+  }
+
+  const totalSelectedItems = selectedVariants.reduce((sum, { quantity }) => sum + quantity, 0)
+  const totalSelectedPrice = selectedVariants.reduce((sum, { variant, quantity }) => {
+    if (!variant || !menuItem) return sum
+    return sum + (variant.price || menuItem.price) * quantity
+  }, 0)
 
   if (!isOpen || !menuItem) return null
 
@@ -132,15 +168,13 @@ export function VariantSelector({ menuItem, isOpen, onClose, onAddToCart }: Vari
                     <Package className="w-6 h-6 sm:w-7 sm:h-7 text-primary/60" />
                   </div>
                 )}
-                {selectedVariant && (
+                {selectedVariants.length > 0 && (
                   <motion.div
                     initial={{ scale: 0 }}
                     animate={{ scale: 1 }}
                     className="absolute -bottom-1 -right-1 w-5 h-5 bg-primary rounded-full flex items-center justify-center shadow-sm"
                   >
-                    <svg className="w-3 h-3 text-primary-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                    </svg>
+                    <span className="text-[10px] font-bold text-primary-foreground">{selectedVariants.length}</span>
                   </motion.div>
                 )}
               </div>
@@ -149,8 +183,8 @@ export function VariantSelector({ menuItem, isOpen, onClose, onAddToCart }: Vari
               <div className="flex-1 min-w-0">
                 <h3 className="font-semibold text-base sm:text-lg truncate leading-tight">{menuItem.name}</h3>
                 <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
-                  {selectedVariant 
-                    ? `${selectedVariant.variantName || selectedVariant.variant_name} • ${formatRupiah(selectedVariant.price || menuItem.price)}`
+                  {selectedVariants.length > 0
+                    ? `${selectedVariants.length} varian dipilih • Total: ${formatRupiah(totalSelectedPrice)}`
                     : `Pilih dari ${variants.length} varian tersedia`
                   }
                 </p>
@@ -184,7 +218,6 @@ export function VariantSelector({ menuItem, isOpen, onClose, onAddToCart }: Vari
             ) : (
               <div className="space-y-2.5">
                 {variants.map((variant, index) => {
-                  const isSelected = selectedVariant?.id === variant.id
                   const price = variant.price || menuItem.price
                   const stock = variant.stockQuantity || variant.stock_quantity || 0
                   const isTrackingStock = !!(variant.trackStock || variant.track_stock)
@@ -192,78 +225,122 @@ export function VariantSelector({ menuItem, isOpen, onClose, onAddToCart }: Vari
                   const isLowStock = isTrackingStock && stock <= (variant.minStock || variant.min_stock || 5)
 
                   return (
-                    <motion.button
+                    <motion.div
                       key={variant.id}
-                      onClick={() => {
-                        if (!isOutOfStock) {
-                          setSelectedVariant(variant)
-                          setQuantity(1)
-                        }
-                      }}
-                      disabled={isOutOfStock}
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: index * 0.05 }}
-                      whileHover={!isOutOfStock ? { scale: 1.01 } : {}}
-                      whileTap={!isOutOfStock ? { scale: 0.99 } : {}}
-                      className={`w-full p-3.5 sm:p-4 rounded-xl border-2 text-left transition-all ${
-                        isSelected
+                      className={`w-full rounded-xl border-2 overflow-hidden transition-all ${
+                        isSelected(variant.id)
                           ? 'border-primary bg-primary/5 shadow-sm'
                           : isOutOfStock
-                          ? 'border-muted bg-muted/20 opacity-60 cursor-not-allowed'
+                          ? 'border-muted bg-muted/20 opacity-60'
                           : 'border-border bg-card hover:border-primary/30 hover:shadow-sm'
                       }`}
                     >
-                      <div className="flex items-center justify-between gap-3">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className="font-semibold text-sm sm:text-base truncate">
-                              {variant.variantName || variant.variant_name}
-                            </span>
-                            {isSelected && (
-                              <span className="shrink-0 px-1.5 py-0.5 rounded-full bg-primary text-primary-foreground text-[10px] font-medium">
-                                Dipilih
+                      {/* Main Variant Row */}
+                      <button
+                        onClick={() => {
+                          if (!isOutOfStock) {
+                            toggleVariant(variant)
+                          }
+                        }}
+                        disabled={isOutOfStock}
+                        className="w-full p-3.5 sm:p-4 text-left transition-all"
+                      >
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold text-sm sm:text-base truncate">
+                                {variant.variantName || variant.variant_name}
                               </span>
+                              {isSelected(variant.id) && (
+                                <span className="shrink-0 px-1.5 py-0.5 rounded-full bg-primary text-primary-foreground text-[10px] font-medium">
+                                  Dipilih
+                                </span>
+                              )}
+                            </div>
+                            {(variant.sku || variant.barcode) && (
+                              <div className="flex items-center gap-2 mt-1.5 text-xs text-muted-foreground">
+                                {variant.sku && (
+                                  <span className="px-1.5 py-0.5 rounded bg-muted font-medium">SKU: {variant.sku}</span>
+                                )}
+                                {variant.barcode && (
+                                  <span className="px-1.5 py-0.5 rounded bg-muted">{variant.barcode}</span>
+                                )}
+                              </div>
                             )}
                           </div>
-                          {(variant.sku || variant.barcode) && (
-                            <div className="flex items-center gap-2 mt-1.5 text-xs text-muted-foreground">
-                              {variant.sku && (
-                                <span className="px-1.5 py-0.5 rounded bg-muted font-medium">SKU: {variant.sku}</span>
-                              )}
-                              {variant.barcode && (
-                                <span className="px-1.5 py-0.5 rounded bg-muted">{variant.barcode}</span>
-                              )}
+                          <div className="text-right shrink-0">
+                            <div className="font-bold text-sm sm:text-base text-foreground">
+                              {formatRupiah(price)}
                             </div>
-                          )}
-                        </div>
-                        <div className="text-right shrink-0">
-                          <div className="font-bold text-sm sm:text-base text-foreground">
-                            {formatRupiah(price)}
+                            {isTrackingStock && (
+                              <div className={`text-xs mt-0.5 font-medium ${
+                                isOutOfStock 
+                                  ? 'text-red-500 flex items-center gap-1' 
+                                  : isLowStock 
+                                  ? 'text-amber-500' 
+                                  : 'text-emerald-600'
+                              }`}>
+                                {isOutOfStock && <AlertCircle className="w-3 h-3 inline" />}
+                                {isOutOfStock ? 'Stok habis' : `Stok: ${stock}`}
+                              </div>
+                            )}
                           </div>
-                          {isTrackingStock && (
-                            <div className={`text-xs mt-0.5 font-medium ${
-                              isOutOfStock 
-                                ? 'text-red-500 flex items-center gap-1' 
-                                : isLowStock 
-                                ? 'text-amber-500' 
-                                : 'text-emerald-600'
-                            }`}>
-                              {isOutOfStock && <AlertCircle className="w-3 h-3 inline" />}
-                              {isOutOfStock ? 'Stok habis' : `Stok: ${stock}`}
-                            </div>
-                          )}
                         </div>
-                      </div>
-                    </motion.button>
+                      </button>
+
+                      {/* Quantity Controls - Show when selected */}
+                      <AnimatePresence>
+                        {isSelected(variant.id) && (
+                          <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: 'auto', opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ duration: 0.2 }}
+                            className="border-t border-border/50 bg-muted/30"
+                          >
+                            <div className="px-3.5 sm:px-4 py-2.5 flex items-center justify-between">
+                              <span className="text-xs sm:text-sm text-muted-foreground">Jumlah:</span>
+                              <div className="flex items-center gap-1 bg-background rounded-lg border p-0.5 shadow-sm">
+                                <motion.button
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    updateQuantity(variant.id, -1)
+                                  }}
+                                  whileTap={{ scale: 0.9 }}
+                                  className="w-7 h-7 sm:w-8 sm:h-8 rounded-md bg-muted hover:bg-muted/80 flex items-center justify-center transition"
+                                >
+                                  <Minus className="w-3 h-3 sm:w-4 sm:h-4" />
+                                </motion.button>
+                                <span className="w-8 sm:w-10 text-center font-semibold text-sm sm:text-base">
+                                  {getSelectedQuantity(variant.id)}
+                                </span>
+                                <motion.button
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    updateQuantity(variant.id, 1)
+                                  }}
+                                  whileTap={{ scale: 0.9 }}
+                                  className="w-7 h-7 sm:w-8 sm:h-8 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 flex items-center justify-center transition"
+                                >
+                                  <Plus className="w-3 h-3 sm:w-4 sm:h-4" />
+                                </motion.button>
+                              </div>
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </motion.div>
                   )
                 })}
               </div>
             )}
 
-            {/* Quantity Selector - Elegant inline design */}
+            {/* Summary when multiple variants selected */}
             <AnimatePresence>
-              {selectedVariant && (
+              {selectedVariants.length > 0 && (
                 <motion.div
                   initial={{ opacity: 0, height: 0, marginTop: 0 }}
                   animate={{ opacity: 1, height: 'auto', marginTop: 16 }}
@@ -271,42 +348,24 @@ export function VariantSelector({ menuItem, isOpen, onClose, onAddToCart }: Vari
                   transition={{ type: "spring", damping: 20, stiffness: 300 }}
                   className="overflow-hidden"
                 >
-                  <div className="p-4 rounded-xl border bg-gradient-to-br from-muted/50 to-background shadow-sm">
+                  <div className="p-4 rounded-xl border bg-gradient-to-br from-primary/5 to-background shadow-sm border-primary/20">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
                           <ShoppingCart className="w-5 h-5 text-primary" />
                         </div>
                         <div>
-                          <span className="text-sm font-semibold block">Jumlah Pesanan</span>
+                          <span className="text-sm font-semibold block">Ringkasan Pesanan</span>
                           <p className="text-xs text-muted-foreground">
-                            {selectedVariant.variantName || selectedVariant.variant_name}
+                            {totalSelectedItems} item dari {selectedVariants.length} varian
                           </p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-1 bg-background rounded-xl border p-1 shadow-sm">
-                        <motion.button
-                          onClick={decreaseQty}
-                          whileTap={{ scale: 0.9 }}
-                          className="w-9 h-9 rounded-lg bg-muted hover:bg-muted/80 flex items-center justify-center transition"
-                        >
-                          <Minus className="w-4 h-4" />
-                        </motion.button>
-                        <span className="w-10 text-center font-bold text-lg">{quantity}</span>
-                        <motion.button
-                          onClick={increaseQty}
-                          whileTap={{ scale: 0.9 }}
-                          className="w-9 h-9 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 flex items-center justify-center transition"
-                        >
-                          <Plus className="w-4 h-4" />
-                        </motion.button>
+                      <div className="text-right">
+                        <span className="font-bold text-lg text-primary">
+                          {formatRupiah(totalSelectedPrice)}
+                        </span>
                       </div>
-                    </div>
-                    <div className="mt-3 pt-3 border-t border-border/50 flex items-center justify-between">
-                      <span className="text-sm text-muted-foreground">Subtotal</span>
-                      <span className="font-bold text-lg text-primary">
-                        {formatRupiah((selectedVariant.price || menuItem.price) * quantity)}
-                      </span>
                     </div>
                   </div>
                 </motion.div>
@@ -326,17 +385,17 @@ export function VariantSelector({ menuItem, isOpen, onClose, onAddToCart }: Vari
             </motion.button>
             <motion.button
               onClick={handleAddToCart}
-              disabled={!selectedVariant || variants.length === 0}
-              whileHover={selectedVariant ? { scale: 1.02 } : {}}
-              whileTap={selectedVariant ? { scale: 0.98 } : {}}
+              disabled={selectedVariants.length === 0 || variants.length === 0}
+              whileHover={selectedVariants.length > 0 ? { scale: 1.02 } : {}}
+              whileTap={selectedVariants.length > 0 ? { scale: 0.98 } : {}}
               className="flex-1 px-5 py-2.5 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 transition text-sm font-semibold shadow-lg shadow-primary/25 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none flex items-center justify-center gap-2"
             >
-              {selectedVariant ? (
+              {selectedVariants.length > 0 ? (
                 <>
                   <ShoppingCart className="w-4 h-4" />
                   <span>Tambah ke Pesanan</span>
                   <span className="bg-primary-foreground/20 px-2 py-0.5 rounded-full text-xs">
-                    {quantity}
+                    {totalSelectedItems}
                   </span>
                 </>
               ) : (
