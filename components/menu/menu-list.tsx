@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useRef, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { Package, Filter, X, Eye, FolderOpen, ChevronLeft, ChevronRight, EyeOff, Pencil, Trash2, Image as ImageIcon, Layers } from "lucide-react"
+import { Package, Filter, X, Eye, FolderOpen, ChevronLeft, ChevronRight, EyeOff, Pencil, Trash2, Image as ImageIcon, Layers, Loader2 } from "lucide-react"
 import { useMenu, useCategories } from "@/hooks/use-cafe-data"
 import { useAuth } from "@/lib/auth-context"
 import { menuApi } from "@/lib/api"
@@ -35,13 +35,19 @@ export function MenuList({
   const toggleAvailability = async (id: string) => {
     const item = menu.find(m => m.id === id)
     if (!item) return
-    await menuApi.update(id, { available: !item.available })
-    mutateMenu()
+    setTogglingId(id)
+    try {
+      await menuApi.update(id, { available: !item.available })
+      await mutateMenu()
+    } finally {
+      setTogglingId(null)
+    }
   }
   
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('all')
   const [statusFilter, setStatusFilter] = useState<'all' | 'available' | 'unavailable'>('all')
+  const [togglingId, setTogglingId] = useState<string | null>(null)
 
   // Scroll management for categories
   const categoryScrollRef = useRef<HTMLDivElement>(null)
@@ -354,7 +360,7 @@ export function MenuList({
                 </div>
                 <div className="mt-2 flex flex-wrap gap-1">
                   <motion.button
-                    className="inline-flex items-center gap-1 rounded-md border px-1 py-0.5 text-[10px]"
+                    className="inline-flex items-center gap-1 rounded-md border px-1 py-0.5 text-[10px] disabled:opacity-50 disabled:cursor-not-allowed"
                     onClick={async (e) => {
                       e.stopPropagation();
                       if (!m.id) {
@@ -368,13 +374,24 @@ export function MenuList({
                         toast.error('Gagal mengganti status ketersediaan. Silakan coba lagi.');
                       }
                     }}
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
+                    disabled={togglingId === m.id}
+                    whileHover={togglingId !== m.id ? { scale: 1.05 } : {}}
+                    whileTap={togglingId !== m.id ? { scale: 0.95 } : {}}
                     transition={{ duration: 0.2 }}
                   >
-                    {m.available ? <Eye size={12} /> : <EyeOff size={12} />}
-                    <span className="hidden sm:inline">{m.available ? "Tersedia" : "Nonaktif"}</span>
-                    <span className="sm:hidden">{m.available ? "Tersedia" : "Nonaktif"}</span>
+                    {togglingId === m.id ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : m.available ? (
+                      <Eye size={12} />
+                    ) : (
+                      <EyeOff size={12} />
+                    )}
+                    <span className="hidden sm:inline">
+                      {togglingId === m.id ? "Memproses..." : m.available ? "Tersedia" : "Nonaktif"}
+                    </span>
+                    <span className="sm:hidden">
+                      {togglingId === m.id ? "..." : m.available ? "Tersedia" : "Nonaktif"}
+                    </span>
                   </motion.button>
                   {canEdit && (
                     <>

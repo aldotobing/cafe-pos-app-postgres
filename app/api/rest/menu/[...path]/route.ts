@@ -38,9 +38,13 @@ export async function PUT(request: Request, { params }: { params: Promise<{ path
   const user = await getAuthenticatedUser(request);
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  // Only admin/superadmin can update menu items
-  if (user.role !== 'admin' && user.role !== 'superadmin') {
-    return NextResponse.json({ error: "Forbidden: Admin access required" }, { status: 403 });
+  // Only admin/superadmin can update menu items fully
+  // Cashier can only toggle available status
+  const isAdmin = user.role === 'admin' || user.role === 'superadmin';
+  const isCashier = user.role === 'cashier';
+
+  if (!isAdmin && !isCashier) {
+    return NextResponse.json({ error: "Forbidden: Access required" }, { status: 403 });
   }
 
   try {
@@ -51,20 +55,31 @@ export async function PUT(request: Request, { params }: { params: Promise<{ path
     // Build update object dengan hanya fields yang disediakan
     const updateData: MenuUpdate = {};
     
-    if (body.name !== undefined) updateData.name = body.name;
-    if (body.category !== undefined) updateData.category = body.category;
-    if (body.category_id !== undefined) updateData.category_id = body.category_id;
-    if (body.price !== undefined) updateData.price = body.price;
-    if (body.available !== undefined) updateData.available = body.available;
-    if (body.image_url !== undefined) updateData.image_url = body.image_url;
-    if (body.stock_quantity !== undefined) updateData.stock_quantity = body.stock_quantity;
-    if (body.hpp_price !== undefined) updateData.hpp_price = body.hpp_price;
-    if (body.margin_percent !== undefined) updateData.margin_percent = body.margin_percent;
-    if (body.min_stock !== undefined) updateData.min_stock = body.min_stock;
-    if (body.track_stock !== undefined) updateData.track_stock = body.track_stock;
-    if (body.has_variants !== undefined) updateData.has_variants = body.has_variants;
-    if (body.base_unit !== undefined) updateData.base_unit = body.base_unit;
-    if (body.conversion_factor !== undefined) updateData.conversion_factor = body.conversion_factor;
+    // Admin can update all fields
+    if (isAdmin) {
+      if (body.name !== undefined) updateData.name = body.name;
+      if (body.category !== undefined) updateData.category = body.category;
+      if (body.category_id !== undefined) updateData.category_id = body.category_id;
+      if (body.price !== undefined) updateData.price = body.price;
+      if (body.available !== undefined) updateData.available = body.available;
+      if (body.image_url !== undefined) updateData.image_url = body.image_url;
+      if (body.stock_quantity !== undefined) updateData.stock_quantity = body.stock_quantity;
+      if (body.hpp_price !== undefined) updateData.hpp_price = body.hpp_price;
+      if (body.margin_percent !== undefined) updateData.margin_percent = body.margin_percent;
+      if (body.min_stock !== undefined) updateData.min_stock = body.min_stock;
+      if (body.track_stock !== undefined) updateData.track_stock = body.track_stock;
+      if (body.has_variants !== undefined) updateData.has_variants = body.has_variants;
+      if (body.base_unit !== undefined) updateData.base_unit = body.base_unit;
+      if (body.conversion_factor !== undefined) updateData.conversion_factor = body.conversion_factor;
+    } 
+    // Cashier can only toggle available status
+    else if (isCashier) {
+      if (body.available !== undefined) {
+        updateData.available = body.available;
+      } else {
+        return NextResponse.json({ error: "Forbidden: Cashier can only toggle available status" }, { status: 403 });
+      }
+    }
 
     const { data, error } = await supabaseAdmin
       .from('menu')
