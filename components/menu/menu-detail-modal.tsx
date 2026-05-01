@@ -51,7 +51,6 @@ export function MenuDetailModal({ menuItem, onClose, onEdit, canEdit }: MenuDeta
 
   const hasVariants = menuItem?.hasVariants || menuItem?.has_variants || variants.length > 0;
   const totalVariantStock = variants.reduce((sum, v) => sum + (v.stock_quantity || v.stockQuantity || 0), 0);
-  const hasVariantStockTracking = variants.some(v => v.track_stock || v.trackStock);
 
   if (!menuItem) return null;
 
@@ -77,21 +76,19 @@ export function MenuDetailModal({ menuItem, onClose, onEdit, canEdit }: MenuDeta
         transition={{ duration: 0.15 }}
       >
         {/* Header */}
-        <div className="px-4 sm:px-6 py-3 sm:py-4 border-b flex items-center justify-between shrink-0">
+        <div className="px-4 sm:px-6 py-2.5 flex items-center justify-between shrink-0">
           <div className="min-w-0 flex-1">
-            <h3 className="font-semibold text-base sm:text-lg truncate">{menuItem.name}</h3>
-            <p className="text-xs text-muted-foreground">
+            <h3 className="font-medium text-sm sm:text-base text-foreground truncate">{menuItem.name}</h3>
+            <p className="text-[11px] text-muted-foreground/80">
               {categories.find(c => c.id === menuItem.categoryId)?.name || (menuItem.category && String(menuItem.category)) || 'Tanpa Kategori'}
             </p>
           </div>
-          <div className="flex items-center gap-2 ml-2">
-            <button
-              onClick={onClose}
-              className="p-1.5 sm:p-2 rounded-lg hover:bg-muted transition"
-            >
-              <X className="h-4 w-4 sm:h-5 sm:w-5" />
-            </button>
-          </div>
+          <button
+            onClick={onClose}
+            className="p-1.5 rounded-full hover:bg-muted/80 transition text-muted-foreground/70 hover:text-foreground"
+          >
+            <X className="h-4 w-4" />
+          </button>
         </div>
 
         {/* Image Section */}
@@ -244,7 +241,7 @@ export function MenuDetailModal({ menuItem, onClose, onEdit, canEdit }: MenuDeta
                 )}
 
                 {/* Stock Summary for Variants */}
-                {hasVariants && hasVariantStockTracking && (
+                {hasVariants && (
                   <div className="rounded-lg border bg-muted/30 p-4">
                     <div className="flex items-center justify-between">
                       <span className="text-sm font-medium">Total Stok Varian</span>
@@ -286,9 +283,9 @@ export function MenuDetailModal({ menuItem, onClose, onEdit, canEdit }: MenuDeta
                   <div className="space-y-3">
                     {variants.map((variant) => {
                       const stock = variant.stock_quantity || variant.stockQuantity || 0;
-                      const isTracking = variant.track_stock || variant.trackStock;
-                      const isOutOfStock = isTracking && stock === 0;
-                      const isLowStock = isTracking && stock <= (variant.min_stock || variant.minStock || 5);
+                      const minStock = variant.min_stock || variant.minStock || 5;
+                      const isOutOfStock = stock === 0;
+                      const isLowStock = stock <= minStock && stock > 0;
                       const price = variant.price || menuItem.price;
                       const attrs = variant.attributes || [];
 
@@ -300,7 +297,7 @@ export function MenuDetailModal({ menuItem, onClose, onEdit, canEdit }: MenuDeta
                           }`}
                         >
                           <div className="flex flex-col gap-2">
-                            {/* Header: Name + Price */}
+                            {/* Header: Name + Price + Stock */}
                             <div className="flex items-start justify-between gap-2">
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2">
@@ -327,14 +324,12 @@ export function MenuDetailModal({ menuItem, onClose, onEdit, canEdit }: MenuDeta
                                 <div className="font-semibold text-sm sm:text-base">
                                   {formatRupiah(price)}
                                 </div>
-                                {isTracking && (
-                                  <div className={`text-xs mt-0.5 ${
-                                    isOutOfStock ? 'text-red-600 font-medium' :
-                                    isLowStock ? 'text-amber-600' : 'text-emerald-600'
-                                  }`}>
-                                    {isOutOfStock ? 'Habis' : `Stok ${stock}`}
-                                  </div>
-                                )}
+                                <div className={`text-xs mt-0.5 ${
+                                  isOutOfStock ? 'text-red-600 font-medium' :
+                                  isLowStock ? 'text-amber-600' : 'text-emerald-600'
+                                }`}>
+                                  {isOutOfStock ? 'Habis' : `Stok ${stock}`}
+                                </div>
                               </div>
                             </div>
 
