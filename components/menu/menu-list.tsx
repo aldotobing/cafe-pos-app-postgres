@@ -8,6 +8,7 @@ import { useAuth } from "@/lib/auth-context"
 import { menuApi } from "@/lib/api"
 import { formatRupiah, cn } from "@/lib/utils"
 import { toast } from "sonner"
+import { OptimizedCardImage } from "@/components/ui/optimized-image"
 
 interface MenuListProps {
   formVariants: any;
@@ -293,33 +294,20 @@ export function MenuList({
               onClick={() => onView(m)}
             >
               <div className="aspect-square relative bg-muted overflow-hidden">
-                {m.imageUrl ? (
-                  <motion.img
-                    src={m.imageUrl}
-                    alt={m.name}
-                    className="w-full h-full object-cover"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    onError={(e) => {
-                      const target = e.target as HTMLImageElement;
-                      target.style.display = 'none';
-                      target.parentElement!.style.display = 'flex';
-                      target.parentElement!.style.alignItems = 'center';
-                      target.parentElement!.style.justifyContent = 'center';
-                    }}
-                    whileHover={{ scale: 1.05 }}
-                    transition={{ duration: 0.3 }}
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center bg-muted">
-                    <div className="text-muted-foreground text-center p-2">
-                      <div className="bg-muted rounded-lg w-12 h-12 mx-auto mb-1 flex items-center justify-center">
-                        <ImageIcon className="h-6 w-6 opacity-50" />
+                <OptimizedCardImage
+                  src={m.imageUrl}
+                  alt={m.name}
+                  fallback={
+                    <div className="w-full h-full flex items-center justify-center bg-muted">
+                      <div className="text-muted-foreground text-center p-2">
+                        <div className="bg-muted rounded-lg w-12 h-12 mx-auto mb-1 flex items-center justify-center">
+                          <ImageIcon className="h-6 w-6 opacity-50" />
+                        </div>
+                        <span className="text-[10px]">Tanpa Gambar</span>
                       </div>
-                      <span className="text-[10px]">Tanpa Gambar</span>
                     </div>
-                  </div>
-                )}
+                  }
+                />
               </div>
               <div className="p-2">
                 <div className="flex flex-col justify-between h-[80px]">

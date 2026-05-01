@@ -6,7 +6,7 @@ import { X, Minus, Plus, Package, ShoppingCart, AlertCircle } from "lucide-react
 import { formatRupiah } from "@/lib/utils"
 import { toast } from "sonner"
 import type { ProductVariant } from "@/types"
-import { ImageIcon } from "lucide-react"
+import { OptimizedImage } from "@/components/ui/optimized-image"
 
 interface SelectedVariant {
   variant: ProductVariant
@@ -157,17 +157,18 @@ export function VariantSelector({ menuItem, isOpen, onClose, onAddToCart }: Vari
             <div className="px-4 sm:px-6 py-4 sm:py-5 border-b flex items-center gap-3 sm:gap-4 shrink-0 relative">
               {/* Product Thumbnail */}
               <div className="relative shrink-0">
-                {menuImage ? (
-                  <img
-                    src={menuImage}
-                    alt={menuItem.name}
-                    className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl object-cover shadow-md border"
-                  />
-                ) : (
-                  <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center shadow-md border">
-                    <Package className="w-6 h-6 sm:w-7 sm:h-7 text-primary/60" />
-                  </div>
-                )}
+                <OptimizedImage
+                  src={menuImage}
+                  alt={menuItem.name}
+                  width={64}
+                  height={64}
+                  className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl shadow-md border"
+                  fallback={
+                    <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center shadow-md border">
+                      <Package className="w-6 h-6 sm:w-7 sm:h-7 text-primary/60" />
+                    </div>
+                  }
+                />
                 {selectedVariants.length > 0 && (
                   <motion.div
                     initial={{ scale: 0 }}

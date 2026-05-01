@@ -7,6 +7,7 @@ import { useAuth } from "@/lib/auth-context"
 import { formatRupiah } from "@/lib/utils"
 import { useState, useEffect } from "react"
 import { BarcodePreview } from "@/components/ui/barcode-preview"
+import { OptimizedCardImage } from "@/components/ui/optimized-image"
 import type { ProductVariant } from "@/types"
 
 interface MenuDetailModalProps {
@@ -93,11 +94,11 @@ export function MenuDetailModal({ menuItem, onClose, onEdit, canEdit }: MenuDeta
 
         {/* Image Section */}
         {menuItem.imageUrl ? (
-          <div className="w-full h-40 sm:h-48 bg-muted overflow-hidden shrink-0">
-            <img
+          <div className="w-full h-40 sm:h-48 bg-muted overflow-hidden shrink-0 relative">
+            <OptimizedCardImage
               src={menuItem.imageUrl}
               alt={menuItem.name}
-              className="w-full h-full object-cover"
+              priority
             />
           </div>
         ) : null}

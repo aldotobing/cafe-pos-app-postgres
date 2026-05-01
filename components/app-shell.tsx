@@ -13,6 +13,7 @@ import { UserDropdown } from "./user-dropdown"
 import { useEffect, useRef } from "react"
 import { ThemeToggle } from "./theme-toggle"
 import { StatusIndicator, useStatusIndicator } from "./status-indicator"
+import { OptimizedThumbnail } from "./ui/optimized-image"
 
 type LinkItem = {
   href: string;
@@ -154,10 +155,11 @@ export const AppShell = ({ children }: { children: React.ReactNode }) => {
             ) : (
               <>
                 {settings?.logoUrl ? (
-                  <img
+                  <OptimizedThumbnail
                     src={settings.logoUrl}
                     alt={settings.name || "Logo"}
-                    className="h-9 w-9 rounded-lg object-cover border border-border/50 bg-muted transition-transform group-hover:scale-105"
+                    size={36}
+                    className="rounded-lg border border-border/50 bg-muted transition-transform group-hover:scale-105"
                   />
                 ) : (
                   <span className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground text-sm font-semibold">
