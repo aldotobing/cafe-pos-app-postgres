@@ -698,6 +698,19 @@ export function ProductVariantsManager({
                                   </span>
                                 )}
                               </div>
+                              {/* Attributes info */}
+                              {variant.attributes && variant.attributes.length > 0 && (
+                                <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                                  {variant.attributes.map((attr: any, idx: number) => (
+                                    <span 
+                                      key={idx}
+                                      className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary"
+                                    >
+                                      {attr.name}: {attr.value}
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
                               <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-xs text-muted-foreground">
                                 {variant.sku && (
                                   <span className="flex items-center gap-1">

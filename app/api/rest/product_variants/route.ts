@@ -12,10 +12,10 @@ export async function GET(request: Request) {
     const menuId = url.searchParams.get('menu_id');
     const menuIds = url.searchParams.get('menu_ids'); // Comma-separated list for bulk fetch
     
+    // Use v_variant_details view which includes attributes info
     let query = supabaseAdmin
-      .from('product_variants')
-      .select('*, menu!inner(cafe_id, name)')
-      .is('deleted_at', null);
+      .from('v_variant_details')
+      .select('*');
 
     if (menuId) {
       query = query.eq('menu_id', menuId);
@@ -34,7 +34,26 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json(data || []);
+    // Transform data to match ProductVariant interface with attributes
+    const transformedData = (data || []).map((v: any) => ({
+      id: v.variant_id,
+      menu_id: v.menu_id,
+      menuId: v.menu_id,
+      sku: v.sku,
+      barcode: v.barcode,
+      variant_name: v.variant_name,
+      variantName: v.variant_name,
+      price: v.variant_price,
+      stock_quantity: v.stock_quantity,
+      stockQuantity: v.stock_quantity,
+      product_name: v.product_name,
+      productName: v.product_name,
+      product_base_price: v.product_base_price,
+      effective_price: v.effective_price,
+      attributes: v.attributes || [], // Array of { name, value }
+    }));
+
+    return NextResponse.json(transformedData);
   } catch (error: any) {
     console.error('Product Variants GET error:', error);
     return NextResponse.json({ error: error.message || 'Internal server error' }, { status: 500 });
