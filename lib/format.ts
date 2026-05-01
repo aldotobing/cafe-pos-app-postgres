@@ -23,6 +23,23 @@ export function formatRupiah(value: number): string {
   }).format(value);
 }
 
+export function formatRupiahCompact(value: number): string {
+  // Handle NaN, null, or undefined values
+  if (value == null || isNaN(value)) {
+    return "Rp0";
+  }
+  
+  if (value >= 1000000000) {
+    return `Rp${(value / 1000000000).toFixed(1)}M`;
+  } else if (value >= 1000000) {
+    return `Rp${(value / 1000000).toFixed(1)}jt`;
+  } else if (value >= 1000) {
+    return `Rp${(value / 1000).toFixed(0)}rb`;
+  } else {
+    return `Rp${value.toLocaleString('id-ID')}`;
+  }
+}
+
 export function formatTanggal(d: Date | string | number): string {
   if (d === null || d === undefined) {
     return "-";

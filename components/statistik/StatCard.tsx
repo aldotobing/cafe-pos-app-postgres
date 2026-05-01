@@ -1,5 +1,5 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { LucideIcon } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
+import { LucideIcon, TrendingUp, TrendingDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface StatCardProps {
@@ -30,31 +30,76 @@ export function StatCard({
     titleClassName,
 }: StatCardProps) {
     return (
-        <Card className={cn("overflow-hidden h-full flex flex-col bg-card border-border relative group", className)}>
-            {/* Background Decorative Icon - Tucked Top Right */}
-            <div className="absolute right-2 top-2 pointer-events-none opacity-[0.05] group-hover:opacity-[0.08] group-hover:scale-105 transition-all duration-500 ease-out">
-                <Icon className={cn("h-16 w-16", iconClassName?.split(' ').find(c => c.startsWith('text-')) || "text-primary")} />
-            </div>
-
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 relative z-10 pt-5 px-5">
-                <CardTitle className={cn("text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground/70", titleClassName)}>
-                    {title}
-                </CardTitle>
-            </CardHeader>
-            <CardContent className="relative z-10 px-5 pb-5">
-                <div className={cn("text-3xl font-black text-foreground tracking-tighter", valueClassName)}>{value}</div>
-                <p className="text-[11px] text-muted-foreground font-medium mt-1.5 leading-relaxed">{description}</p>
+        <Card className={cn(
+            "relative overflow-hidden rounded-lg border border-border shadow-subtle hover:shadow-md transition-all duration-300 group bg-card",
+            className
+        )}>
+            {/* Content */}
+            <CardContent className="relative z-10 p-5">
+                {/* Header with icon and title */}
+                <div className="flex items-start justify-between mb-4">
+                    <div className="space-y-1">
+                        <h3 className={cn("text-xs font-semibold uppercase tracking-wider text-muted-foreground/70", titleClassName)}>
+                            {title}
+                        </h3>
+                        <p className="text-xs text-muted-foreground font-medium">
+                            {description}
+                        </p>
+                    </div>
+                    
+                    {/* Icon */}
+                    <div className={cn(
+                        "w-8 h-8 rounded-md flex items-center justify-center",
+                        iconClassName?.includes('chart-1') && "bg-chart-1/5",
+                        iconClassName?.includes('chart-2') && "bg-chart-2/5", 
+                        iconClassName?.includes('chart-3') && "bg-chart-3/5",
+                        iconClassName?.includes('chart-4') && "bg-chart-4/5",
+                        !iconClassName && "bg-primary/5"
+                    )}>
+                        <Icon className={cn(
+                            "w-4 h-4 opacity-40",
+                            iconClassName?.includes('chart-1') && "text-chart-1",
+                            iconClassName?.includes('chart-2') && "text-chart-2", 
+                            iconClassName?.includes('chart-3') && "text-chart-3",
+                            iconClassName?.includes('chart-4') && "text-chart-4",
+                            !iconClassName && "text-primary"
+                        )} />
+                    </div>
+                </div>
+                
+                {/* Value */}
+                <div className="mb-3">
+                    <div 
+                        className={cn(
+                            "font-bold text-foreground leading-tight",
+                            "text-xl sm:text-2xl lg:text-3xl",
+                            typeof value === 'string' && value.length > 12 ? "text-lg sm:text-xl lg:text-2xl" : "",
+                            typeof value === 'string' && value.length > 18 ? "text-base sm:text-lg lg:text-xl" : "",
+                            valueClassName
+                        )}
+                        title={typeof value === 'string' && value.length > 12 ? value : undefined}
+                    >
+                        {value}
+                    </div>
+                </div>
+                
+                {/* Trend */}
                 {trend && (
-                    <div className="flex items-center mt-3 text-[10px]">
-                        <span
-                            className={cn(
-                                "font-bold px-1.5 py-0.5 rounded-md mr-1.5",
-                                trend.positive ? "bg-emerald-500/10 text-emerald-500" : "bg-red-500/10 text-red-500"
+                    <div className="flex items-center gap-2">
+                        <div className={cn(
+                            "flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium",
+                            trend.positive 
+                                ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300" 
+                                : "bg-red-50 text-red-700 dark:bg-red-950 dark:text-red-300"
+                        )}>
+                            {trend.positive ? (
+                                <TrendingUp className="w-3 h-3" />
+                            ) : (
+                                <TrendingDown className="w-3 h-3" />
                             )}
-                        >
-                            {trend.positive ? "↑" : "↓"} {trend.value}%
-                        </span>
-                        <span className="text-muted-foreground/60 font-medium">{trend.label}</span>
+                            <span>{trend.value}%</span>
+                        </div>
+                        <span className="text-xs text-muted-foreground">{trend.label}</span>
                     </div>
                 )}
             </CardContent>

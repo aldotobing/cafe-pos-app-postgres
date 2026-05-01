@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { useMenu, useCategories, useCafeSettings } from '@/hooks/use-cafe-data';
 import { useAuth } from '@/lib/auth-context';
 import { AppShell } from '@/components/app-shell';
-import { formatRupiah, formatTanggal } from '@/lib/format';
+import { formatRupiah, formatRupiahCompact, formatTanggal } from '@/lib/format';
 import {
   Calendar as CalendarIcon,
   CreditCard,
@@ -411,14 +411,14 @@ export default function StatistikPage() {
             className="space-y-10 sm:space-y-12"
           >
             {/* Summary Cards */}
-            <div className="grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
+            <div className="grid gap-8 grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 max-w-7xl mx-auto">
               <motion.div variants={itemVariants}>
                 <StatCard
                   title="Total Pendapatan"
                   value={formatRupiah(statisticData.totalRevenue)}
                   description="Total pendapatan periode ini"
                   icon={DollarSign}
-                  iconClassName="text-green-600 bg-green-100"
+                  iconClassName="bg-chart-1 text-primary"
                   trend={{ value: 12, label: "dari periode lalu", positive: true }}
                 />
               </motion.div>
@@ -428,7 +428,7 @@ export default function StatistikPage() {
                   value={statisticData.totalTransactions.toString()}
                   description="Jumlah transaksi berhasil"
                   icon={CreditCard}
-                  iconClassName="text-blue-600 bg-blue-100"
+                  iconClassName="bg-chart-2 text-primary"
                   trend={{ value: 4, label: "dari periode lalu", positive: true }}
                 />
               </motion.div>
@@ -438,7 +438,7 @@ export default function StatistikPage() {
                   value={formatRupiah(statisticData.avgTransactionValue)}
                   description="Nilai rata-rata per bon"
                   icon={TrendingUp}
-                  iconClassName="text-amber-600 bg-amber-100"
+                  iconClassName="bg-chart-3 text-primary"
                 />
               </motion.div>
               <motion.div variants={itemVariants}>
@@ -447,7 +447,7 @@ export default function StatistikPage() {
                   value={statisticData.topSellingItems.reduce((acc, item) => acc + item.count, 0).toString()}
                   description="Total item menu terjual"
                   icon={Package}
-                  iconClassName="text-purple-600 bg-purple-100"
+                  iconClassName="bg-chart-4 text-primary"
                 />
               </motion.div>
             </div>
