@@ -82,7 +82,7 @@ export default function HomePage() {
 
   useEffect(() => {
     if (!loading && user && userData) {
-      router.push(userData.role === 'cashier' ? '/pos' : userData.role === 'superadmin' ? '/superadmin/user-management' : '/dashboard');
+      router.push(userData.role === 'cashier' ? '/pos' : userData.role === 'superadmin' ? '/superadmin/users' : '/dashboard');
     }
   }, [user, userData, loading, router]);
 

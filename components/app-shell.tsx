@@ -3,7 +3,7 @@
 import type React from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { LayoutGrid, Settings, ShoppingCart, History, TrendingUp, BarChart3, Package, FolderOpen, ShoppingBag, Warehouse, ShieldCheck } from "lucide-react"
+import { LayoutGrid, Settings, ShoppingCart, History, TrendingUp, BarChart3, Package, FolderOpen, ShoppingBag, Warehouse, ShieldCheck, Users, Building2 } from "lucide-react"
 import { cn } from "../lib/utils"
 import { useCafeSettings, useMenu } from "../hooks/use-cafe-data"
 import { useAuth } from "../lib/auth-context"
@@ -32,11 +32,23 @@ const links: LinkItem[] = [
   { href: "/statistik", label: "Statistik", icon: TrendingUp, hiddenForRoles: ['cashier'] },
 ]
 
+const superadminLinks: LinkItem[] = [
+  { href: "/superadmin", label: "Platform", icon: ShieldCheck },
+  { href: "/superadmin/users", label: "Pengguna", icon: Users },
+  { href: "/superadmin/cafes", label: "Cafe", icon: Building2 },
+  { href: "/reports/profit", label: "Laporan", icon: BarChart3 },
+  { href: "/settings", label: "Pengaturan", icon: Settings },
+]
+
 export const AppShell = ({ children }: { children: React.ReactNode }) => {
   const pathname = usePathname()
   const { userData, signOutUser, signingOut, error, clearError } = useAuth()
   const { settings } = useCafeSettings(userData?.cafe_id)
   const { menu } = useMenu(userData?.cafe_id)
+
+  // Use superadmin navigation if user is superadmin
+  const isSuperadmin = userData?.role === 'superadmin'
+  const currentLinks = isSuperadmin ? superadminLinks : links
 
   const mobileNavRef = useRef<HTMLDivElement>(null)
   const isRestoringScroll = useRef(false)
@@ -111,28 +123,46 @@ export const AppShell = ({ children }: { children: React.ReactNode }) => {
       <header className="sticky top-0 z-30 border-b border-border/50 bg-background/95 backdrop-blur-xl shadow-sm">
         <div className="flex items-center justify-between px-4 sm:px-6 py-3 max-w-7xl mx-auto w-full">
           {/* LEFT: LOGO + NAME */}
-          <Link href="/dashboard" className="flex items-center gap-2.5 min-w-0 group">
-            {settings?.logoUrl ? (
-              <img
-                src={settings.logoUrl}
-                alt={settings.name || "Logo"}
-                className="h-9 w-9 rounded-lg object-cover border border-border/50 bg-muted transition-transform group-hover:scale-105"
-              />
-            ) : (
-              <span className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground text-sm font-semibold">
-                KS
-              </span>
-            )}
-            <div className="flex flex-col leading-tight min-w-0">
-              <span className="font-semibold text-sm truncate max-w-[140px] sm:max-w-[200px]">
-                {settings?.name || "KasirKu POS"}
-              </span>
-              {(settings?.address || settings?.tagline) && (
-                <span className="text-xs text-muted-foreground/80 truncate max-w-[140px] sm:max-w-[200px]">
-                  {settings?.address || settings?.tagline}
+          <Link href={isSuperadmin ? "/superadmin" : "/dashboard"} className="flex items-center gap-2.5 min-w-0 group">
+            {isSuperadmin ? (
+              <>
+                <span className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-purple-500 to-blue-600 text-white text-sm font-semibold shadow-lg">
+                  SA
                 </span>
-              )}
-            </div>
+                <div className="flex flex-col leading-tight min-w-0">
+                  <span className="font-semibold text-sm truncate max-w-[140px] sm:max-w-[200px]">
+                    Superadmin
+                  </span>
+                  <span className="text-xs text-muted-foreground/80 truncate max-w-[140px] sm:max-w-[200px]">
+                    Platform Management
+                  </span>
+                </div>
+              </>
+            ) : (
+              <>
+                {settings?.logoUrl ? (
+                  <img
+                    src={settings.logoUrl}
+                    alt={settings.name || "Logo"}
+                    className="h-9 w-9 rounded-lg object-cover border border-border/50 bg-muted transition-transform group-hover:scale-105"
+                  />
+                ) : (
+                  <span className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground text-sm font-semibold">
+                    KS
+                  </span>
+                )}
+                <div className="flex flex-col leading-tight min-w-0">
+                  <span className="font-semibold text-sm truncate max-w-[140px] sm:max-w-[200px]">
+                    {settings?.name || "KasirKu POS"}
+                  </span>
+                  {(settings?.address || settings?.tagline) && (
+                    <span className="text-xs text-muted-foreground/80 truncate max-w-[140px] sm:max-w-[200px]">
+                      {settings?.address || settings?.tagline}
+                    </span>
+                  )}
+                </div>
+              </>
+            )}
           </Link>
 
           {/* RIGHT: THEME TOGGLE + CLOCK + USER */}
@@ -170,10 +200,7 @@ export const AppShell = ({ children }: { children: React.ReactNode }) => {
         {/* NAV: DESKTOP */}
         <nav className="hidden md:flex items-center justify-center border-t border-border/40 bg-muted/30">
           <div className="flex items-center gap-1 px-3 py-2">
-            {[
-              ...links.filter(l => !l.hiddenForRoles?.includes(userData?.role || '')),
-              ...(userData?.role === 'superadmin' ? [{ href: "/superadmin/user-management", label: "Superadmin", icon: ShieldCheck }] : [])
-            ].map((l) => {
+            {currentLinks.map((l) => {
               const isActive = pathname === l.href
               const Icon = l.icon
               const showBadge = l.href === '/stock' && stockAlertCount > 0;
@@ -189,12 +216,12 @@ export const AppShell = ({ children }: { children: React.ReactNode }) => {
                       : "text-muted-foreground hover:text-foreground hover:bg-background/50"
                   )}
                 >
-                  <Icon 
+                  <Icon
                     className={cn(
                       "h-4 w-4 shrink-0 transition-transform duration-200",
                       isActive ? "text-primary" : "text-muted-foreground group-hover:text-foreground"
-                    )} 
-                    strokeWidth={isActive ? 2.5 : 2} 
+                    )}
+                    strokeWidth={isActive ? 2.5 : 2}
                   />
                   <span className={cn("tracking-tight", isActive && "font-semibold")}>{l.label}</span>
                   {showBadge && (
@@ -211,10 +238,7 @@ export const AppShell = ({ children }: { children: React.ReactNode }) => {
         {/* NAV MOBILE */}
         <nav className="md:hidden bg-muted/30 border-t border-border/40">
           <div ref={mobileNavRef} className="flex overflow-x-auto scrollbar-hide px-2 py-1.5 gap-0.5">
-            {[
-              ...links.filter(l => !l.hiddenForRoles?.includes(userData?.role || '')),
-              ...(userData?.role === 'superadmin' ? [{ href: "/superadmin/user-management", label: "Superadmin", icon: ShieldCheck }] : [])
-            ].map((l, index) => {
+            {currentLinks.map((l, index) => {
               const isActive = pathname === l.href
               const Icon = l.icon
 
@@ -266,11 +290,11 @@ export const AppShell = ({ children }: { children: React.ReactNode }) => {
                   )}
                 >
                   <span className="relative">
-                    <Icon 
+                    <Icon
                       className={cn(
                         "h-[18px] w-[18px] mb-0.5 transition-all",
                         isActive ? "stroke-[2.5px]" : "stroke-[2px]"
-                      )} 
+                      )}
                     />
                     {showBadge && (
                       <span className="absolute -top-0.5 -right-0.5 h-3 w-3 rounded-full bg-destructive text-destructive-foreground text-[7px] font-semibold flex items-center justify-center">

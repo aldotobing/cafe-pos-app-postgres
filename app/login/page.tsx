@@ -78,7 +78,7 @@ function LoginForm() {
         // Redirect ke halaman asli atau default berdasarkan role
         const targetPath = redirectTo !== '/' ? redirectTo : 
           userData.role === 'cashier' ? '/pos' :
-          userData.role === 'superadmin' ? '/superadmin/user-management' :
+          userData.role === 'superadmin' ? '/superadmin/users' :
           userData.role === 'admin' && !userData.cafe_id ? '/create-cafe' : '/';
         router.push(targetPath);
       });

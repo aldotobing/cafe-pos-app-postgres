@@ -18,7 +18,7 @@ export default function HomePage() {
         if (userData.role === 'cashier') {
           router.push('/cashier-dashboard');
         } else if (userData.role === 'superadmin') {
-          router.push('/superadmin/user-management');
+          router.push('/superadmin/users');
         } else {
           // Regular admin
           router.push('/admin-dashboard');
