@@ -1,11 +1,12 @@
 "use client"
 
 import { motion, AnimatePresence } from "framer-motion"
-import { X, Pencil } from "lucide-react"
+import { X, Pencil, Package, Barcode, Tag, Layers } from "lucide-react"
 import { useCategories } from "@/hooks/use-cafe-data"
 import { useAuth } from "@/lib/auth-context"
 import { formatRupiah } from "@/lib/utils"
 import { useState, useEffect } from "react"
+import { BarcodePreview } from "@/components/ui/barcode-preview"
 import type { ProductVariant } from "@/types"
 
 interface MenuDetailModalProps {
@@ -84,14 +85,6 @@ export function MenuDetailModal({ menuItem, onClose, onEdit, canEdit }: MenuDeta
             </p>
           </div>
           <div className="flex items-center gap-2 ml-2">
-            {canEdit && (
-              <button
-                onClick={() => onEdit(menuItem)}
-                className="p-1.5 sm:p-2 rounded-lg border hover:bg-muted transition"
-              >
-                <Pencil className="h-4 w-4" />
-              </button>
-            )}
             <button
               onClick={onClose}
               className="p-1.5 sm:p-2 rounded-lg hover:bg-muted transition"
@@ -149,24 +142,35 @@ export function MenuDetailModal({ menuItem, onClose, onEdit, canEdit }: MenuDeta
                 exit={{ opacity: 0 }}
                 className="space-y-4"
               >
-                {/* Status Badges */}
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${
-                    menuItem.available
-                      ? 'bg-emerald-500/10 text-emerald-600'
-                      : 'bg-red-500/10 text-red-600'
-                  }`}>
-                    {menuItem.available ? 'Tersedia' : 'Nonaktif'}
-                  </span>
-                  {hasVariants && (
-                    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-purple-500/10 text-purple-600">
-                      Produk Varian
+                {/* Status Badges & Edit Button */}
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${
+                      menuItem.available
+                        ? 'bg-emerald-500/10 text-emerald-600'
+                        : 'bg-red-500/10 text-red-600'
+                    }`}>
+                      {menuItem.available ? 'Tersedia' : 'Nonaktif'}
                     </span>
-                  )}
-                  {menuItem.trackStock && !hasVariants && (
-                    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-blue-500/10 text-blue-600">
-                      Tracking Stok
-                    </span>
+                    {hasVariants && (
+                      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-purple-500/10 text-purple-600">
+                        Produk Varian
+                      </span>
+                    )}
+                    {menuItem.trackStock && !hasVariants && (
+                      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-blue-500/10 text-blue-600">
+                        Tracking Stok
+                      </span>
+                    )}
+                  </div>
+                  {canEdit && (
+                    <button
+                      onClick={() => onEdit(menuItem)}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border hover:bg-muted transition text-xs font-medium shrink-0"
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                      Edit
+                    </button>
                   )}
                 </div>
 
@@ -222,6 +226,23 @@ export function MenuDetailModal({ menuItem, onClose, onEdit, canEdit }: MenuDeta
                   </div>
                 )}
 
+                {/* Barcode Section - Non Variant */}
+                {!hasVariants && menuItem.barcode && (
+                  <div className="rounded-lg border bg-muted/30 p-4">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Barcode className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm font-medium">Barcode</span>
+                      <span className="text-xs text-muted-foreground ml-auto">{menuItem.barcode}</span>
+                    </div>
+                    <BarcodePreview 
+                      value={menuItem.barcode} 
+                      height={50} 
+                      width={2}
+                      displayValue={false}
+                    />
+                  </div>
+                )}
+
                 {/* Stock Summary for Variants */}
                 {hasVariants && hasVariantStockTracking && (
                   <div className="rounded-lg border bg-muted/30 p-4">
@@ -262,13 +283,14 @@ export function MenuDetailModal({ menuItem, onClose, onEdit, canEdit }: MenuDeta
                     <p className="text-sm">Tidak ada varian aktif</p>
                   </div>
                 ) : (
-                  <div className="space-y-2">
+                  <div className="space-y-3">
                     {variants.map((variant) => {
                       const stock = variant.stock_quantity || variant.stockQuantity || 0;
                       const isTracking = variant.track_stock || variant.trackStock;
                       const isOutOfStock = isTracking && stock === 0;
                       const isLowStock = isTracking && stock <= (variant.min_stock || variant.minStock || 5);
                       const price = variant.price || menuItem.price;
+                      const attrs = variant.attributes || [];
 
                       return (
                         <div
@@ -277,31 +299,73 @@ export function MenuDetailModal({ menuItem, onClose, onEdit, canEdit }: MenuDeta
                             isOutOfStock ? 'border-red-200 bg-red-50/50' : 'bg-card'
                           }`}
                         >
-                          <div className="flex items-center justify-between gap-2">
-                            <div className="flex-1 min-w-0">
-                              <div className="font-medium text-sm sm:text-base">
-                                {variant.variant_name || variant.variantName}
-                              </div>
-                              {(variant.sku || variant.barcode) && (
-                                <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
-                                  {variant.sku && <span>SKU: {variant.sku}</span>}
-                                  {variant.barcode && <span>Barcode: {variant.barcode}</span>}
+                          <div className="flex flex-col gap-2">
+                            {/* Header: Name + Price */}
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2">
+                                  <Package className="h-4 w-4 text-muted-foreground shrink-0" />
+                                  <span className="font-medium text-sm sm:text-base truncate">
+                                    {variant.variant_name || variant.variantName}
+                                  </span>
                                 </div>
-                              )}
-                            </div>
-                            <div className="text-right shrink-0">
-                              <div className="font-semibold text-sm sm:text-base">
-                                {formatRupiah(price)}
+                                {/* Attributes badges */}
+                                {attrs.length > 0 && (
+                                  <div className="flex flex-wrap items-center gap-1 mt-1">
+                                    {attrs.map((attr: any, idx: number) => (
+                                      <span 
+                                        key={idx}
+                                        className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary"
+                                      >
+                                        {attr.name}: {attr.value}
+                                      </span>
+                                    ))}
+                                  </div>
+                                )}
                               </div>
-                              {isTracking && (
-                                <div className={`text-xs mt-0.5 ${
-                                  isOutOfStock ? 'text-red-600 font-medium' :
-                                  isLowStock ? 'text-amber-600' : 'text-emerald-600'
-                                }`}>
-                                  {isOutOfStock ? 'Habis' : `Stok ${stock}`}
+                              <div className="text-right shrink-0">
+                                <div className="font-semibold text-sm sm:text-base">
+                                  {formatRupiah(price)}
                                 </div>
-                              )}
+                                {isTracking && (
+                                  <div className={`text-xs mt-0.5 ${
+                                    isOutOfStock ? 'text-red-600 font-medium' :
+                                    isLowStock ? 'text-amber-600' : 'text-emerald-600'
+                                  }`}>
+                                    {isOutOfStock ? 'Habis' : `Stok ${stock}`}
+                                  </div>
+                                )}
+                              </div>
                             </div>
+
+                            {/* SKU & Barcode */}
+                            {(variant.sku || variant.barcode) && (
+                              <div className="pt-2 border-t">
+                                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                                  {variant.sku && (
+                                    <span className="flex items-center gap-1">
+                                      <Tag className="h-3 w-3" /> {variant.sku}
+                                    </span>
+                                  )}
+                                  {variant.barcode && (
+                                    <span className="flex items-center gap-1">
+                                      <Barcode className="h-3 w-3" /> {variant.barcode}
+                                    </span>
+                                  )}
+                                </div>
+                                {/* Barcode Image */}
+                                {variant.barcode && (
+                                  <div className="mt-2">
+                                    <BarcodePreview 
+                                      value={variant.barcode} 
+                                      height={40} 
+                                      width={1.5}
+                                      displayValue={false}
+                                    />
+                                  </div>
+                                )}
+                              </div>
+                            )}
                           </div>
                         </div>
                       );
@@ -315,7 +379,7 @@ export function MenuDetailModal({ menuItem, onClose, onEdit, canEdit }: MenuDeta
 
           {/* Last Updated */}
           {menuItem.updatedAt && (
-            <div className="text-xs text-muted-foreground text-center pt-2 border-t">
+            <div className="text-xs text-muted-foreground text-center pt-4 border-t">
               Terakhir diperbarui: {new Date(menuItem.updatedAt).toLocaleString('id-ID', {
                 day: 'numeric',
                 month: 'long',

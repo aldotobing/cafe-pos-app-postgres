@@ -329,7 +329,7 @@ WHERE m.deleted_at IS NULL
 GROUP BY m.id;
 
 -- Variant details with attributes (PostgreSQL version tanpa GROUP_CONCAT)
-CREATE VIEW v_variant_details AS
+CREATE OR REPLACE VIEW v_variant_details AS
 SELECT 
     pv.id AS variant_id,
     pv.menu_id,
@@ -338,6 +338,9 @@ SELECT
     pv.variant_name,
     pv.price AS variant_price,
     pv.stock_quantity,
+    pv.is_active,
+    pv.track_stock,
+    pv.min_stock,
     m.name AS product_name,
     m.price AS product_base_price,
     COALESCE(pv.price, m.price) AS effective_price,

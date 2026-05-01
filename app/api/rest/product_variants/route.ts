@@ -50,6 +50,12 @@ export async function GET(request: Request) {
       productName: v.product_name,
       product_base_price: v.product_base_price,
       effective_price: v.effective_price,
+      is_active: v.is_active,
+      isActive: v.is_active,
+      track_stock: v.track_stock,
+      trackStock: v.track_stock,
+      min_stock: v.min_stock,
+      minStock: v.min_stock,
       attributes: v.attributes || [], // Array of { name, value }
     }));
 
