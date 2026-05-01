@@ -23,6 +23,10 @@ import { StatCard } from '@/components/statistik/StatCard';
 import { RevenueChart } from '@/components/statistik/RevenueChart';
 import { CategoryChart } from '@/components/statistik/CategoryChart';
 import { TopItemsTable } from '@/components/statistik/TopItemsTable';
+import { HourlySalesChart } from '@/components/statistik/HourlySalesChart';
+import { DayOfWeekChart } from '@/components/statistik/DayOfWeekChart';
+import { CashierPerformance } from '@/components/statistik/CashierPerformance';
+import { PeakHoursAnalysis } from '@/components/statistik/PeakHoursAnalysis';
 import { DateRange } from 'react-day-picker';
 import { addDays, format, startOfDay } from 'date-fns';
 import { id } from 'date-fns/locale';
@@ -213,6 +217,88 @@ export default function StatistikPage() {
       ...data
     }));
 
+    // Process hourly sales data
+    const hourlySalesMap: Record<string, { sales: number; transactions: number; customers: number; efficiency: number }> = {};
+    filteredTransactions.forEach(tx => {
+      const hour = new Date(tx.created_at || tx.createdAt).getHours();
+      const hourStr = `${hour.toString().padStart(2, '0')}:00`;
+      
+      if (!hourlySalesMap[hourStr]) {
+        hourlySalesMap[hourStr] = { sales: 0, transactions: 0, customers: 0, efficiency: 0 };
+      }
+      
+      hourlySalesMap[hourStr].sales += Number(tx.total_amount || tx.totalAmount) || 0;
+      hourlySalesMap[hourStr].transactions += 1;
+      hourlySalesMap[hourStr].customers += 1;
+    });
+
+    // Calculate efficiency (transactions per hour as percentage of max)
+    const maxHourlyTransactions = Math.max(...Object.values(hourlySalesMap).map(h => h.transactions));
+    Object.keys(hourlySalesMap).forEach(hour => {
+      hourlySalesMap[hour].efficiency = maxHourlyTransactions > 0 
+        ? Math.round((hourlySalesMap[hour].transactions / maxHourlyTransactions) * 100)
+        : 0;
+    });
+
+    const hourlySales = Array.from({ length: 24 }, (_, i) => {
+      const hourStr = `${i.toString().padStart(2, '0')}:00`;
+      const data = hourlySalesMap[hourStr] || { sales: 0, transactions: 0, customers: 0, efficiency: 0 };
+      return {
+        hour: hourStr,
+        sales: data.sales,
+        transactions: data.transactions,
+        customers: data.customers,
+        efficiency: data.efficiency,
+        avgValue: data.transactions > 0 ? data.sales / data.transactions : 0
+      };
+    });
+
+    // Process day of week data
+    const dayOfWeekMap: Record<number, { dayIndex: number; day: string; transactions: number; revenue: number }> = {};
+    filteredTransactions.forEach(tx => {
+      const date = new Date(tx.created_at || tx.createdAt);
+      const dayIndex = date.getDay();
+      const dayNames = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
+      const dayName = dayNames[dayIndex];
+      
+      if (!dayOfWeekMap[dayIndex]) {
+        dayOfWeekMap[dayIndex] = { dayIndex, day: dayName, transactions: 0, revenue: 0 };
+      }
+      
+      dayOfWeekMap[dayIndex].transactions += 1;
+      dayOfWeekMap[dayIndex].revenue += Number(tx.total_amount || tx.totalAmount) || 0;
+    });
+
+    const dayOfWeekData = Object.values(dayOfWeekMap);
+
+    // Process cashier performance data
+    const cashierMap: Record<string, { id: string; name: string; transactions: number; revenue: number; avgTransactionValue: number; avgServiceTime?: number }> = {};
+    filteredTransactions.forEach(tx => {
+      const cashierName = tx.created_by_name || tx.cashier_name || 'Unknown';
+      const cashierId = tx.created_by || tx.cashier_id || 'unknown';
+      
+      if (!cashierMap[cashierId]) {
+        cashierMap[cashierId] = {
+          id: cashierId,
+          name: cashierName,
+          transactions: 0,
+          revenue: 0,
+          avgTransactionValue: 0,
+          avgServiceTime: undefined
+        };
+      }
+      
+      cashierMap[cashierId].transactions += 1;
+      cashierMap[cashierId].revenue += Number(tx.total_amount || tx.totalAmount) || 0;
+    });
+
+    // Calculate averages for each cashier
+    Object.values(cashierMap).forEach(cashier => {
+      cashier.avgTransactionValue = cashier.transactions > 0 ? cashier.revenue / cashier.transactions : 0;
+    });
+
+    const cashierData = Object.values(cashierMap);
+
     return {
       totalTransactions,
       totalRevenue,
@@ -223,7 +309,10 @@ export default function StatistikPage() {
       totalSubtotal,
       totalTax,
       totalService,
-      paymentBreakdown
+      paymentBreakdown,
+      hourlySales,
+      dayOfWeekData,
+      cashierData
     };
   }, [txs, menu, categories]);
 
@@ -452,20 +541,70 @@ export default function StatistikPage() {
               </motion.div>
             </div>
  
-            {/* Charts Section */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-              <motion.div variants={itemVariants} className="lg:col-span-7 w-full">
-                <RevenueChart data={statisticData.dailyRevenue} />
+            {/* Section 1: Revenue Overview */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <div className="w-1 h-6 bg-chart-1 rounded-full" />
+                <h2 className="text-lg font-semibold text-foreground">Ikhtisar Pendapatan</h2>
+              </div>
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                <motion.div variants={itemVariants} className="lg:col-span-8 w-full">
+                  <RevenueChart data={statisticData.dailyRevenue} />
+                </motion.div>
+                <motion.div variants={itemVariants} className="lg:col-span-4 w-full">
+                  <CategoryChart data={statisticData.categoryDistribution} />
+                </motion.div>
+              </div>
+            </div>
+
+            {/* Section 2: Time-Based Analytics */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <div className="w-1 h-6 bg-chart-2 rounded-full" />
+                <h2 className="text-lg font-semibold text-foreground">Analisis Waktu</h2>
+              </div>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <motion.div variants={itemVariants} className="w-full">
+                  <HourlySalesChart data={statisticData.hourlySales} />
+                </motion.div>
+                <motion.div variants={itemVariants} className="w-full">
+                  <DayOfWeekChart data={statisticData.dayOfWeekData} />
+                </motion.div>
+              </div>
+            </div>
+
+            {/* Section 3: Peak Hours & Operational Insights */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <div className="w-1 h-6 bg-chart-3 rounded-full" />
+                <h2 className="text-lg font-semibold text-foreground">Jam Operasional & Efisiensi</h2>
+              </div>
+              <motion.div variants={itemVariants} className="w-full">
+                <PeakHoursAnalysis data={statisticData.hourlySales} />
               </motion.div>
-              <motion.div variants={itemVariants} className="lg:col-span-5 w-full">
-                <CategoryChart data={statisticData.categoryDistribution} />
+            </div>
+
+            {/* Section 4: Team Performance */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <div className="w-1 h-6 bg-chart-4 rounded-full" />
+                <h2 className="text-lg font-semibold text-foreground">Performa Tim</h2>
+              </div>
+              <motion.div variants={itemVariants} className="w-full">
+                <CashierPerformance data={statisticData.cashierData} />
               </motion.div>
             </div>
  
-            {/* Detailed Tables */}
-            <motion.div variants={itemVariants} className="w-full">
-              <TopItemsTable data={statisticData.topSellingItems} />
-            </motion.div>
+            {/* Section 5: Product Performance */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <div className="w-1 h-6 bg-chart-5 rounded-full" />
+                <h2 className="text-lg font-semibold text-foreground">Performa Produk</h2>
+              </div>
+              <motion.div variants={itemVariants} className="w-full">
+                <TopItemsTable data={statisticData.topSellingItems} />
+              </motion.div>
+            </div>
           </motion.div>
         )}
       </div>
