@@ -5,11 +5,11 @@ import { useEffect, useMemo, useState } from "react"
 import { formatRupiah } from "../../lib/format"
 import { useMenu, useTransactions } from "@/hooks/use-cafe-data"
 import { TrendingUp, CreditCard, Package, DollarSign } from "lucide-react"
+import { FinancialSummaryCard } from "@/components/dashboard/FinancialSummaryCard"
 import { useAuth } from '@/lib/auth-context';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion, Variants } from 'framer-motion';
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader"
-import { QuickActions } from "@/components/dashboard/QuickActions"
 import { RecentTransactions } from "@/components/dashboard/RecentTransactions"
 import { WeeklySummary } from "@/components/dashboard/WeeklySummary"
 import { StatCard } from "@/components/statistik/StatCard"
@@ -218,7 +218,7 @@ export default function DashboardPage() {
             <WeeklySummary data={weeklyRevenue} />
           </motion.div>
           <motion.div variants={itemVariants} className="col-span-1 md:col-span-2 lg:col-span-3 w-full h-full">
-            <QuickActions />
+            <FinancialSummaryCard />
           </motion.div>
         </motion.div>
 

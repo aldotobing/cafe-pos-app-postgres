@@ -3,7 +3,7 @@
 import type React from "react"
 import Link from "next/link"
 import { usePathname, useSearchParams } from "next/navigation"
-import { LayoutGrid, Settings, ShoppingCart, History, TrendingUp, BarChart3, Package, FolderOpen, ShoppingBag, Warehouse, ShieldCheck, Users, Building2 } from "lucide-react"
+import { LayoutGrid, Settings, ShoppingCart, History, TrendingUp, BarChart3, Package, FolderOpen, ShoppingBag, Warehouse, ShieldCheck, Users, Building2, Wallet } from "lucide-react"
 import { cn } from "../lib/utils"
 import { useCafeSettings, useMenu } from "../hooks/use-cafe-data"
 import { useAuth } from "../lib/auth-context"
@@ -29,6 +29,7 @@ const links: LinkItem[] = [
   { href: "/transactions", label: "Transaksi", icon: History },
   { href: "/stock", label: "Stok", icon: Warehouse },
   { href: "/categories", label: "Kategori", icon: FolderOpen },
+  { href: "/expenses", label: "Pengeluaran", icon: Wallet, hiddenForRoles: ['cashier'] },
   { href: "/reports/profit", label: "Laba", icon: BarChart3, hiddenForRoles: ['cashier'] },
   { href: "/statistik", label: "Statistik", icon: TrendingUp, hiddenForRoles: ['cashier'] },
 ]
