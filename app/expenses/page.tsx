@@ -197,20 +197,12 @@ export default function ExpensesPage() {
       }
       
       toast.success('Pengeluaran berhasil dihapus');
-      
-      // Small delay to show loading state before closing
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
       mutate();
       setDeleteDialogOpen(false);
       setExpenseToDelete(null);
-      
-      // Reset loading state after dialog animation completes
-      setTimeout(() => {
-        setIsDeleting(false);
-      }, 300);
     } catch (error) {
       toast.error('Gagal menghapus pengeluaran');
+    } finally {
       setIsDeleting(false);
     }
   };
@@ -698,45 +690,57 @@ export default function ExpensesPage() {
       </Dialog>
       
       {/* Delete Confirmation Dialog */}
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent className="p-0">
-          <AlertDialogHeader className="px-4 pt-4 pb-3">
-            <AlertDialogTitle className="flex items-center gap-2">
+      {deleteDialogOpen && (
+        <motion.div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.2 }}
+        >
+          <motion.div
+            className="bg-card border rounded-lg p-6 w-full max-w-md mx-4 shadow-lg"
+            initial={{ scale: 0.95, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.95, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+          >
+            <h3 className="font-semibold text-lg mb-2 flex items-center gap-2">
               <AlertTriangle className="w-5 h-5 text-destructive" />
               Hapus Pengeluaran
-            </AlertDialogTitle>
-            <AlertDialogDescription>
+            </h3>
+            <p className="text-muted-foreground mb-6">
               Apakah Anda yakin ingin menghapus pengeluaran ini? Tindakan ini tidak dapat dibatalkan.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter className="px-4 py-3 border-t">
-            <AlertDialogCancel 
-              onClick={cancelDelete}
-              disabled={isDeleting}
-              className="flex-1 px-4 py-2 h-auto rounded-lg border border-input bg-background hover:bg-accent hover:text-accent-foreground text-sm disabled:opacity-50"
-            >
-              Batal
-            </AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={confirmDelete}
-              disabled={isDeleting}
-              className="flex-1 px-4 py-2 h-auto rounded-lg bg-destructive text-destructive-foreground hover:bg-destructive/90 text-sm font-medium inline-flex items-center justify-center"
-            >
-              {isDeleting ? (
-                <>
-                  <RefreshCw className="h-4 w-4 animate-spin mr-2 shrink-0" />
-                  <span>Menghapus...</span>
-                </>
-              ) : (
-                <>
-                  <Trash2 className="h-4 w-4 mr-2 shrink-0" />
-                  <span>Hapus</span>
-                </>
-              )}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={cancelDelete}
+                disabled={isDeleting}
+                className="flex-1 px-4 py-2 rounded-lg border bg-background hover:bg-muted transition text-sm disabled:opacity-50"
+              >
+                Batal
+              </button>
+              <button
+                onClick={confirmDelete}
+                disabled={isDeleting}
+                className="flex-1 px-4 py-2 rounded-lg bg-destructive text-destructive-foreground hover:bg-destructive/90 transition text-sm font-medium flex items-center justify-center gap-2 disabled:opacity-50"
+              >
+                {isDeleting ? (
+                  <>
+                    <RefreshCw className="h-4 w-4 animate-spin" />
+                    <span>Menghapus...</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="h-4 w-4" />
+                    <span>Hapus</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
     </AppShell>
   );
 }
