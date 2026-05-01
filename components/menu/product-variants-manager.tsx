@@ -4,7 +4,8 @@ import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import {
   Layers, Plus, Trash2, Barcode, Tag, Package,
-  ChevronDown, ChevronUp, Edit3, AlertCircle, Loader2
+  ChevronDown, ChevronUp, Edit3, AlertCircle, Loader2,
+  Check, X
 } from "lucide-react"
 import { toast } from "sonner"
 import { formatRupiah } from "@/lib/utils"
@@ -48,6 +49,13 @@ export function ProductVariantsManager({
   const [isLoading, setIsLoading] = useState(false)
   const [isExpanded, setIsExpanded] = useState(false)
   const [showAddForm, setShowAddForm] = useState(false)
+  const [editingVariantId, setEditingVariantId] = useState<string | null>(null)
+  const [editingVariantData, setEditingVariantData] = useState({
+    sku: "",
+    barcode: "",
+    price: 0,
+    isActive: true
+  })
 
   // Form state for new variant
   const [newVariant, setNewVariant] = useState({
@@ -248,6 +256,52 @@ export function ProductVariantsManager({
       }
     } catch (error) {
       toast.error("Terjadi kesalahan")
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const openEditVariant = (variant: ProductVariant) => {
+    setEditingVariantId(variant.id)
+    setEditingVariantData({
+      sku: variant.sku || "",
+      barcode: variant.barcode || "",
+      price: variant.price || 0,
+      isActive: variant.is_active === 1 || variant.isActive === true
+    })
+  }
+
+  const closeEditVariant = () => {
+    setEditingVariantId(null)
+    setEditingVariantData({ sku: "", barcode: "", price: 0, isActive: true })
+  }
+
+  const handleSaveVariant = async (variantId: string) => {
+    setIsLoading(true)
+    try {
+      const response = await fetch(`/api/rest/product_variants/${variantId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sku: editingVariantData.sku || null,
+          barcode: editingVariantData.barcode || null,
+          price: editingVariantData.price || null,
+          is_active: editingVariantData.isActive,
+          isActive: editingVariantData.isActive
+        })
+      })
+
+      const data = await response.json()
+
+      if (data.success || response.ok) {
+        toast.success("Varian berhasil diupdate")
+        loadVariants()
+        closeEditVariant()
+      } else {
+        toast.error(data.error || "Gagal mengupdate varian")
+      }
+    } catch (error) {
+      toast.error("Terjadi kesalahan saat mengupdate varian")
     } finally {
       setIsLoading(false)
     }
@@ -541,42 +595,149 @@ export function ProductVariantsManager({
                   {variants.map((variant) => (
                     <div
                       key={variant.id}
-                      className="flex items-center justify-between p-3 rounded-lg border bg-background hover:bg-muted/30 transition"
+                      className={`flex flex-col p-3 rounded-lg border transition ${
+                        editingVariantId === variant.id 
+                          ? 'bg-muted/50 border-primary/30' 
+                          : 'bg-background hover:bg-muted/30'
+                      }`}
                     >
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <Package className="h-4 w-4 text-muted-foreground shrink-0" />
-                          <span className="font-medium text-sm truncate">
-                            {variant.variantName}
-                          </span>
+                      {editingVariantId === variant.id ? (
+                        // Edit Mode
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between">
+                            <span className="font-medium text-sm">{variant.variantName}</span>
+                            <div className="flex items-center gap-1">
+                              <button
+                                onClick={() => handleSaveVariant(variant.id)}
+                                disabled={isLoading}
+                                className="p-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition disabled:opacity-50"
+                              >
+                                {isLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+                              </button>
+                              <button
+                                onClick={closeEditVariant}
+                                disabled={isLoading}
+                                className="p-1.5 rounded-md hover:bg-muted transition disabled:opacity-50"
+                              >
+                                <X className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+                          </div>
+                          
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                              <label className="text-[10px] font-medium text-muted-foreground mb-1 block">SKU</label>
+                              <input
+                                type="text"
+                                className="w-full rounded-md border bg-background px-2 py-1.5 text-sm"
+                                value={editingVariantData.sku}
+                                onChange={(e) => setEditingVariantData(prev => ({ ...prev, sku: e.target.value }))}
+                                placeholder="SKU"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-[10px] font-medium text-muted-foreground mb-1 block">Barcode</label>
+                              <input
+                                type="text"
+                                className="w-full rounded-md border bg-background px-2 py-1.5 text-sm"
+                                value={editingVariantData.barcode}
+                                onChange={(e) => setEditingVariantData(prev => ({ ...prev, barcode: e.target.value }))}
+                                placeholder="Barcode"
+                              />
+                            </div>
+                          </div>
+                          
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                              <label className="text-[10px] font-medium text-muted-foreground mb-1 block">Harga (kosong = dasar)</label>
+                              <div className="relative">
+                                <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">Rp</span>
+                                <input
+                                  type="text"
+                                  inputMode="numeric"
+                                  className="w-full rounded-md border bg-background pl-7 pr-2 py-1.5 text-sm"
+                                  value={editingVariantData.price ? editingVariantData.price.toLocaleString('id-ID') : ''}
+                                  onChange={(e) => {
+                                    const raw = e.target.value.replace(/\D/g, '')
+                                    setEditingVariantData(prev => ({ ...prev, price: Number(raw) || 0 }))
+                                  }}
+                                  placeholder={basePrice.toLocaleString('id-ID')}
+                                />
+                              </div>
+                            </div>
+                            <div className="flex items-end">
+                              <label className="flex items-center gap-2 p-2 rounded-md border bg-background cursor-pointer hover:bg-muted/30 transition">
+                                <input
+                                  type="checkbox"
+                                  checked={editingVariantData.isActive}
+                                  onChange={(e) => setEditingVariantData(prev => ({ ...prev, isActive: e.target.checked }))}
+                                  className="rounded border-input"
+                                />
+                                <span className="text-sm">Varian Aktif</span>
+                              </label>
+                            </div>
+                          </div>
+                          
+                          <div className="text-xs text-muted-foreground">
+                            Stok: {variant.stock_quantity} (kelola via menu Stok)
+                          </div>
                         </div>
-                        <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
-                          {variant.sku && (
-                            <span className="flex items-center gap-1">
-                              <Tag className="h-3 w-3" /> {variant.sku}
-                            </span>
-                          )}
-                          {variant.barcode && (
-                            <span className="flex items-center gap-1">
-                              <Barcode className="h-3 w-3" /> {variant.barcode}
-                            </span>
-                          )}
-                          <span className="flex items-center gap-1">
-                            Stok: {variant.stock_quantity}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <span className="text-sm font-semibold">
-                          {formatRupiah(variant.price || basePrice)}
-                        </span>
-                        <button
-                          onClick={() => openDeleteDialog(variant.id)}
-                          className="p-1.5 rounded-md hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
+                      ) : (
+                        // View Mode
+                        <>
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <Package className="h-4 w-4 text-muted-foreground shrink-0" />
+                                <span className="font-medium text-sm truncate">
+                                  {variant.variantName}
+                                </span>
+                                {(variant.is_active === 0 || variant.isActive === false) && (
+                                  <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-600">
+                                    Nonaktif
+                                  </span>
+                                )}
+                              </div>
+                              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-xs text-muted-foreground">
+                                {variant.sku && (
+                                  <span className="flex items-center gap-1">
+                                    <Tag className="h-3 w-3" /> {variant.sku}
+                                  </span>
+                                )}
+                                {variant.barcode && (
+                                  <span className="flex items-center gap-1">
+                                    <Barcode className="h-3 w-3" /> {variant.barcode}
+                                  </span>
+                                )}
+                                <span className="flex items-center gap-1">
+                                  Stok: {variant.stock_quantity}
+                                </span>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-1 shrink-0">
+                              <span className="text-sm font-semibold">
+                                {formatRupiah(variant.price || basePrice)}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="flex items-center justify-end gap-1 mt-2 pt-2 border-t">
+                            <button
+                              onClick={() => openEditVariant(variant)}
+                              className="p-1.5 rounded-md hover:bg-primary/10 text-muted-foreground hover:text-primary transition"
+                              title="Edit varian"
+                            >
+                              <Edit3 className="h-3.5 w-3.5" />
+                            </button>
+                            <button
+                              onClick={() => openDeleteDialog(variant.id)}
+                              className="p-1.5 rounded-md hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition"
+                              title="Hapus varian"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        </>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -670,7 +831,7 @@ export function ProductVariantsManager({
                         {attributes
                           .filter(attr => selectedProductAttributes.has(attr.id))
                           .map((attr) => {
-                            const values = attributeValues.filter(v => v.attribute_id === attr.id)
+                            const values = attributeValues.filter(v => v.attributeId === attr.id)
                             return (
                               <div key={attr.id}>
                                 <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
@@ -721,7 +882,7 @@ export function ProductVariantsManager({
                     )}
 
                     {/* SKU & Barcode */}
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
                         <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
                           SKU
@@ -729,16 +890,16 @@ export function ProductVariantsManager({
                         <div className="flex gap-2">
                           <input
                             type="text"
-                            className="flex-1 rounded-md border bg-background px-3 py-2 text-sm"
+                            className="flex-1 min-w-0 rounded-md border bg-background px-3 py-2 text-sm"
                             placeholder="Contoh: KP-RED-M"
                             value={newVariant.sku}
                             onChange={(e) => setNewVariant(prev => ({ ...prev, sku: e.target.value }))}
                           />
                           <button
                             onClick={generateSKU}
-                            className="px-2 py-1 text-xs bg-muted rounded-md hover:bg-muted/70 transition"
+                            className="px-3 py-2 text-xs font-medium bg-muted rounded-md hover:bg-muted/70 transition shrink-0 whitespace-nowrap"
                           >
-                            Auto
+                            Buat
                           </button>
                         </div>
                       </div>
@@ -758,7 +919,7 @@ export function ProductVariantsManager({
                     </div>
 
                     {/* Price & Stock */}
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
                         <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
                           Harga (kosong = pakai harga dasar)
