@@ -58,8 +58,10 @@ export default function Page() {
       try {
         const response = await fetch(`/api/rest/users?cafe_id=${userData.cafe_id}`);
         if (response.ok) {
-          const users = await response.json();
-          setUsersList(Array.isArray(users) ? users : []);
+          const result = await response.json();
+          // API returns { data: [...], meta: {...} }
+          const users = result.data || (Array.isArray(result) ? result : []);
+          setUsersList(users);
         }
       } catch (error) {
         // Silently fail - users list will remain empty
