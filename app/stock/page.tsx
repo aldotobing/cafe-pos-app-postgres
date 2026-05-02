@@ -459,22 +459,7 @@ export default function StockPage() {
     return count + outOfStockItems;
   }, 0);
 
-  // DEBUG: Log variantsMap data
-  useEffect(() => {
-    const itemsWithVariants = menu.filter(m => m.hasVariants);
-    console.log('[Stock Page Debug] Items with hasVariants:', itemsWithVariants.length);
-    itemsWithVariants.forEach(m => {
-      console.log(`[Stock Page Debug] ${m.name}: variantsMap loaded =`, variantsMap[m.id]?.length || 0);
-      if (variantsMap[m.id] && variantsMap[m.id].length > 0) {
-        variantsMap[m.id].forEach((v: any) => {
-          console.log(`[Stock Page Debug]   - ${v.variant_name}: track_stock=${v.track_stock}, stock=${v.stock_quantity}`);
-        });
-      }
-    });
-    console.log('[Stock Page Debug] lowStockCount:', lowStockCount);
-    console.log('[Stock Page Debug] outOfStockCount:', outOfStockCount);
-  }, [menu, variantsMap, lowStockCount, outOfStockCount]);
-
+  
   if (authLoading || menuLoading || categoriesLoading || !hasMounted) {
     return <StockSkeleton />;
   }
