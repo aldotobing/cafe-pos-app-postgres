@@ -59,6 +59,45 @@ export async function POST(request: Request) {
       // Don't throw
     }
 
+    // 4. Create default expense categories (setelah user profile punya cafe_id)
+    // Using supabaseAdmin (service role) to bypass RLS policies
+    const defaultCategories = [
+      { name: 'Gaji Karyawan', color: '#EF4444', description: 'Gaji dan tunjangan karyawan', sort_order: 1 },
+      { name: 'Sewa Tempat', color: '#F97316', description: 'Biaya sewa lokasi cafe', sort_order: 2 },
+      { name: 'Listrik & Air', color: '#F59E0B', description: 'Tagihan listrik dan air', sort_order: 3 },
+      { name: 'Bahan Baku', color: '#10B981', description: 'Bahan baku untuk produksi', sort_order: 4 },
+      { name: 'Perlengkapan', color: '#3B82F6', description: 'Alat dan perlengkapan operasional', sort_order: 5 },
+      { name: 'Marketing', color: '#8B5CF6', description: 'Biaya promosi dan marketing', sort_order: 6 },
+      { name: 'Perbaikan', color: '#EC4899', description: 'Biaya perbaikan dan maintenance', sort_order: 7 },
+      { name: 'Transportasi', color: '#6366F1', description: 'Biaya transportasi dan pengiriman', sort_order: 8 },
+      { name: 'Lainnya', color: '#6B7280', description: 'Pengeluaran lainnya', sort_order: 99 },
+    ];
+
+    try {
+      const { data: insertedCategories, error: categoriesError } = await (supabaseAdmin as any)
+        .from('expense_categories')
+        .insert(
+          defaultCategories.map(cat => ({
+            cafe_id: cafe.id,
+            name: cat.name,
+            color: cat.color,
+            description: cat.description,
+            is_active: true,
+            sort_order: cat.sort_order,
+          }))
+        )
+        .select();
+
+      if (categoriesError) {
+        console.error('[Expense Categories Creation] Error:', categoriesError);
+        console.error('[Expense Categories Creation] Cafe ID:', cafe.id);
+      } else {
+        console.log('[Expense Categories Creation] Success:', insertedCategories?.length || 0, 'categories created for cafe', cafe.id);
+      }
+    } catch (err) {
+      console.error('[Expense Categories Creation] Exception:', err);
+    }
+
     return NextResponse.json({ 
       success: true, 
       cafeId: cafe.id,
