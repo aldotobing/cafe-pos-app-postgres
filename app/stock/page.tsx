@@ -411,24 +411,69 @@ export default function StockPage() {
     });
   }, [menu, searchQuery, selectedCategory, filter, categories, variantsMap]);
 
-  // Calculate stats
+  // Calculate stats - same logic as badge in app-shell.tsx
   const totalItems = menu.filter(m => m.trackStock).length;
-  const lowStockCount = menu.filter(m => {
-    if (!m.trackStock) return false;
-    let stock = m.stockQuantity || 0;
-    if (m.hasVariants && variantsMap[m.id]) {
-      stock = variantsMap[m.id].reduce((sum: number, v: any) => sum + (v.stock_quantity || 0), 0);
+  
+  const lowStockCount = menu.reduce((count, m) => {
+    if (!m.trackStock) return count;
+    
+    let lowStockItems = 0;
+    
+    // If item has variants AND variants exist, check each variant
+    if (m.hasVariants && variantsMap[m.id] && variantsMap[m.id].length > 0) {
+      lowStockItems = variantsMap[m.id].filter((v: any) => 
+        v.track_stock !== false && 
+        v.stock_quantity !== undefined && 
+        v.stock_quantity > 0 && 
+        v.stock_quantity <= (v.min_stock || m.minStock || 5)
+      ).length;
+    } else {
+      // For items without variants, check item stock directly
+      if (m.stockQuantity !== undefined && m.stockQuantity > 0 && m.stockQuantity <= (m.minStock || 5)) {
+        lowStockItems = 1;
+      }
     }
-    return stock > 0 && stock <= (m.minStock || 5);
-  }).length;
-  const outOfStockCount = menu.filter(m => {
-    if (!m.trackStock) return false;
-    let stock = m.stockQuantity || 0;
-    if (m.hasVariants && variantsMap[m.id]) {
-      stock = variantsMap[m.id].reduce((sum: number, v: any) => sum + (v.stock_quantity || 0), 0);
+    
+    return count + lowStockItems;
+  }, 0);
+  
+  const outOfStockCount = menu.reduce((count, m) => {
+    if (!m.trackStock) return count;
+    
+    let outOfStockItems = 0;
+    
+    // If item has variants AND variants exist, check each variant
+    if (m.hasVariants && variantsMap[m.id] && variantsMap[m.id].length > 0) {
+      outOfStockItems = variantsMap[m.id].filter((v: any) => 
+        v.track_stock !== false && 
+        v.stock_quantity !== undefined && 
+        v.stock_quantity === 0
+      ).length;
+    } else {
+      // For items without variants, check item stock directly
+      if (m.stockQuantity !== undefined && m.stockQuantity === 0) {
+        outOfStockItems = 1;
+      }
     }
-    return stock === 0;
-  }).length;
+    
+    return count + outOfStockItems;
+  }, 0);
+
+  // DEBUG: Log variantsMap data
+  useEffect(() => {
+    const itemsWithVariants = menu.filter(m => m.hasVariants);
+    console.log('[Stock Page Debug] Items with hasVariants:', itemsWithVariants.length);
+    itemsWithVariants.forEach(m => {
+      console.log(`[Stock Page Debug] ${m.name}: variantsMap loaded =`, variantsMap[m.id]?.length || 0);
+      if (variantsMap[m.id] && variantsMap[m.id].length > 0) {
+        variantsMap[m.id].forEach((v: any) => {
+          console.log(`[Stock Page Debug]   - ${v.variant_name}: track_stock=${v.track_stock}, stock=${v.stock_quantity}`);
+        });
+      }
+    });
+    console.log('[Stock Page Debug] lowStockCount:', lowStockCount);
+    console.log('[Stock Page Debug] outOfStockCount:', outOfStockCount);
+  }, [menu, variantsMap, lowStockCount, outOfStockCount]);
 
   if (authLoading || menuLoading || categoriesLoading || !hasMounted) {
     return <StockSkeleton />;

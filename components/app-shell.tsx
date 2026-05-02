@@ -139,6 +139,23 @@ export const AppShell = ({ children }: { children: React.ReactNode }) => {
   
   const stockAlertCount = lowStockCount + outOfStockCount;
 
+  // DEBUG: Log productVariants data
+  useEffect(() => {
+    const itemsWithVariants = menu.filter(m => m.hasVariants);
+    console.log('[Badge Debug] Items with hasVariants:', itemsWithVariants.length);
+    itemsWithVariants.forEach(m => {
+      console.log(`[Badge Debug] ${m.name}: productVariants loaded =`, m.productVariants?.length || 0);
+      if (m.productVariants && m.productVariants.length > 0) {
+        m.productVariants.forEach((v: any) => {
+          console.log(`[Badge Debug]   - ${v.variant_name}: track_stock=${v.track_stock}, stock=${v.stock_quantity}`);
+        });
+      }
+    });
+    console.log('[Badge Debug] lowStockCount:', lowStockCount);
+    console.log('[Badge Debug] outOfStockCount:', outOfStockCount);
+    console.log('[Badge Debug] stockAlertCount:', stockAlertCount);
+  }, [menu, lowStockCount, outOfStockCount, stockAlertCount]);
+
   
   return (
     <div className="min-h-dvh flex flex-col bg-background">
