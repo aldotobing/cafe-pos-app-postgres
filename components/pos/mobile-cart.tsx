@@ -36,7 +36,12 @@ const MemoizedCartItem = memo(function CartItem({
   return (
     <div className="rounded-md border p-2">
       <div className="flex items-center justify-between gap-2">
-        <div className="text-sm font-medium truncate max-w-[60%]">{item.name}</div>
+        <div className="text-sm font-medium truncate max-w-[60%]">
+          {item.name}
+          {item.variantName && (
+            <span className="ml-1 text-xs text-muted-foreground">({item.variantName})</span>
+          )}
+        </div>
         <div className="text-xs text-muted-foreground">{formatRupiah(item.price)}</div>
       </div>
       <div className="mt-2 flex items-center justify-between gap-2">
