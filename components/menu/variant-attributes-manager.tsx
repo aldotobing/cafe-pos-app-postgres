@@ -108,8 +108,6 @@ export function VariantAttributesManager({ cafeId, onChange }: VariantAttributes
         name: newAttributeName.trim(),
         sort_order: attributes.length
       }
-      console.log('Creating attribute with payload:', payload)
-      
       const response = await fetch(`/api/rest/variant_attributes`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -117,7 +115,6 @@ export function VariantAttributesManager({ cafeId, onChange }: VariantAttributes
       })
 
       const data = await response.json()
-      console.log('API response:', data)
       
       if (data.success || response.ok) {
         toast.success("Atribut berhasil ditambahkan")

@@ -595,7 +595,7 @@ export function AddMenuForm({ formVariants, initialAttributes = [], initialAttri
                         {attributes
                           .filter(attr => selectedProductAttributes.has(attr.id))
                           .map((attr) => {
-                            const values = attributeValues.filter((v: any) => v.attribute_id === attr.id)
+                            const values = attributeValues.filter((v: any) => v.attributeId === attr.id)
                             return (
                               <div key={attr.id}>
                                 <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
