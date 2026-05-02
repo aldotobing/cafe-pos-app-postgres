@@ -71,6 +71,32 @@ export function AddMenuForm({ formVariants, initialAttributes = [], initialAttri
     }
   }, [attributes, selectedProductAttributes.size])
 
+  // Update local state when props change (fix for attribute sync issue)
+  useEffect(() => {
+    // Clear selected values for attributes that no longer exist
+    setSelectedAttributeValues(prev => {
+      const updated = { ...prev }
+      const currentAttributeIds = new Set(attributes.map(a => a.id))
+      
+      // Remove values for deleted attributes
+      Object.keys(updated).forEach(attrId => {
+        if (!currentAttributeIds.has(attrId)) {
+          delete updated[attrId]
+        }
+      })
+      
+      return updated
+    })
+    
+    // Update selected product attributes
+    setSelectedProductAttributes(prev => {
+      const currentAttributeIds = new Set(attributes.map(a => a.id))
+      // Remove selections for deleted attributes
+      const updated = new Set(Array.from(prev).filter(id => currentAttributeIds.has(id)))
+      return updated
+    })
+  }, [attributes])
+
   useEffect(() => {
     if (!categoriesLoading && categories.length > 0 && !form.category) {
       setForm(f => ({ ...f, category: categories[0].name, categoryId: categories[0].id }))
@@ -575,21 +601,30 @@ export function AddMenuForm({ formVariants, initialAttributes = [], initialAttri
                                 <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
                                   {attr.name} <span className="text-destructive">*</span>
                                 </label>
-                                <select
-                                  className="w-full rounded-lg border border-input bg-background px-4 py-2.5 text-sm shadow-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary"
-                                  value={selectedAttributeValues[attr.id] || ""}
-                                  onChange={(e) => setSelectedAttributeValues(prev => ({
-                                    ...prev,
-                                    [attr.id]: e.target.value
-                                  }))}
-                                >
-                                  <option value="">Pilih {attr.name}</option>
-                                  {values.map((val: any) => (
-                                    <option key={val.id} value={val.id}>
-                                      {val.value}
-                                    </option>
-                                  ))}
-                                </select>
+                                {values.length > 0 ? (
+                                  <select
+                                    className="w-full rounded-lg border border-input bg-background px-4 py-2.5 text-sm shadow-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary"
+                                    value={selectedAttributeValues[attr.id] || ""}
+                                    onChange={(e) => setSelectedAttributeValues(prev => ({
+                                      ...prev,
+                                      [attr.id]: e.target.value
+                                    }))}
+                                  >
+                                    <option value="">Pilih {attr.name}</option>
+                                    {values.map((val: any) => (
+                                      <option key={val.id} value={val.id}>
+                                        {val.value}
+                                      </option>
+                                    ))}
+                                  </select>
+                                ) : (
+                                  <div className="p-3 rounded-lg bg-amber-500/10 text-amber-700 dark:text-amber-300 text-sm">
+                                    <p className="font-medium">Belum ada nilai untuk {attr.name}</p>
+                                    <p className="text-xs mt-1">
+                                      Tambahkan nilai atribut di section "Atribut Varian" di atas
+                                    </p>
+                                  </div>
+                                )}
                               </div>
                             )
                           })}

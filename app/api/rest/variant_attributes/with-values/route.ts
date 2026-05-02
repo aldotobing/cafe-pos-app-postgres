@@ -25,23 +25,24 @@ export async function GET(request: Request) {
       cafeId = cafeIdParam ? parseInt(cafeIdParam) : user.cafeId!;
     }
 
-    // Get all attributes with their values in a SINGLE query using JOIN
+    // Get all attributes with their values in a SINGLE query using LEFT JOIN
+    // Using !left to ensure attributes without values are also returned
     const { data: attributes, error: attrError } = await supabaseAdmin
       .from('variant_attributes')
       .select(`
         *,
-        variant_attribute_values!inner(
+        variant_attribute_values!left(
           id,
           value,
           sort_order,
           is_active,
           created_at,
-          updated_at
+          updated_at,
+          deleted_at
         )
       `)
       .eq('cafe_id', cafeId)
       .is('deleted_at', null)
-      .is('variant_attribute_values.deleted_at', null)
       .order('sort_order', { ascending: true })
       .order('sort_order', { ascending: true, referencedTable: 'variant_attribute_values' });
 
@@ -61,15 +62,17 @@ export async function GET(request: Request) {
       updated_at: attr.updated_at,
       deleted_at: attr.deleted_at,
       version: attr.version,
-      values: (attr.variant_attribute_values || []).map((val: any) => ({
-        id: val.id,
-        attribute_id: attr.id,
-        value: val.value,
-        sort_order: val.sort_order,
-        is_active: val.is_active,
-        created_at: val.created_at,
-        updated_at: val.updated_at,
-      }))
+      values: (attr.variant_attribute_values || [])
+        .filter((val: any) => val.id !== null && val.value !== null)
+        .map((val: any) => ({
+          id: val.id,
+          attribute_id: attr.id,
+          value: val.value,
+          sort_order: val.sort_order,
+          is_active: val.is_active,
+          created_at: val.created_at,
+          updated_at: val.updated_at,
+        }))
     }));
 
     return NextResponse.json(transformedData);

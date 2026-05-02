@@ -21,6 +21,14 @@ export function VariantAttributesManager({ cafeId, onChange }: VariantAttributes
   const [deletingAttributeId, setDeletingAttributeId] = useState<string | null>(null)
   const [deletingValueId, setDeletingValueId] = useState<string | null>(null)
   
+  // Delete confirmation dialog states
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [deleteDialogConfig, setDeleteDialogConfig] = useState<{
+    title: string
+    message: string
+    onConfirm: () => void
+  } | null>(null)
+  
   // Form states
   const [newAttributeName, setNewAttributeName] = useState("")
   const [editingAttribute, setEditingAttribute] = useState<string | null>(null)
@@ -28,7 +36,9 @@ export function VariantAttributesManager({ cafeId, onChange }: VariantAttributes
   const [expandedAttributes, setExpandedAttributes] = useState<Set<string>>(new Set())
 
   useEffect(() => {
-    loadAttributes()
+    if (cafeId) {
+      loadAttributes()
+    }
   }, [cafeId])
 
   // Notify parent when attributes change
@@ -108,7 +118,6 @@ export function VariantAttributesManager({ cafeId, onChange }: VariantAttributes
 
       const data = await response.json()
       console.log('API response:', data)
-      console.log('Response status:', response.status)
       
       if (data.success || response.ok) {
         toast.success("Atribut berhasil ditambahkan")
@@ -126,19 +135,27 @@ export function VariantAttributesManager({ cafeId, onChange }: VariantAttributes
     }
   }
 
-  const handleDeleteAttribute = async (attributeId: string) => {
-    console.log('Deleting attribute with ID:', attributeId)
-    if (!confirm("Yakin ingin menghapus atribut ini? Semua nilai atribut juga akan dihapus.")) return
+  const openDeleteAttributeDialog = (attributeId: string) => {
+    const attr = attributes.find(a => a.id === attributeId)
+    const valueCount = attributeValues[attributeId]?.length || 0
+    
+    setDeleteDialogConfig({
+      title: "Konfirmasi Hapus Atribut",
+      message: `Apakah Anda yakin ingin menghapus atribut "${attr?.name || ''}"?${valueCount > 0 ? ` Semua ${valueCount} nilai atribut juga akan dihapus.` : ''} Tindakan ini tidak dapat dibatalkan.`,
+      onConfirm: () => executeDeleteAttribute(attributeId)
+    })
+    setDeleteDialogOpen(true)
+  }
 
+  const executeDeleteAttribute = async (attributeId: string) => {
+    setDeleteDialogOpen(false)
     setDeletingAttributeId(attributeId)
     try {
       const response = await fetch(`/api/rest/variant_attributes/${attributeId}`, {
         method: "DELETE"
       })
 
-      console.log('Delete response status:', response.status)
       const data = await response.json()
-      console.log('Delete response data:', data)
       
       if (data.success || response.ok) {
         toast.success("Atribut dihapus")
@@ -182,9 +199,19 @@ export function VariantAttributesManager({ cafeId, onChange }: VariantAttributes
     }
   }
 
-  const handleDeleteValue = async (valueId: string, attributeId: string) => {
-    if (!confirm("Yakin ingin menghapus nilai ini?")) return
+  const openDeleteValueDialog = (valueId: string, attributeId: string) => {
+    const value = attributeValues[attributeId]?.find(v => v.id === valueId)
+    
+    setDeleteDialogConfig({
+      title: "Konfirmasi Hapus Nilai",
+      message: `Apakah Anda yakin ingin menghapus nilai "${value?.value || ''}"? Tindakan ini tidak dapat dibatalkan.`,
+      onConfirm: () => executeDeleteValue(valueId)
+    })
+    setDeleteDialogOpen(true)
+  }
 
+  const executeDeleteValue = async (valueId: string) => {
+    setDeleteDialogOpen(false)
     setDeletingValueId(valueId)
     try {
       const response = await fetch(`/api/rest/variant_attribute_values/${valueId}`, {
@@ -294,7 +321,7 @@ export function VariantAttributesManager({ cafeId, onChange }: VariantAttributes
                       {isExpanded ? "Tutup" : "Kelola Nilai"}
                     </button>
                     <button
-                      onClick={() => handleDeleteAttribute(attr.id)}
+                      onClick={() => openDeleteAttributeDialog(attr.id)}
                       disabled={deletingAttributeId === attr.id}
                       className="p-1.5 rounded-md hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition disabled:opacity-50 disabled:cursor-not-allowed"
                     >
@@ -327,7 +354,7 @@ export function VariantAttributesManager({ cafeId, onChange }: VariantAttributes
                               >
                                 <span>{val.value}</span>
                                 <button
-                                  onClick={() => handleDeleteValue(val.id, attr.id)}
+                                  onClick={() => openDeleteValueDialog(val.id, attr.id)}
                                   disabled={deletingValueId === val.id}
                                   className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
@@ -380,6 +407,53 @@ export function VariantAttributesManager({ cafeId, onChange }: VariantAttributes
           })
         )}
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <AnimatePresence>
+        {deleteDialogOpen && deleteDialogConfig && (
+          <motion.div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            onClick={() => setDeleteDialogOpen(false)}
+          >
+            <motion.div
+              className="bg-card border rounded-lg p-6 w-full max-w-md mx-4 shadow-lg"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ duration: 0.2 }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h3 className="font-semibold text-lg mb-2">{deleteDialogConfig.title}</h3>
+              <p className="text-muted-foreground mb-6">{deleteDialogConfig.message}</p>
+              <div className="flex justify-end gap-2">
+                <motion.button
+                  className="px-4 py-2 rounded-md border bg-background hover:bg-accent"
+                  onClick={() => setDeleteDialogOpen(false)}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  Batal
+                </motion.button>
+                <motion.button
+                  className="px-4 py-2 bg-destructive text-white rounded-md hover:bg-destructive/90 transition-colors flex items-center gap-2"
+                  onClick={deleteDialogConfig.onConfirm}
+                  whileHover={{ scale: 1.02, y: -1 }}
+                  whileTap={{ scale: 0.98 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Hapus
+                </motion.button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Help Text */}
       <div className="p-4 rounded-xl bg-blue-500/5 border border-blue-200 dark:border-blue-900/30">
