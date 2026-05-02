@@ -463,7 +463,7 @@ export function MenuGrid() {
                 note: ''
               } as any)
           }
-          toast.success(`${qty}x ${variant.variantName || variant.variant_name} ditambahkan`)
+          // Toast handled by variant-selector summary
         }}
       />
     </div>

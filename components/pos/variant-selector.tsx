@@ -1,12 +1,18 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { X, Minus, Plus, Package, ShoppingCart, AlertCircle } from "lucide-react"
+import { X, Minus, Plus, Package, ShoppingCart, AlertCircle, ChevronDown } from "lucide-react"
 import { formatRupiah } from "@/lib/utils"
 import { toast } from "sonner"
 import type { ProductVariant } from "@/types"
 import { OptimizedImage } from "@/components/ui/optimized-image"
+
+// Mobile detection helper
+const isMobileDevice = () => {
+  if (typeof window === 'undefined') return false
+  return window.innerWidth < 768 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+}
 
 interface SelectedVariant {
   variant: ProductVariant
@@ -24,6 +30,24 @@ export function VariantSelector({ menuItem, isOpen, onClose, onAddToCart }: Vari
   const [variants, setVariants] = useState<ProductVariant[]>([])
   const [selectedVariants, setSelectedVariants] = useState<SelectedVariant[]>([])
   const [isLoading, setIsLoading] = useState(false)
+  const [isMobile, setIsMobile] = useState(false)
+  const [displayLimit, setDisplayLimit] = useState(15)
+  const [isAddingToCart, setIsAddingToCart] = useState(false)
+
+  // Check mobile on mount
+  useEffect(() => {
+    setIsMobile(isMobileDevice())
+    const handleResize = () => setIsMobile(isMobileDevice())
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
+
+  // Virtualized variants - only show limited number initially
+  const displayedVariants = useMemo(() => {
+    return variants.slice(0, displayLimit)
+  }, [variants, displayLimit])
+  
+  const hasMoreVariants = variants.length > displayLimit
 
   useEffect(() => {
     if (isOpen && menuItem) {
@@ -56,10 +80,15 @@ export function VariantSelector({ menuItem, isOpen, onClose, onAddToCart }: Vari
   }
 
   const handleAddToCart = () => {
+    // Debounce - prevent double click
+    if (isAddingToCart) return
+    
     if (selectedVariants.length === 0) {
       toast.error("Pilih minimal satu varian")
       return
     }
+
+    setIsAddingToCart(true)
 
     // Check stock for all selected variants
     for (const { variant, quantity } of selectedVariants) {
@@ -67,6 +96,7 @@ export function VariantSelector({ menuItem, isOpen, onClose, onAddToCart }: Vari
         const stock = variant.stockQuantity || variant.stock_quantity || 0
         if (stock < quantity) {
           toast.error(`${variant.variantName || variant.variant_name}: Stok tidak mencukupi. Tersisa: ${stock}`)
+          setIsAddingToCart(false)
           return
         }
       }
@@ -79,7 +109,12 @@ export function VariantSelector({ menuItem, isOpen, onClose, onAddToCart }: Vari
 
     const totalItems = selectedVariants.reduce((sum, { quantity }) => sum + quantity, 0)
     toast.success(`${totalItems} item ditambahkan ke pesanan`)
-    onClose()
+    
+    // Delay close to prevent UI jank
+    setTimeout(() => {
+      onClose()
+      setIsAddingToCart(false)
+    }, 100)
   }
 
   const toggleVariant = (variant: ProductVariant) => {
@@ -122,30 +157,43 @@ export function VariantSelector({ menuItem, isOpen, onClose, onAddToCart }: Vari
     return sum + (variant.price || menuItem.price) * quantity
   }, 0)
 
-  if (!isOpen || !menuItem) return null
+  const menuImage = menuItem?.image_url || menuItem?.imageUrl
 
-  const menuImage = menuItem.image_url || menuItem.imageUrl
+  // Add body class to prevent background scroll when modal is open
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = ''
+    }
+    return () => {
+      document.body.style.overflow = ''
+    }
+  }, [isOpen])
+
+  // Return null if modal closed or no menuItem (setelah semua hooks)
+  if (!isOpen || !menuItem) return null
 
   return (
     <AnimatePresence>
       <motion.div
-        className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4"
+        className="fixed inset-0 z-[60] flex items-center justify-center p-3 sm:p-4"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
       >
-        {/* Backdrop */}
+        {/* Backdrop - higher opacity to completely cover mobile cart */}
         <motion.div
-          className="absolute inset-0 bg-black/60 backdrop-blur-md"
+          className="absolute inset-0 bg-black/80"
           onClick={onClose}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
         />
 
-        {/* Modal */}
+        {/* Modal - z-[61] to ensure it's above backdrop */}
         <motion.div
-          className="relative w-full max-w-md sm:max-w-lg bg-background rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] sm:max-h-[85vh] border"
+          className="relative z-[61] w-full max-w-md sm:max-w-lg bg-background rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] sm:max-h-[85vh] border"
           initial={{ scale: 0.9, opacity: 0, y: 20 }}
           animate={{ scale: 1, opacity: 1, y: 0 }}
           exit={{ scale: 0.9, opacity: 0, y: 20 }}
@@ -218,7 +266,7 @@ export function VariantSelector({ menuItem, isOpen, onClose, onAddToCart }: Vari
               </div>
             ) : (
               <div className="space-y-2.5">
-                {variants.map((variant, index) => {
+                {displayedVariants.map((variant, index) => {
                   const price = variant.price || menuItem.price
                   const stock = variant.stockQuantity || variant.stock_quantity || 0
                   const isTrackingStock = !!(variant.trackStock || variant.track_stock)
@@ -228,9 +276,9 @@ export function VariantSelector({ menuItem, isOpen, onClose, onAddToCart }: Vari
                   return (
                     <motion.div
                       key={variant.id}
-                      initial={{ opacity: 0, y: 10 }}
+                      initial={isMobile ? false : { opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: index * 0.05 }}
+                      transition={isMobile ? { duration: 0 } : { delay: index * 0.05 }}
                       className={`w-full rounded-xl border-2 overflow-hidden transition-all ${
                         isSelected(variant.id)
                           ? 'border-primary bg-primary/5 shadow-sm'
@@ -296,10 +344,10 @@ export function VariantSelector({ menuItem, isOpen, onClose, onAddToCart }: Vari
                       <AnimatePresence>
                         {isSelected(variant.id) && (
                           <motion.div
-                            initial={{ height: 0, opacity: 0 }}
+                            initial={isMobile ? { opacity: 0 } : { height: 0, opacity: 0 }}
                             animate={{ height: 'auto', opacity: 1 }}
-                            exit={{ height: 0, opacity: 0 }}
-                            transition={{ duration: 0.2 }}
+                            exit={isMobile ? { opacity: 0 } : { height: 0, opacity: 0 }}
+                            transition={{ duration: isMobile ? 0.1 : 0.2 }}
                             className="border-t border-border/50 bg-muted/30"
                           >
                             <div className="px-3.5 sm:px-4 py-2.5 flex items-center justify-between">
@@ -339,14 +387,26 @@ export function VariantSelector({ menuItem, isOpen, onClose, onAddToCart }: Vari
               </div>
             )}
 
+            {/* Load More Button */}
+            {hasMoreVariants && (
+              <button
+                onClick={() => setDisplayLimit(prev => prev + 15)}
+                className="w-full py-3 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors rounded-lg border border-dashed"
+              >
+                <ChevronDown className="w-4 h-4 inline mr-1" />
+                Tampilkan {Math.min(variants.length - displayLimit, 15)} varian lagi 
+                ({variants.length - displayLimit} tersisa)
+              </button>
+            )}
+
             {/* Summary when multiple variants selected */}
             <AnimatePresence>
               {selectedVariants.length > 0 && (
                 <motion.div
-                  initial={{ opacity: 0, height: 0, marginTop: 0 }}
+                  initial={isMobile ? { opacity: 0 } : { opacity: 0, height: 0, marginTop: 0 }}
                   animate={{ opacity: 1, height: 'auto', marginTop: 16 }}
-                  exit={{ opacity: 0, height: 0, marginTop: 0 }}
-                  transition={{ type: "spring", damping: 20, stiffness: 300 }}
+                  exit={isMobile ? { opacity: 0 } : { opacity: 0, height: 0, marginTop: 0 }}
+                  transition={isMobile ? { duration: 0.15 } : { type: "spring", damping: 20, stiffness: 300 }}
                   className="overflow-hidden"
                 >
                   <div className="p-4 rounded-xl border bg-gradient-to-br from-primary/5 to-background shadow-sm border-primary/20">
@@ -386,9 +446,9 @@ export function VariantSelector({ menuItem, isOpen, onClose, onAddToCart }: Vari
             </motion.button>
             <motion.button
               onClick={handleAddToCart}
-              disabled={selectedVariants.length === 0 || variants.length === 0}
-              whileHover={selectedVariants.length > 0 ? { scale: 1.02 } : {}}
-              whileTap={selectedVariants.length > 0 ? { scale: 0.98 } : {}}
+              disabled={selectedVariants.length === 0 || variants.length === 0 || isAddingToCart}
+              whileHover={!isMobile && selectedVariants.length > 0 ? { scale: 1.02 } : {}}
+              whileTap={selectedVariants.length > 0 && !isAddingToCart ? { scale: 0.98 } : {}}
               className="flex-1 px-5 py-2.5 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 transition text-sm font-semibold shadow-lg shadow-primary/25 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none flex items-center justify-center gap-2"
             >
               {selectedVariants.length > 0 ? (

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo, memo } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { useCart } from "../../contexts/cart-context";
@@ -10,6 +10,101 @@ import { formatRupiah } from "../../lib/format";
 import { toast } from "sonner";
 import { ChevronUp, ChevronDown, ShoppingCart, Loader2, Minus, Plus } from "lucide-react";
 import { ReceiptModal } from "../receipt/receipt-modal";
+
+// Memoized cart item untuk mengurangi re-renders
+const MemoizedCartItem = memo(function CartItem({ 
+  item, 
+  menu,
+  onDecrease, 
+  onIncrease, 
+  onSetNote, 
+  onSetDiscount,
+  focusedDiscountId,
+  onSetFocusedDiscountId
+}: {
+  item: any;
+  menu: any[];
+  onDecrease: (menuId: string, variantId?: string) => void;
+  onIncrease: (menuId: string, variantId?: string) => void;
+  onSetNote: (menuId: string, note: string, variantId?: string) => void;
+  onSetDiscount: (menuId: string, discount: number, variantId?: string) => void;
+  focusedDiscountId: string | null;
+  onSetFocusedDiscountId: (id: string | null) => void;
+}) {
+  const itemKey = item.variantId ? `${item.menuId}-${item.variantId}` : item.menuId;
+  
+  return (
+    <div className="rounded-md border p-2">
+      <div className="flex items-center justify-between gap-2">
+        <div className="text-sm font-medium truncate max-w-[60%]">{item.name}</div>
+        <div className="text-xs text-muted-foreground">{formatRupiah(item.price)}</div>
+      </div>
+      <div className="mt-2 flex items-center justify-between gap-2">
+        <div className="inline-flex items-center gap-1">
+          <button
+            className="px-2 py-1 rounded-md border text-sm active:scale-95 transition-transform"
+            onClick={() => onDecrease(item.menuId, item.variantId)}
+          >
+            <Minus className="h-3 w-3" />
+          </button>
+          <span className="w-6 text-center text-sm">{item.qty}</span>
+          <button
+            className="px-2 py-1 rounded-md border text-sm active:scale-95 transition-transform"
+            onClick={() => {
+              const menuItem = menu.find(m => m.id === item.menuId);
+              const maxStock = menuItem?.trackStock ? (menuItem.stockQuantity || 0) : Infinity;
+
+              if (item.qty + 1 > maxStock) {
+                toast.error(`Stok ${item.name} tidak mencukupi! Tersisa: ${maxStock - item.qty}`);
+                return;
+              }
+
+              onIncrease(item.menuId, item.variantId);
+            }}
+          >
+            <Plus className="h-3 w-3" />
+          </button>
+        </div>
+        <div className="text-sm font-semibold">
+          {formatRupiah(Math.max(0, item.price * item.qty - (item.discount ?? 0)))}
+        </div>
+      </div>
+      <div className="mt-2 grid grid-cols-1 gap-2">
+        <input
+          className="w-full rounded-md border bg-background px-2 py-1 text-xs"
+          placeholder="Catatan item"
+          value={item.note ?? ""}
+          onChange={(e) => onSetNote(item.menuId, e.target.value, item.variantId)}
+        />
+        <div className="relative">
+          <input
+            type="number"
+            className={`w-full rounded-md border bg-background px-2 py-1 text-xs ${!focusedDiscountId && (item.discount === 0 || item.discount === null || item.discount === undefined) ? 'text-transparent' : ''}`}
+            placeholder="Diskon (Rp)"
+            value={focusedDiscountId === itemKey && (item.discount === 0 || item.discount === null || item.discount === undefined) ? '' : (item.discount ?? 0)}
+            min={0}
+            onChange={(e) => onSetDiscount(item.menuId, Number(e.target.value) || 0, item.variantId)}
+            onFocus={() => onSetFocusedDiscountId(itemKey)}
+            onBlur={() => onSetFocusedDiscountId(null)}
+          />
+          {!focusedDiscountId && (item.discount === 0 || item.discount === null || item.discount === undefined) && (
+            <div className="absolute inset-0 flex items-center px-2 text-xs text-muted-foreground pointer-events-none">
+              Diskon (Rp)
+            </div>
+          )}
+        </div>
+      </div>
+      <div className="mt-2 flex justify-end">
+        <button
+          className="text-xs text-destructive hover:underline active:scale-95 transition-transform"
+          onClick={() => onDecrease(item.menuId, item.variantId)}
+        >
+          Hapus
+        </button>
+      </div>
+    </div>
+  );
+});
 
 export function MobileCart() {
   const { user, userData } = useAuth();
@@ -25,11 +120,19 @@ export function MobileCart() {
   const [focusedDiscountId, setFocusedDiscountId] = useState<string | null>(null);
   const router = useRouter();
 
-  // Calculate cart totals
-  const subtotal = cart.reduce((sum, c) => sum + Math.max(0, c.price * c.qty - (c.discount ?? 0)), 0);
-  const tax = Math.round(((settings?.taxPercent || 0) / 100) * subtotal);
-  const service = Math.round(((settings?.servicePercent || 0) / 100) * subtotal);
-  const total = subtotal + tax + service;
+  // Calculate cart totals - useMemo untuk mengurangi re-computation
+  const { subtotal, tax, service, total, totalItems } = useMemo(() => {
+    const sub = cart.reduce((sum, c) => sum + Math.max(0, c.price * c.qty - (c.discount ?? 0)), 0);
+    const tx = Math.round(((settings?.taxPercent || 0) / 100) * sub);
+    const sv = Math.round(((settings?.servicePercent || 0) / 100) * sub);
+    return {
+      subtotal: sub,
+      tax: tx,
+      service: sv,
+      total: sub + tx + sv,
+      totalItems: cart.reduce((sum, item) => sum + item.qty, 0)
+    };
+  }, [cart, settings?.taxPercent, settings?.servicePercent]);
 
   // Close when cart becomes empty
   useEffect(() => {
@@ -37,9 +140,6 @@ export function MobileCart() {
       setIsExpanded(false);
     }
   }, [cart.length, isExpanded]);
-
-  // Count total items in cart
-  const totalItems = cart.reduce((sum, item) => sum + item.qty, 0);
 
   // Animation for the cart icon jump
   const [controls, setControls] = useState({ scale: 1 });
@@ -53,7 +153,7 @@ export function MobileCart() {
   }, [totalItems]);
 
   return (
-    <div className="w-full fixed bottom-20 left-0 right-0 z-50 px-4">
+    <div className="w-full fixed bottom-20 left-0 right-0 z-[50] px-4">
       {/* Compact cart view - shown when collapsed */}
       <AnimatePresence>
         {!isExpanded && cart.length > 0 && (
@@ -106,7 +206,7 @@ export function MobileCart() {
       <AnimatePresence>
         {isExpanded && (
           <motion.div
-            className="fixed inset-x-0 bottom-0 bg-background border-t rounded-t-lg shadow-xl z-50 flex flex-col max-h-[90vh]"
+            className="fixed inset-x-0 bottom-0 bg-background border-t rounded-t-lg shadow-xl z-[55] flex flex-col max-h-[90vh]"
             initial={{ y: "100%" }}
             animate={{ y: 0 }}
             exit={{ y: "100%" }}
@@ -144,88 +244,19 @@ export function MobileCart() {
               {cart.length === 0 ? (
                 <div className="text-center py-4 text-muted-foreground">Belum ada item.</div>
               ) : (
-                cart.map((c) => {
-                  const itemKey = c.variantId ? `${c.menuId}-${c.variantId}` : c.menuId;
-                  return (
-                    <div key={itemKey} className="rounded-md border p-2">
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="text-sm font-medium truncate max-w-[60%]">{c.name}</div>
-                        <div className="text-xs text-muted-foreground">{formatRupiah(c.price)}</div>
-                      </div>
-                      <div className="mt-2 flex items-center justify-between gap-2">
-                        <div className="inline-flex items-center gap-1">
-                          <button
-                            className="px-2 py-1 rounded-md border text-sm"
-                            onClick={() => {
-                              decreaseQty(c.menuId, c.variantId);
-                            }}
-                          >
-                            <Minus className="h-3 w-3" />
-                          </button>
-                          <span className="w-6 text-center text-sm">{c.qty}</span>
-                          <button
-                            className="px-2 py-1 rounded-md border text-sm"
-                            onClick={() => {
-                              const menuItem = menu.find(m => m.id === c.menuId);
-                              const maxStock = menuItem?.trackStock ? (menuItem.stockQuantity || 0) : Infinity;
-
-                              if (c.qty + 1 > maxStock) {
-                                toast.error(`Stok ${c.name} tidak mencukupi! Tersisa: ${maxStock - c.qty}`);
-                                return;
-                              }
-
-                              increaseQty(c.menuId, c.variantId);
-                            }}
-                          >
-                            <Plus className="h-3 w-3" />
-                          </button>
-                        </div>
-                        <div className="text-sm font-semibold">
-                          {formatRupiah(Math.max(0, c.price * c.qty - (c.discount ?? 0)))}
-                        </div>
-                      </div>
-                      <div className="mt-2 grid grid-cols-1 gap-2">
-                        <input
-                          className="w-full rounded-md border bg-background px-2 py-1 text-xs"
-                          placeholder="Catatan item"
-                          value={c.note ?? ""}
-                          onChange={(e) => {
-                            setItemNote(c.menuId, e.target.value, c.variantId);
-                          }}
-                        />
-                        <div className="relative">
-                          <input
-                            type="number"
-                            className={`w-full rounded-md border bg-background px-2 py-1 text-xs ${!focusedDiscountId && (c.discount === 0 || c.discount === null || c.discount === undefined) ? 'text-transparent' : ''}`}
-                            placeholder="Diskon (Rp)"
-                            value={focusedDiscountId === itemKey && (c.discount === 0 || c.discount === null || c.discount === undefined) ? '' : (c.discount ?? 0)}
-                            min={0}
-                            onChange={(e) => {
-                              setItemDiscount(c.menuId, Number(e.target.value) || 0, c.variantId);
-                            }}
-                            onFocus={() => setFocusedDiscountId(itemKey)}
-                            onBlur={() => setFocusedDiscountId(null)}
-                          />
-                          {!focusedDiscountId && (c.discount === 0 || c.discount === null || c.discount === undefined) && (
-                            <div className="absolute inset-0 flex items-center px-2 text-xs text-muted-foreground pointer-events-none">
-                              Diskon (Rp)
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                      <div className="mt-2 flex justify-end">
-                        <button
-                          className="text-xs text-destructive hover:underline"
-                          onClick={() => {
-                            decreaseQty(c.menuId, c.variantId); // This will remove the item when qty reaches 0
-                          }}
-                        >
-                          Hapus
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })
+                cart.map((c) => (
+                  <MemoizedCartItem
+                    key={c.variantId ? `${c.menuId}-${c.variantId}` : c.menuId}
+                    item={c}
+                    menu={menu}
+                    onDecrease={decreaseQty}
+                    onIncrease={increaseQty}
+                    onSetNote={setItemNote}
+                    onSetDiscount={setItemDiscount}
+                    focusedDiscountId={focusedDiscountId}
+                    onSetFocusedDiscountId={setFocusedDiscountId}
+                  />
+                ))
               )}
             </div>
 
