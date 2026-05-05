@@ -50,7 +50,24 @@ export default function StatistikPage() {
     to: new Date(),
   });
 
-  // Format dates for API query - memoized to prevent unnecessary recalculations
+  // Format dates for previous period - memoized to prevent unnecessary recalculations
+  const prevDateParams = useMemo(() => {
+    if (!date?.from || !date?.to) {
+      const defaultStart = addDays(new Date(), -59);
+      const defaultEnd = addDays(new Date(), -30);
+      const defaultStartStr = format(defaultStart, 'yyyy-MM-dd');
+      const defaultEndStr = format(addDays(defaultEnd, 1), 'yyyy-MM-dd');
+      return { startDateStr: defaultStartStr, endDateStr: defaultEndStr };
+    }
+    const duration = addDays(date.to, 1).getTime() - date.from.getTime();
+    const prevStart = addDays(date.from, -Math.ceil(duration / (1000 * 60 * 60 * 24)));
+    const prevEnd = addDays(date.from, -1);
+    const prevStartStr = format(prevStart, 'yyyy-MM-dd');
+    const prevEndStr = format(addDays(prevEnd, 1), 'yyyy-MM-dd');
+    return { startDateStr: prevStartStr, endDateStr: prevEndStr };
+  }, [date]);
+
+  // Date params for current period
   const dateParams = useMemo(() => {
     const startDateStr = format(date?.from || addDays(new Date(), -29), 'yyyy-MM-dd');
     const endDateStr = format(addDays(date?.to || date?.from || new Date(), 1), 'yyyy-MM-dd');
@@ -64,6 +81,15 @@ export default function StatistikPage() {
       ? `/api/rest/transactions?cafe_id=${userData.cafe_id}&created_at_gte=${dateParams.startDateStr}&created_at_lt=${dateParams.endDateStr}&limit=1000`
       : null,
     null, // Use global fetcher
+    swrConfigForTransactions
+  );
+
+  // Fetch previous period transactions for trend comparison
+  const { data: prevTxs } = useSWR(
+    !authLoading && userData?.cafe_id 
+      ? `/api/rest/transactions?cafe_id=${userData.cafe_id}&created_at_gte=${prevDateParams.startDateStr}&created_at_lt=${prevDateParams.endDateStr}&limit=1000`
+      : null,
+    null,
     swrConfigForTransactions
   );
 
@@ -98,6 +124,16 @@ export default function StatistikPage() {
       updatedAt: tx.updated_at
     }));
   }, [txs]);
+
+  // Extract and map data from previous period
+  const prevTransactions = useMemo(() => {
+    const raw = prevTxs?.data || (Array.isArray(prevTxs) ? prevTxs : []);
+    return raw.map((tx: any) => ({
+      ...tx,
+      totalAmount: tx.total_amount || tx.totalAmount || 0,
+      createdAt: tx.created_at,
+    }));
+  }, [prevTxs]);
 
 
   // Animation variants
@@ -299,6 +335,21 @@ export default function StatistikPage() {
 
     const cashierData = Object.values(cashierMap);
 
+    // Calculate previous period metrics for trend
+    const prevTotalTransactions = prevTransactions.length;
+    const prevTotalRevenue = prevTransactions.reduce((sum, tx) => sum + (Number(tx.totalAmount) || 0), 0);
+    const prevAvgTransactionValue = prevTotalTransactions > 0 ? prevTotalRevenue / prevTotalTransactions : 0;
+
+    // Calculate percentage change for revenue
+    const revenueChange = prevTotalRevenue > 0 
+      ? Math.round(((totalRevenue - prevTotalRevenue) / prevTotalRevenue) * 100)
+      : (totalRevenue > 0 ? 100 : 0);
+
+    // Calculate percentage change for transaction count
+    const transactionChange = prevTotalTransactions > 0 
+      ? Math.round(((totalTransactions - prevTotalTransactions) / prevTotalTransactions) * 100)
+      : (totalTransactions > 0 ? 100 : 0);
+
     return {
       totalTransactions,
       totalRevenue,
@@ -312,9 +363,18 @@ export default function StatistikPage() {
       paymentBreakdown,
       hourlySales,
       dayOfWeekData,
-      cashierData
+      cashierData,
+      prevPeriod: {
+        totalTransactions: prevTotalTransactions,
+        totalRevenue: prevTotalRevenue,
+        avgTransactionValue: prevAvgTransactionValue,
+      },
+      trends: {
+        revenue: revenueChange,
+        transactions: transactionChange,
+      }
     };
-  }, [txs, menu, categories]);
+  }, [txs, prevTxs, menu, categories]);
 
   // Handle the initial empty state while SWR is idle or working
   if (authLoading || menuLoading || categoriesLoading || (isFetching && !txs)) {
@@ -508,7 +568,11 @@ export default function StatistikPage() {
                   description="Total pendapatan periode ini"
                   icon={DollarSign}
                   iconClassName="bg-chart-1 text-primary"
-                  trend={{ value: 12, label: "dari periode lalu", positive: true }}
+                  trend={{ 
+                    value: statisticData.trends.revenue, 
+                    label: "dari periode lalu", 
+                    positive: statisticData.trends.revenue >= 0 
+                  }}
                 />
               </motion.div>
               <motion.div variants={itemVariants}>
@@ -518,7 +582,11 @@ export default function StatistikPage() {
                   description="Jumlah transaksi berhasil"
                   icon={CreditCard}
                   iconClassName="bg-chart-2 text-primary"
-                  trend={{ value: 4, label: "dari periode lalu", positive: true }}
+                  trend={{ 
+                    value: statisticData.trends.transactions, 
+                    label: "dari periode lalu", 
+                    positive: statisticData.trends.transactions >= 0 
+                  }}
                 />
               </motion.div>
               <motion.div variants={itemVariants}>
