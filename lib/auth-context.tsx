@@ -74,11 +74,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       error.status = res.status;
       throw error;
     }
-    const sessionData = await checkSession();
-    if (!sessionData || !sessionData.userData) {
+    const data = await res.json();
+    if (!data.userData) {
       throw new Error('Profil pengguna tidak ditemukan. Silakan hubungi admin atau daftar ulang.');
     }
-    return sessionData.userData;
+    setUser(data.user);
+    setUserData(data.userData);
+    return data.userData;
   };
 
 

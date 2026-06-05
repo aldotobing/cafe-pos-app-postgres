@@ -79,10 +79,12 @@ export async function POST(request: Request) {
       user: {
         id: data.user.id,
         email: data.user.email,
-        role: profile?.role || 'cashier',
-        cafeId: profile?.cafe_id,
-        fullName: profile?.full_name,
       },
+      userData: profile ? {
+        ...profile,
+        id: profile.user_id,
+        email: data.user.email,
+      } : null,
       session: {
         access_token: data.session?.access_token,
         refresh_token: data.session?.refresh_token,
