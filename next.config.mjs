@@ -81,11 +81,11 @@ const nextConfig = {
             key: 'Content-Security-Policy',
             value: [
               "default-src 'self'",
-              "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://va.vercel-scripts.com",
+              "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://va.vercel-scripts.com https://static.cloudflareinsights.com",
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
               "img-src 'self' blob: data: https: *.r2.dev *.r2.cloudflarestorage.com *.kasirku.biz.id",
               "font-src 'self' https://fonts.gstatic.com",
-              "connect-src 'self' https://*.vercel.app https://*.cloud.redislabs.com https://*.kasirku.biz.id https://va.vercel-scripts.com",
+              "connect-src 'self' https://*.vercel.app https://*.cloud.redislabs.com https://*.kasirku.biz.id https://va.vercel-scripts.com https://fonts.googleapis.com",
               "frame-ancestors 'none'",
               "base-uri 'self'",
               "form-action 'self'",
