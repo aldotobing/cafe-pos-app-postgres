@@ -4,10 +4,8 @@ import { useState, useRef, useEffect, ReactNode, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/lib/auth-context';
-import { Zap, Mail, Lock, User, Eye, EyeOff, ArrowRight, CheckCircle2, Loader2 } from 'lucide-react';
+import { Zap, Mail, Lock, User, Eye, EyeOff, ArrowRight, Loader2 } from 'lucide-react';
 import { ErrorMessage, getErrorMessage } from '@/components/ui/error-message';
-
-type LoadingPhase = 'verifying' | 'ready' | null;
 
 function LoginForm() {
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
@@ -18,7 +16,6 @@ function LoginForm() {
   const [error, setError] = useState<string | ReactNode>('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
-  const [loadingPhase, setLoadingPhase] = useState<LoadingPhase>(null);
   const [focusedField, setFocusedField] = useState<string | null>(null);
   const [demoLoading, setDemoLoading] = useState(false);
   const router = useRouter();
@@ -30,14 +27,6 @@ function LoginForm() {
   useEffect(() => {
     emailRef.current?.focus();
   }, []);
-
-  const simulatePhases = async (callback: () => Promise<void>) => {
-    setLoadingPhase('verifying');
-    await new Promise(r => setTimeout(r, 600));
-    await callback();
-    setLoadingPhase('ready');
-    await new Promise(r => setTimeout(r, 400));
-  };
 
   const handleDemoLogin = async () => {
     setDemoLoading(true);
@@ -67,21 +56,18 @@ function LoginForm() {
     setError('');
 
     try {
-      await simulatePhases(async () => {
-        const userData = await signIn(email, password);
+      const userData = await signIn(email, password);
 
-        if (!userData.is_approved) {
-          throw new Error('pending');
-        }
+      if (!userData.is_approved) {
+        throw new Error('pending');
+      }
 
-
-        // Redirect ke halaman asli atau default berdasarkan role
-        const targetPath = redirectTo !== '/' ? redirectTo : 
-          userData.role === 'cashier' ? '/pos' :
-          userData.role === 'superadmin' ? '/superadmin/users' :
-          userData.role === 'admin' && !userData.cafe_id ? '/create-cafe' : '/';
-        router.push(targetPath);
-      });
+      // Redirect ke halaman asli atau default berdasarkan role
+      const targetPath = redirectTo !== '/' ? redirectTo :
+        userData.role === 'cashier' ? '/pos' :
+        userData.role === 'superadmin' ? '/superadmin/users' :
+        userData.role === 'admin' && !userData.cafe_id ? '/create-cafe' : '/';
+      router.push(targetPath);
     } catch (err: any) {
       if (err.message === 'pending') {
         setError(
@@ -99,7 +85,6 @@ function LoginForm() {
         setError(getErrorMessage(err));
       }
       setLoading(false);
-      setLoadingPhase(null);
     }
   };
 
@@ -110,27 +95,16 @@ function LoginForm() {
     setSuccess('');
 
     try {
-      await simulatePhases(async () => {
-        await signUp(email, password, fullName);
-        setSuccess('Pendaftaran berhasil! Akun Anda sedang diproses.');
-        setEmail('');
-        setPassword('');
-        setFullName('');
-      });
+      await signUp(email, password, fullName);
+      setSuccess('Pendaftaran berhasil! Akun Anda sedang diproses.');
+      setEmail('');
+      setPassword('');
+      setFullName('');
     } catch (err: any) {
       setError(getErrorMessage(err));
     } finally {
       setLoading(false);
-      setLoadingPhase(null);
     }
-  };
-
-  const loadingMessages = authMode === 'login' ? {
-    verifying: 'Memverifikasi kredensial...',
-    ready: 'Berhasil masuk!'
-  } : {
-    verifying: 'Membuat akun...',
-    ready: 'Pendaftaran berhasil!'
   };
 
   return (
@@ -169,7 +143,7 @@ function LoginForm() {
           <div className="bg-[var(--ink-soft)]/80 border border-[var(--line)] p-8 sm:p-10 rounded-2xl shadow-xl relative overflow-hidden backdrop-blur-sm">
             {/* Loading Overlay */}
             <AnimatePresence>
-              {loading && loadingPhase && (
+              {loading && (
                 <motion.div
                   className="absolute inset-0 z-50 bg-[var(--ink-soft)]/90 backdrop-blur-sm flex flex-col items-center justify-center"
                   initial={{ opacity: 0 }}
@@ -177,38 +151,14 @@ function LoginForm() {
                   exit={{ opacity: 0 }}
                   transition={{ duration: 0.2 }}
                 >
-                  {/* Simple spinner */}
-                  <div className="relative mb-4">
-                    <motion.div
-                      className="h-10 w-10 rounded-full border-2 border-[var(--gold)]/20 border-t-[var(--gold)]"
-                      animate={{ rotate: 360 }}
-                      transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                    />
-                    {loadingPhase === 'ready' && (
-                      <motion.div
-                        className="absolute inset-0 flex items-center justify-center"
-                        initial={{ scale: 0, opacity: 0 }}
-                        animate={{ scale: 1, opacity: 1 }}
-                        transition={{ type: "spring", stiffness: 300, damping: 20 }}
-                      >
-                        <CheckCircle2 className="h-5 w-5 text-emerald-400" />
-                      </motion.div>
-                    )}
-                  </div>
-
-                  {/* Loading text */}
-                  <AnimatePresence mode="wait">
-                    <motion.p
-                      key={loadingPhase}
-                      initial={{ opacity: 0, y: 4 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -4 }}
-                      transition={{ duration: 0.15 }}
-                      className="text-sm text-[var(--cream)] text-center"
-                    >
-                      {loadingMessages[loadingPhase]}
-                    </motion.p>
-                  </AnimatePresence>
+                  <motion.div
+                    className="h-10 w-10 rounded-full border-2 border-[var(--gold)]/20 border-t-[var(--gold)]"
+                    animate={{ rotate: 360 }}
+                    transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                  />
+                  <p className="text-sm text-[var(--cream)] text-center mt-4">
+                    {authMode === 'login' ? 'Memproses...' : 'Membuat akun...'}
+                  </p>
                 </motion.div>
               )}
             </AnimatePresence>
