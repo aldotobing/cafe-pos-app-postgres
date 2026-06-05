@@ -120,7 +120,7 @@ export function MobileCart() {
   const [payment, setPayment] = useState<any>('Tunai');
   const [orderNote, setOrderNote] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
-  const [receiptTransactionId, setReceiptTransactionId] = useState<string | null>(null);
+  const [receiptTransaction, setReceiptTransaction] = useState<any>(null);
   const [showReceiptModal, setShowReceiptModal] = useState(false);
   const [focusedDiscountId, setFocusedDiscountId] = useState<string | null>(null);
   const router = useRouter();
@@ -318,7 +318,7 @@ export function MobileCart() {
                       toast.success('Transaksi berhasil disimpan!', {
                         description: `Total: ${formatRupiah(tx.totalAmount || tx.total_amount || 0)}`
                       })
-                      setReceiptTransactionId(tx.id)
+                      setReceiptTransaction(tx)
                       setShowReceiptModal(true)
                     }
                   } finally {
@@ -342,13 +342,13 @@ export function MobileCart() {
       </AnimatePresence>
 
       {/* Receipt Modal */}
-      {receiptTransactionId && (
+      {receiptTransaction && (
         <ReceiptModal
-          transactionId={receiptTransactionId}
+          transaction={receiptTransaction}
           isOpen={showReceiptModal}
           onClose={() => {
             setShowReceiptModal(false)
-            setReceiptTransactionId(null)
+            setReceiptTransaction(null)
           }}
         />
       )}

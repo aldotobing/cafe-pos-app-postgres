@@ -146,9 +146,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    // Insert transaction items jika ada
+    let transactionItems: any[] = [];
+
     if (body.items && body.items.length > 0 && transaction) {
-      const itemsToInsert = body.items.map((item: any) => ({
+      transactionItems = body.items.map((item: any) => ({
         transaction_id: transaction.id,
         menu_id: item.menu_id || item.menuId,
         menu_name: item.menu_name || item.name || item.menuName,
@@ -162,61 +163,67 @@ export async function POST(request: Request) {
 
       const { error: itemsError } = await supabaseAdmin
         .from('transaction_items')
-        .insert(itemsToInsert);
+        .insert(transactionItems);
 
       if (itemsError) {
         console.error('Transaction items insert error:', itemsError);
       }
 
-      // Update stock jika item track_stock
-      for (const item of body.items) {
-        const itemMenuId = item.menu_id || item.menuId;
-        const itemVariantId = item.variant_id || item.variantId;
-        
-        if (itemMenuId) {
-          // Get menu item with hpp_price
+      const stockMutations = await Promise.all(
+        body.items.map(async (item: any) => {
+          const itemMenuId = item.menu_id || item.menuId;
+          const itemVariantId = item.variant_id || item.variantId;
+
+          if (!itemMenuId) return null;
+
           const { data: menuItem } = await supabaseAdmin
             .from('menu')
-            .select('track_stock, stock_quantity, hpp_price')
+            .select('track_stock, hpp_price')
             .eq('id', itemMenuId)
             .single();
 
-          if (menuItem?.track_stock) {
-            let hppPrice = menuItem.hpp_price;
-            
-            // If variant, get variant hpp_price
-            if (itemVariantId) {
-              const { data: variant } = await supabaseAdmin
-                .from('product_variants')
-                .select('hpp_price, track_stock')
-                .eq('id', itemVariantId)
-                .single();
-              if (variant?.track_stock) {
-                hppPrice = variant.hpp_price || hppPrice;
-              }
+          if (!menuItem?.track_stock) return null;
+
+          let hppPrice = menuItem.hpp_price;
+
+          if (itemVariantId) {
+            const { data: variant } = await supabaseAdmin
+              .from('product_variants')
+              .select('hpp_price, track_stock')
+              .eq('id', itemVariantId)
+              .single();
+            if (variant?.track_stock) {
+              hppPrice = variant.hpp_price || hppPrice;
             }
-            
-            // Create stock mutation with hpp_price
-            await supabaseAdmin
-              .from('stock_mutations')
-              .insert({
-                menu_id: itemMenuId,
-                cafe_id: cafeId,
-                variant_id: itemVariantId,
-                type: 'out',
-                quantity: -(item.quantity || item.qty || 1),
-                hpp_price: hppPrice,
-                reference_type: 'transaction',
-                reference_id: transaction.id,
-                notes: `Transaction ${transaction.transaction_number}`,
-                created_by: user.id,
-              });
           }
-        }
+
+          return supabaseAdmin
+            .from('stock_mutations')
+            .insert({
+              menu_id: itemMenuId,
+              cafe_id: cafeId,
+              variant_id: itemVariantId || null,
+              type: 'out',
+              quantity: -(item.quantity || item.qty || 1),
+              hpp_price: hppPrice,
+              reference_type: 'transaction',
+              reference_id: transaction.id,
+              notes: `Transaction ${transaction.transaction_number}`,
+              created_by: user.id,
+            });
+        })
+      );
+
+      const stockErrors = stockMutations.filter((r) => r && r.error);
+      if (stockErrors.length > 0) {
+        console.error('Stock mutation errors:', stockErrors.map((r) => r!.error));
       }
     }
 
-    return NextResponse.json({ data: transaction, success: true }, { status: 201 });
+    return NextResponse.json({
+      data: { ...transaction, transaction_items: transactionItems },
+      success: true
+    }, { status: 201 });
 
   } catch (error: any) {
     console.error('Transaction POST error:', error);

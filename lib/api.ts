@@ -414,7 +414,35 @@ export const transactionsApi = {
     if (!serverTx?.id) {
       throw new Error('Server did not return transaction ID');
     }
-    return transactionsApi.getById(serverTx.id);
+
+    return {
+      ...serverTx,
+      transactionNumber: serverTx.transaction_number || serverTx.id,
+      taxAmount: serverTx.tax_amount || 0,
+      serviceCharge: serverTx.service_charge || 0,
+      totalAmount: serverTx.total_amount || 0,
+      paymentMethod: serverTx.payment_method || 'Tunai',
+      paymentAmount: serverTx.payment_amount || 0,
+      changeAmount: serverTx.change_amount || 0,
+      orderNote: serverTx.order_note || '',
+      cashier_name: serverTx.cashier_name,
+      items: (serverTx.transaction_items || []).map((item: any) => ({
+        id: item.id || '',
+        transactionId: item.transaction_id || '',
+        menuId: item.menu_id || '',
+        name: item.menu_name || item.name || '',
+        variantId: item.variant_id,
+        variantName: item.variant_name,
+        price: typeof item.price === 'number' ? item.price : 0,
+        qty: typeof item.quantity === 'number' ? item.quantity : 0,
+        quantity: typeof item.quantity === 'number' ? item.quantity : 0,
+        discount: typeof item.discount === 'number' ? item.discount : 0,
+        note: item.note || '',
+        lineTotal: ((item.price || 0) * (item.quantity || 0)) - (item.discount || 0),
+      })),
+      createdAt: serverTx.created_at,
+      updatedAt: serverTx.updated_at
+    } as Transaction;
   },
   update: async (id: string, tx: Partial<Transaction>): Promise<Transaction> => {
     await apiRequest(`/rest/transactions/${id}`, { method: 'PUT', body: JSON.stringify(tx) });

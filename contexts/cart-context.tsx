@@ -136,34 +136,14 @@ export function CartProvider({ children }: { children: ReactNode }) {
   ) => {
     if (cart.length === 0) return null;
 
+    // Quick stock check from memory (non-variant items only)
     if (menuMap) {
       for (const cartItem of cart) {
+        if (cartItem.variantId) continue;
         const menuItem = menuMap.get(cartItem.menuId);
-        if (!menuItem) continue;
-
-        // Check stock
-        if (cartItem.variantId) {
-          try {
-            const response = await fetch(`/api/rest/product_variants/${cartItem.variantId}`);
-            const data = await response.json();
-            const variant = Array.isArray(data) ? data[0] : data;
-
-            if (variant && (variant.trackStock || variant.track_stock)) {
-              const variantStock = variant.stockQuantity || variant.stock_quantity || 0;
-              if (variantStock < cartItem.qty) {
-                toast.error(`Stok ${menuItem.name} ${cartItem.variantName || ""} tidak mencukupi. Tersisa: ${variantStock}`);
-                throw new Error(`Stock error`);
-              }
-            }
-          } catch (error) {
-            console.error("Failed to check variant stock:", error);
-          }
-          continue;
-        }
-
         if (menuItem?.trackStock && menuItem.stockQuantity !== undefined && menuItem.stockQuantity < cartItem.qty) {
           toast.error(`Stok ${menuItem.name} tidak mencukupi. Tersisa: ${menuItem.stockQuantity}`);
-          throw new Error(`Stock error`);
+          return null;
         }
       }
     }
@@ -228,20 +208,16 @@ export function CartProvider({ children }: { children: ReactNode }) {
       const createdTx = await transactionsApi.create(txData, currentCafeId);
       setCart([]);
 
-      // Invalidate SWR cache and trigger revalidation
+      // Revalidate SWR cache immediately — transaction is already committed
       if (currentCafeId) {
-        // Small delay to ensure PostgreSQL transaction is fully committed
-        setTimeout(() => {
-          globalMutate(
-            (key) => typeof key === 'string' && key.includes('/api/rest/transactions') && key.includes(`cafe_id=${currentCafeId}`),
-            { revalidate: true }
-          ).then(() => {
-            // Dispatch sync end event when revalidation completes
-            if (typeof window !== "undefined") {
-              window.dispatchEvent(new CustomEvent("syncEnd"));
-            }
-          });
-        }, 300);
+        globalMutate(
+          (key) => typeof key === 'string' && key.includes('/api/rest/transactions') && key.includes(`cafe_id=${currentCafeId}`),
+          { revalidate: true }
+        ).then(() => {
+          if (typeof window !== "undefined") {
+            window.dispatchEvent(new CustomEvent("syncEnd"));
+          }
+        });
       }
 
       // Dispatch event to notify components to reload variants/menu
