@@ -455,6 +455,7 @@ function MenuCard({ item, index, addToCart, catInfo, cart, onSelectVariant }: {
     }
 
     addToCart(item);
+    toast.success(`${item.name} ditambahkan ke pesanan`);
   };
 
   return (
