@@ -298,24 +298,30 @@ export const transactionsApi = {
     }));
   },
 
-  getPaginated: async (cafeId?: number, limit = 10, offset = 0, dateFilters?: { from?: string; to?: string }): Promise<PaginatedTransactions> => {
+  getPaginated: async (cafeId?: number, limit = 10, offset = 0, filters?: { from?: string; to?: string; created_by?: string; payment_method?: string }): Promise<PaginatedTransactions> => {
     let url = '/rest/transactions';
     const params = new URLSearchParams();
     if (cafeId) params.set('cafe_id', cafeId.toString());
     params.set('limit', limit.toString());
     params.set('offset', offset.toString());
-    
+
     // Add date filters if provided
-    if (dateFilters?.from) {
-      params.set('start_date', dateFilters.from);
+    if (filters?.from) {
+      params.set('start_date', filters.from);
     }
-    if (dateFilters?.to) {
+    if (filters?.to) {
       // Add one day to include the end date
-      const endDate = new Date(dateFilters.to);
+      const endDate = new Date(filters.to);
       endDate.setDate(endDate.getDate() + 1);
       params.set('end_date', endDate.toISOString().split('T')[0]);
     }
-    
+    if (filters?.created_by && filters.created_by !== 'Semua') {
+      params.set('created_by', filters.created_by);
+    }
+    if (filters?.payment_method && filters.payment_method !== 'Semua') {
+      params.set('payment_method', filters.payment_method);
+    }
+
     if (params.toString()) url += `?${params.toString()}`;
 
     const response = await apiRequest<any>(url);

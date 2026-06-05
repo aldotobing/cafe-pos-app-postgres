@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import useSWR from 'swr';
 import { cafeSettingsApi, menuApi, transactionsApi, type PaginatedTransactions } from '../lib/api';
 import { useAuth } from '../lib/auth-context';
@@ -86,15 +86,19 @@ export interface UsePaginatedTransactionsReturn {
 }
 
 export function useTransactionsPaginated(
-  cafeId?: number, 
-  limit = 10, 
-  dateFilters?: { from?: string; to?: string }
+  cafeId?: number,
+  limit = 10,
+  filters?: { from?: string; to?: string; created_by?: string; payment_method?: string }
 ): UsePaginatedTransactionsReturn {
   const [offset, setOffset] = useState(0);
-  
+
+  useEffect(() => {
+    setOffset(0);
+  }, [filters?.from, filters?.to, filters?.created_by, filters?.payment_method]);
+
   const { data, error, mutate, isValidating } = useSWR<PaginatedTransactions>(
-    cafeId ? ['paginated-transactions', cafeId, limit, offset, dateFilters?.from, dateFilters?.to] : null,
-    () => transactionsApi.getPaginated(cafeId, limit, offset, dateFilters),
+    cafeId ? ['paginated-transactions', cafeId, limit, offset, filters?.from, filters?.to, filters?.created_by, filters?.payment_method] : null,
+    () => transactionsApi.getPaginated(cafeId, limit, offset, filters),
     {
       // Keep previous data while loading new page for smoother UX
       keepPreviousData: true

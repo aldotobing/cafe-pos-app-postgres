@@ -27,6 +27,8 @@ export async function GET(request: Request) {
     const createdAtLt = url.searchParams.get('created_at_lt');
     const startDate = url.searchParams.get('start_date');
     const endDate = url.searchParams.get('end_date');
+    const createdBy = url.searchParams.get('created_by');
+    const paymentMethod = url.searchParams.get('payment_method');
 
     // Build filter conditions for reuse
     const fromDate = createdAtGte || startDate;
@@ -44,6 +46,12 @@ export async function GET(request: Request) {
     }
     if (toDate) {
       dataQuery = dataQuery.lt('created_at', toDate);
+    }
+    if (createdBy && createdBy !== 'Semua') {
+      dataQuery = dataQuery.eq('created_by', createdBy);
+    }
+    if (paymentMethod && paymentMethod !== 'Semua') {
+      dataQuery = dataQuery.eq('payment_method', paymentMethod as "Tunai" | "QRIS" | "Debit" | "Transfer");
     }
 
     // Apply pagination with safe upper bound
@@ -73,6 +81,12 @@ export async function GET(request: Request) {
     }
     if (toDate) {
       summaryQuery = summaryQuery.lt('created_at', toDate);
+    }
+    if (createdBy && createdBy !== 'Semua') {
+      summaryQuery = summaryQuery.eq('created_by', createdBy);
+    }
+    if (paymentMethod && paymentMethod !== 'Semua') {
+      summaryQuery = summaryQuery.eq('payment_method', paymentMethod as "Tunai" | "QRIS" | "Debit" | "Transfer");
     }
 
     const { data: summaryData, error: summaryError } = await summaryQuery;

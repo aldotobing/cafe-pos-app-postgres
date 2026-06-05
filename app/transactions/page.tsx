@@ -42,7 +42,7 @@ export default function Page() {
     goToNextPage,
     goToPrevPage,
     goToPage,
-  } = useTransactionsPaginated(cafeId, 10, { from, to });
+  } = useTransactionsPaginated(cafeId, 10, { from, to, created_by: userFilter, payment_method: method });
 
   // Combined loading state: initial load OR page switch
   const isFetching = isLoading || isValidating;
@@ -131,23 +131,8 @@ export default function Page() {
     }
   }, [user, userData, authLoading, router]);
 
-  // Filter transactions for table display (method & user filter only, date already handled by API)
-  const filtered = useMemo(() => {
-    let result = paginatedTransactions.filter((t) => {
-      const okMethod = method === "Semua" ? true : t.paymentMethod === method
-      const okUser = userFilter === "Semua" ? true : t.created_by === userFilter
-      return okMethod && okUser
-    })
-
-    // Sort by date descending (latest first)
-    result.sort((a, b) => {
-      const dateA = typeof a.createdAt === 'number' ? new Date(a.createdAt) : new Date(a.createdAt);
-      const dateB = typeof b.createdAt === 'number' ? new Date(b.createdAt) : new Date(b.createdAt);
-      return dateB.getTime() - dateA.getTime();
-    });
-
-    return result;
-  }, [paginatedTransactions, method, userFilter])
+  // All filtering is now server-side; data is already sorted by API (created_at DESC)
+  const filtered = paginatedTransactions
 
   // Summary stats - count and totalAmount from API (ALL filtered transactions)
   const summaryStats = useMemo(() => {
