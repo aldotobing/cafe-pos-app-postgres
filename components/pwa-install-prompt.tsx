@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Download, X, Smartphone } from 'lucide-react';
+import { X } from 'lucide-react';
 
 const STORAGE_KEY = 'pwa-install-dismissed-at';
 const DISMISS_DURATION = 30 * 24 * 60 * 60 * 1000; // 30 days
@@ -107,36 +107,33 @@ const PWAInstallPrompt = () => {
         exit={{ y: 40, opacity: 0 }}
         transition={{ type: 'spring', damping: 25, stiffness: 300 }}
       >
-        <div className="max-w-[440px] mx-auto pointer-events-auto bg-card/95 backdrop-blur-xl border border-border rounded-2xl shadow-[0_12px_40px_rgba(0,0,0,0.15)] dark:shadow-[0_12px_40px_rgba(0,0,0,0.6)] p-4 flex items-center gap-4 group">
-          {/* Elegant Icon Box */}
-          <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0 border border-primary/20 transition-transform group-hover:scale-105 duration-300">
-            <Smartphone className="text-primary w-6 h-6" />
+        <div className="max-w-sm mx-auto pointer-events-auto bg-card/95 backdrop-blur-xl border border-border rounded-xl shadow-[0_8px_30px_rgba(0,0,0,0.12)] dark:shadow-[0_8px_30px_rgba(0,0,0,0.5)] py-2.5 pl-3 pr-2 flex items-center gap-2.5">
+          <div className="w-9 h-9 rounded-lg flex-shrink-0 overflow-hidden border border-border/50">
+            <img src="/icon-192x192.png" alt="KasirKu" className="w-full h-full object-cover" />
           </div>
 
-          {/* Content Middle */}
           <div className="flex-1 min-w-0">
-            <h4 className="font-['Playfair_Display',serif] text-foreground text-base font-bold leading-tight">
+            <p className="text-foreground text-sm font-semibold leading-tight truncate">
               Pasang KasirKu
-            </h4>
-            <p className="text-muted-foreground text-[13px] font-light mt-0.5 opacity-80">
+            </p>
+            <p className="text-muted-foreground text-xs font-medium mt-0.5 opacity-70">
               Akses cepat dari layar utama Anda.
             </p>
           </div>
 
-          {/* Action Buttons */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1.5 flex-shrink-0">
             <button
               onClick={handleInstallClick}
-              className="bg-primary text-primary-foreground text-xs font-bold px-5 py-2.5 rounded-full hover:opacity-90 transition-all transform active:scale-[0.95] whitespace-nowrap shadow-lg shadow-primary/10"
+              className="bg-primary text-primary-foreground text-xs font-semibold px-4 py-1.5 rounded-full hover:opacity-90 transition-all active:scale-[0.95] whitespace-nowrap"
             >
               Pasang
             </button>
             <button
               onClick={handleDismiss}
-              className="p-1.5 rounded-full text-muted-foreground/30 hover:text-muted-foreground/80 hover:bg-muted transition-all"
+              className="p-1 rounded-full text-muted-foreground/30 hover:text-muted-foreground/70 hover:bg-muted transition-colors"
               aria-label="Tutup"
             >
-              <X size={18} />
+              <X size={14} />
             </button>
           </div>
         </div>
