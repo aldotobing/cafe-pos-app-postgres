@@ -28,8 +28,6 @@ export function MenuGrid() {
   // Variant selector state
   const [selectedItemForVariant, setSelectedItemForVariant] = useState<any>(null)
   const [isVariantSelectorOpen, setIsVariantSelectorOpen] = useState(false)
-  const [variantsMap, setVariantsMap] = useState<Record<string, any[]>>({})
-  const [isVariantsLoading, setIsVariantsLoading] = useState(false)
 
   const checkScroll = () => {
     if (!scrollContainerRef.current) return;
@@ -53,34 +51,6 @@ export function MenuGrid() {
     });
   };
 
-  // Load variants for menu items with hasVariants
-  useEffect(() => {
-    const loadVariants = async () => {
-      const itemsWithVariants = (menu as any[]).filter((m: any) => m.hasVariants || !!m.has_variants);
-      if (itemsWithVariants.length === 0) return;
-
-      setIsVariantsLoading(true);
-      const newVariantsMap: Record<string, any[]> = {};
-      
-      for (const item of itemsWithVariants) {
-        try {
-          const response = await fetch(`/api/rest/product_variants?menu_id=${item.id}`);
-          const data = await response.json();
-          const variantsList = Array.isArray(data) ? data : (data.data || data.results || []);
-          newVariantsMap[item.id] = variantsList;
-        } catch (error) {
-          console.error('Failed to load variants for', item.id, error);
-        }
-      }
-      
-      setVariantsMap(newVariantsMap);
-      setIsVariantsLoading(false);
-    };
-
-    if (menu.length > 0) {
-      loadVariants();
-    }
-  }, [menu]);
 
   // Listen for category changes from categories page
   useEffect(() => {
@@ -93,41 +63,11 @@ export function MenuGrid() {
     return () => window.removeEventListener('categoriesChanged', handleCategoryChange);
   }, [mutateMenu, mutateCategories]);
 
-  // Listen for transaction completed to reload variants and menu
   useEffect(() => {
-    const handleTransactionCompleted = () => {
-      // Refresh menu data to update stock badges
-      mutateMenu();
-      
-      // Force reload variants after checkout
-      const loadVariants = async () => {
-        const itemsWithVariants = (menu as any[]).filter((m: any) => m.hasVariants || !!m.has_variants);
-        if (itemsWithVariants.length === 0) return;
-
-        setIsVariantsLoading(true);
-        const newVariantsMap: Record<string, any[]> = {};
-        
-        for (const item of itemsWithVariants) {
-          try {
-            const response = await fetch(`/api/rest/product_variants?menu_id=${item.id}`);
-            const data = await response.json();
-            const variantsList = Array.isArray(data) ? data : (data.data || data.results || []);
-            newVariantsMap[item.id] = variantsList;
-          } catch (error) {
-            console.error('Failed to reload variants for', item.id, error);
-          }
-        }
-        
-        setVariantsMap(newVariantsMap);
-        setIsVariantsLoading(false);
-      };
-      
-      loadVariants();
-    };
-
+    const handleTransactionCompleted = () => mutateMenu();
     window.addEventListener('transactionCompleted', handleTransactionCompleted);
     return () => window.removeEventListener('transactionCompleted', handleTransactionCompleted);
-  }, [menu, mutateMenu]);
+  }, [mutateMenu]);
 
   // Filter available menu items and sort by category then name for consistent ordering
   const availableMenu = useMemo(() =>
@@ -377,8 +317,6 @@ export function MenuGrid() {
                         addToCart={addToCart} 
                         catInfo={catInfo} 
                         cart={cart}
-                        variantsMap={variantsMap}
-                        isVariantsLoading={isVariantsLoading}
                         onSelectVariant={() => {
                           setSelectedItemForVariant(m)
                           setIsVariantSelectorOpen(true)
@@ -423,8 +361,6 @@ export function MenuGrid() {
                       addToCart={addToCart} 
                       catInfo={catInfo} 
                       cart={cart}
-                      variantsMap={variantsMap}
-                      isVariantsLoading={isVariantsLoading}
                       onSelectVariant={() => {
                         setSelectedItemForVariant(m)
                         setIsVariantSelectorOpen(true)
@@ -470,28 +406,21 @@ export function MenuGrid() {
   )
 }
 
-function MenuCard({ item, index, addToCart, catInfo, cart, onSelectVariant, variantsMap, isVariantsLoading }: {
+function MenuCard({ item, index, addToCart, catInfo, cart, onSelectVariant }: {
   item: any;
   index: number;
   addToCart: (item: any) => void;
   catInfo: { icon: string; color: string };
   cart: any[];
   onSelectVariant?: () => void;
-  variantsMap?: Record<string, any[]>;
-  isVariantsLoading?: boolean;
 }) {
-  // For products with variants, stock is managed per variant
-  // Don't show "Habis" based on menu.stockQuantity (which is 0 for variant products)
+  const variants = (item.productVariants || []) as any[];
   const hasVariants = item.hasVariants || !!item.has_variants;
-  const variantsLoaded = variantsMap && variantsMap[item.id];
-  const variantsData = hasVariants && variantsLoaded ? variantsMap[item.id] : null;
-  
-  // Calculate stock from variants if available, otherwise use menu stock (for non-variants)
-  let currentStock = hasVariants 
-    ? (variantsData?.reduce((sum: number, v: any) => sum + (v.stock_quantity || 0), 0) ?? null)
+
+  let currentStock = hasVariants
+    ? (variants.length > 0 ? variants.reduce((sum: number, v: any) => sum + (v.stock_quantity || 0), 0) : null)
     : (item.stockQuantity || 0);
-  
-  // For variant products still loading, don't consider as out of stock
+
   const isOutOfStock = item.trackStock && currentStock === 0 && !hasVariants;
   const isLowStock = item.trackStock && !hasVariants && currentStock <= (item.minStock || 5);
   const shouldDisable = isOutOfStock;
