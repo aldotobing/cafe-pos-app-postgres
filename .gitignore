@@ -34,3 +34,8 @@ next-env.d.ts
 test-rate-limit.ts
 test-rate-limit-redis.ts
 check-redis-cli.ts
+
+# ide / ai editor configs
+.claude.json
+.qwen/settings.json.orig
+.qwen/skills/
