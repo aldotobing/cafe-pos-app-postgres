@@ -97,10 +97,10 @@ export const AppShell = ({ children }: { children: React.ReactNode }) => {
     
     // If item has variants AND productVariants exist, check each variant
     if (m.hasVariants && m.productVariants && m.productVariants.length > 0) {
-      lowStockItems = m.productVariants.filter((v: any) => 
-        v.track_stock !== false && 
-        v.stock_quantity !== undefined && 
-        v.stock_quantity > 0 && 
+      lowStockItems = m.productVariants.filter((v: any) =>
+        !v.deleted_at &&
+        v.stock_quantity !== undefined &&
+        v.stock_quantity > 0 &&
         v.stock_quantity <= (v.min_stock || m.minStock || 5)
       ).length;
     } else {
@@ -121,9 +121,9 @@ export const AppShell = ({ children }: { children: React.ReactNode }) => {
     
     // If item has variants AND productVariants exist, check each variant
     if (m.hasVariants && m.productVariants && m.productVariants.length > 0) {
-      outOfStockItems = m.productVariants.filter((v: any) => 
-        v.track_stock !== false && 
-        v.stock_quantity !== undefined && 
+      outOfStockItems = m.productVariants.filter((v: any) =>
+        !v.deleted_at &&
+        v.stock_quantity !== undefined &&
         v.stock_quantity === 0
       ).length;
     } else {

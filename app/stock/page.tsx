@@ -49,8 +49,6 @@ export default function StockPage() {
   const [isInitialLoading, setIsInitialLoading] = useState(true)
   const [historyOffset, setHistoryOffset] = useState(0)
   const [hasMoreHistory, setHasMoreHistory] = useState(true)
-  const [variantsMap, setVariantsMap] = useState<Record<string, any[]>>({})
-  const [isLoadingVariants, setIsLoadingVariants] = useState(false)
   const [isRefreshingData, setIsRefreshingData] = useState(false)
   const [hasMounted, setHasMounted] = useState(false)
   
@@ -125,73 +123,6 @@ export default function StockPage() {
   }, [user, userData, authLoading, router]);
 
 
-  // Load variants for menu items with hasVariants (batched bulk fetch for 100+ items)
-  useEffect(() => {
-    const loadVariants = async () => {
-      const itemsWithVariants = menu.filter(m => m.hasVariants);
-      if (itemsWithVariants.length === 0) return;
-
-      setIsLoadingVariants(true);
-      
-      try {
-        const BATCH_SIZE = 50; // Max 50 IDs per request to avoid URL length issues
-        const newVariantsMap: Record<string, any[]> = {};
-        itemsWithVariants.forEach(item => {
-          newVariantsMap[item.id] = [];
-        });
-        
-        // Split into batches
-        const ids = itemsWithVariants.map(m => m.id);
-        const batches: string[][] = [];
-        for (let i = 0; i < ids.length; i += BATCH_SIZE) {
-          batches.push(ids.slice(i, i + BATCH_SIZE));
-        }
-        
-        // Fetch all batches in parallel
-        const batchResponses = await Promise.all(
-          batches.map(batch =>
-            fetch(`/api/rest/product_variants?menu_ids=${batch.join(',')}`)
-              .then(r => r.json())
-              .then(data => Array.isArray(data) ? data : (data.data || data.results || []))
-              .catch(() => [])
-          )
-        );
-        
-        // Merge all variants
-        batchResponses.forEach(variants => {
-          variants.forEach((variant: any) => {
-            if (variant.menu_id && newVariantsMap[variant.menu_id] !== undefined) {
-              newVariantsMap[variant.menu_id].push(variant);
-            }
-          });
-        });
-        
-        setVariantsMap(newVariantsMap);
-      } catch {
-        // Fallback: load individually if bulk fails
-        const newVariantsMap: Record<string, any[]> = {};
-        await Promise.all(
-          itemsWithVariants.map(async (item) => {
-            try {
-              const response = await fetch(`/api/rest/product_variants?menu_id=${item.id}`);
-              const data = await response.json();
-              newVariantsMap[item.id] = Array.isArray(data) ? data : (data.data || data.results || []);
-            } catch {
-              newVariantsMap[item.id] = [];
-            }
-          })
-        );
-        setVariantsMap(newVariantsMap);
-      } finally {
-        setIsLoadingVariants(false);
-      }
-    };
-
-    if (menu.length > 0) {
-      loadVariants();
-    }
-  }, [menu]);
-
   const handleRestock = async (menuId: string, quantity: number, hppPrice?: number, notes?: string, variantId?: string) => {
     try {
       const response = await fetch('/api/stock/restock', {
@@ -213,27 +144,9 @@ export default function StockPage() {
         throw new Error(error.message || 'Gagal restock');
       }
 
-      // Refresh menu data
+      // Refresh menu data (productVariants included)
       await mutateMenu();
 
-      // Force reload variants for the specific item that was restocked
-      if (variantId || menuId) {
-        const targetMenuId = variantId ? menu.find(m => m.id === menuId)?.id : menuId;
-        if (targetMenuId) {
-          try {
-            const response = await fetch(`/api/rest/product_variants?menu_id=${targetMenuId}`);
-            const data = await response.json();
-            const variantsList = Array.isArray(data) ? data : (data.data || data.results || []);
-            setVariantsMap(prev => ({
-              ...prev,
-              [targetMenuId]: variantsList
-            }));
-          } catch {
-            // Silently ignore variant reload errors
-          }
-        }
-      }
-      
       // Refresh mutation history if visible
       if (showHistory) {
         setHistoryOffset(0);
@@ -261,50 +174,9 @@ export default function StockPage() {
         throw new Error(error.message || 'Gagal stock opname');
       }
 
-      // Refresh menu data
+      // Refresh menu data (productVariants included)
       await mutateMenu();
-      
-      // Wait for DB sync
-      await new Promise(resolve => setTimeout(resolve, 300));
-      
-      // Reload variants for items that were adjusted in opname (batched bulk request)
-      const adjustedMenuIds = Array.from(new Set(results.map(r => r.menuId)));
-      if (adjustedMenuIds.length > 0) {
-        try {
-          const BATCH_SIZE = 50;
-          const batches: string[][] = [];
-          for (let i = 0; i < adjustedMenuIds.length; i += BATCH_SIZE) {
-            batches.push(adjustedMenuIds.slice(i, i + BATCH_SIZE));
-          }
-          
-          // Fetch all batches in parallel
-          const batchResponses = await Promise.all(
-            batches.map(batch =>
-              fetch(`/api/rest/product_variants?menu_ids=${batch.join(',')}`)
-                .then(r => r.json())
-                .then(data => Array.isArray(data) ? data : (data.data || data.results || []))
-                .catch(() => [])
-            )
-          );
-          
-          // Group by menu_id
-          const newVariantsMap: Record<string, any[]> = { ...variantsMap };
-          adjustedMenuIds.forEach(id => {
-            newVariantsMap[id] = [];
-          });
-          batchResponses.forEach(variants => {
-            variants.forEach((variant: any) => {
-              if (variant.menu_id && newVariantsMap[variant.menu_id] !== undefined) {
-                newVariantsMap[variant.menu_id].push(variant);
-              }
-            });
-          });
-          setVariantsMap(newVariantsMap);
-        } catch {
-          // Silently ignore bulk reload errors
-        }
-      }
-      
+
       // Refresh mutation history if visible (parallel with other operations)
       if (showHistory) {
         setHistoryOffset(0);
@@ -372,10 +244,10 @@ export default function StockPage() {
       }
 
       // 3. Stock Status Filter
-      // If has variants, calculate total stock from variants
       let stock = m.stockQuantity || 0;
-      if (m.hasVariants && variantsMap[m.id]) {
-        stock = variantsMap[m.id].reduce((sum: number, v: any) => sum + (v.stock_quantity || 0), 0);
+      const productVariants = ((m as any).productVariants || []).filter((v: any) => !v.deleted_at);
+      if (m.hasVariants && productVariants.length > 0) {
+        stock = productVariants.reduce((sum: number, v: any) => sum + (v.stock_quantity || 0), 0);
       }
       const minStock = m.minStock || 5;
 
@@ -389,8 +261,9 @@ export default function StockPage() {
     return filtered.sort((a, b) => {
       const getPriority = (m: any) => {
         let stock = m.stockQuantity || 0;
-        if (m.hasVariants && variantsMap[m.id]) {
-          stock = variantsMap[m.id].reduce((sum: number, v: any) => sum + (v.stock_quantity || 0), 0);
+        const productVariants = ((m as any).productVariants || []).filter((v: any) => !v.deleted_at);
+        if (m.hasVariants && productVariants.length > 0) {
+          stock = productVariants.reduce((sum: number, v: any) => sum + (v.stock_quantity || 0), 0);
         }
         const minStock = m.minStock || 5;
         if (stock === 0) return 2; // Highest priority
@@ -409,57 +282,65 @@ export default function StockPage() {
       // If same priority, sort by name alphabetically
       return a.name.localeCompare(b.name);
     });
-  }, [menu, searchQuery, selectedCategory, filter, categories, variantsMap]);
+  }, [menu, searchQuery, selectedCategory, filter, categories]);
 
   // Calculate stats - same logic as badge in app-shell.tsx
   const totalItems = menu.filter(m => m.trackStock).length;
   
   const lowStockCount = menu.reduce((count, m) => {
     if (!m.trackStock) return count;
-    
-    let lowStockItems = 0;
-    
-    // If item has variants AND variants exist, check each variant
-    if (m.hasVariants && variantsMap[m.id] && variantsMap[m.id].length > 0) {
-      lowStockItems = variantsMap[m.id].filter((v: any) => 
-        v.track_stock !== false && 
-        v.stock_quantity !== undefined && 
-        v.stock_quantity > 0 && 
+
+    const variants = ((m as any).productVariants || []).filter((v: any) => !v.deleted_at);
+
+    if (m.hasVariants && variants.length > 0) {
+      return count + variants.filter((v: any) =>
+        v.stock_quantity !== undefined &&
+        v.stock_quantity > 0 &&
         v.stock_quantity <= (v.min_stock || m.minStock || 5)
       ).length;
-    } else {
-      // For items without variants, check item stock directly
-      if (m.stockQuantity !== undefined && m.stockQuantity > 0 && m.stockQuantity <= (m.minStock || 5)) {
-        lowStockItems = 1;
-      }
     }
-    
-    return count + lowStockItems;
-  }, 0);
-  
-  const outOfStockCount = menu.reduce((count, m) => {
-    if (!m.trackStock) return count;
-    
-    let outOfStockItems = 0;
-    
-    // If item has variants AND variants exist, check each variant
-    if (m.hasVariants && variantsMap[m.id] && variantsMap[m.id].length > 0) {
-      outOfStockItems = variantsMap[m.id].filter((v: any) => 
-        v.track_stock !== false && 
-        v.stock_quantity !== undefined && 
-        v.stock_quantity === 0
-      ).length;
-    } else {
-      // For items without variants, check item stock directly
-      if (m.stockQuantity !== undefined && m.stockQuantity === 0) {
-        outOfStockItems = 1;
-      }
+
+    if (m.stockQuantity !== undefined && m.stockQuantity > 0 && m.stockQuantity <= (m.minStock || 5)) {
+      return count + 1;
     }
-    
-    return count + outOfStockItems;
+    return count;
   }, 0);
 
-  
+  const outOfStockCount = menu.reduce((count, m) => {
+    if (!m.trackStock) return count;
+
+    const variants = ((m as any).productVariants || []).filter((v: any) => !v.deleted_at);
+
+    if (m.hasVariants && variants.length > 0) {
+      return count + variants.filter((v: any) =>
+        v.stock_quantity !== undefined &&
+        v.stock_quantity === 0
+      ).length;
+    }
+
+    if (m.stockQuantity !== undefined && m.stockQuantity === 0) {
+      return count + 1;
+    }
+    return count;
+  }, 0);
+
+  const variantsMap = useMemo(() => {
+    const map: Record<string, Array<{ id: string; variant_name: string; stock_quantity: number; hpp_price: number }>> = {};
+    menu.forEach(m => {
+      const productVariants = ((m as any).productVariants || []).filter((v: any) => !v.deleted_at);
+      if (m.hasVariants && productVariants.length > 0) {
+        map[m.id] = productVariants.map((v: any) => ({
+          id: v.id,
+          variant_name: v.variant_name || v.id,
+          stock_quantity: v.stock_quantity || 0,
+          hpp_price: v.hpp_price || (m as any).hppPrice || 0,
+        }));
+      }
+    });
+    return map;
+  }, [menu]);
+
+
   if (authLoading || menuLoading || categoriesLoading || !hasMounted) {
     return <StockSkeleton />;
   }
@@ -737,7 +618,8 @@ export default function StockPage() {
                   ) : (
                     <AnimatePresence>
                       {filteredMenu.flatMap((m, menuIdx) => {
-                        const variants = m.hasVariants && variantsMap[m.id] ? variantsMap[m.id] : null;
+                        const productVariants = ((m as any).productVariants || []).filter((v: any) => !v.deleted_at);
+                        const variants = m.hasVariants && productVariants.length > 0 ? productVariants : null;
 
                         // If no variants, show single row
                         if (!variants || variants.length === 0) {
@@ -1062,9 +944,9 @@ export default function StockPage() {
                           )}
                         </td>
                         <td className={`px-4 py-3 text-right font-bold ${
-                          mut.type === 'in' ? 'text-emerald-500' : 'text-red-500'
+                          mut.quantity > 0 ? 'text-emerald-500' : 'text-red-500'
                         }`}>
-                          {mut.type === 'in' ? '+' : '-'}{Math.abs(mut.quantity)}
+                          {mut.quantity > 0 ? '+' : ''}{mut.quantity}
                         </td>
                         <td className="px-4 py-3 text-right text-muted-foreground text-xs">
                           {mut.hppPrice ? formatRupiah(mut.hppPrice) : '-'}
