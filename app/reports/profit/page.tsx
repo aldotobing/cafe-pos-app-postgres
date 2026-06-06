@@ -62,11 +62,13 @@ export default function ProfitReportPage() {
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 10
 
+  const toLocalISO = (dateStr: string) => new Date(dateStr + 'T00:00:00').toISOString();
+
   // Format dates for API query - memoized to prevent unnecessary recalculations
   const dateParams = useMemo(() => {
     const startDateStr = format(date?.from || new Date(), 'yyyy-MM-dd');
     const endDateStr = format(addDays(date?.to || date?.from || new Date(), 1), 'yyyy-MM-dd');
-    return { startDateStr, endDateStr };
+    return { startDateStr: toLocalISO(startDateStr), endDateStr: toLocalISO(endDateStr) };
   }, [date]);
 
   // Use SWR for fetching and caching
