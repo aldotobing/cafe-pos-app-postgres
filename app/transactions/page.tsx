@@ -6,7 +6,7 @@ import { formatRupiah, formatTanggal } from "../../lib/format"
 import { useAuth } from '@/lib/auth-context';
 import { useTransactionsPaginated, useCafeSettings } from "@/hooks/use-cafe-data"
 import { useRouter } from 'next/navigation';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Filter, Receipt, TrendingUp, Calendar as CalendarIcon, FileText, ChevronLeft, ChevronRight, ChevronFirst, ChevronLast, Loader2 } from 'lucide-react';
 import { generateTransactionReport } from '@/lib/reports/transaction-report';
 import { toast } from 'sonner';
@@ -98,8 +98,13 @@ export default function Page() {
   };
 
   const tableVariants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: { opacity: 1, y: 0 }
+    hidden: { opacity: 0 },
+    visible: { opacity: 1, transition: { staggerChildren: 0.04 } }
+  };
+
+  const rowVariants = {
+    hidden: { opacity: 0, y: 8 },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.25, ease: 'easeOut' } }
   };
 
   useEffect(() => {
@@ -151,10 +156,10 @@ export default function Page() {
   }
 
   const paymentMethodStyles: Record<string, string> = {
-    Tunai: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
-    QRIS: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
-    Debit: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
-    Transfer: 'bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400',
+    Tunai: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300 font-semibold',
+    QRIS: 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300 font-semibold',
+    Debit: 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300 font-semibold',
+    Transfer: 'bg-violet-100 text-violet-800 dark:bg-violet-900/50 dark:text-violet-300 font-semibold',
   }
 
   const handleExport = async () => {
@@ -355,6 +360,7 @@ export default function Page() {
               </tr>
             </thead>
             <tbody>
+              <AnimatePresence mode="popLayout">
               {filtered.map((t) => {
                 const cashierName = t.cashier_name
                   ? t.cashier_name.split(' ')[0]
@@ -362,15 +368,17 @@ export default function Page() {
                   || (['local', 'system', 'unknown'].includes(t.created_by) ? '-' : (t.created_by ? `ID:${t.created_by.slice(0, 5)}` : '-'))
 
                 return (
-                  <tr
+                  <motion.tr
                     key={t.id}
+                    variants={rowVariants}
+                    layout
                     className="border-b last:border-b-0 cursor-pointer hover:bg-muted/50 transition-colors"
                     onClick={() => { setSelectedTransactionId(t.id); setShowDetailModal(true) }}
                   >
                     <td className="px-4 py-3 font-medium">{formatTanggal(t.createdAt)}</td>
                     <td className="px-4 py-3 text-xs">{cashierName}</td>
                     <td className="px-4 py-3">
-                      <span className={cn("inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium", paymentMethodStyles[t.paymentMethod] || 'bg-muted text-muted-foreground')}>
+                      <span className={cn("inline-flex items-center px-2 py-0.5 rounded-full text-[11px]", paymentMethodStyles[t.paymentMethod] || 'bg-muted text-muted-foreground')}>
                         {t.paymentMethod}
                       </span>
                     </td>
@@ -388,9 +396,10 @@ export default function Page() {
                         </a>
                       </div>
                     </td>
-                  </tr>
+                  </motion.tr>
                 )
               })}
+              </AnimatePresence>
             </tbody>
           </table>
         )}
@@ -420,6 +429,7 @@ export default function Page() {
                 <Loader2 className="h-5 w-5 animate-spin text-primary" />
               </div>
             )}
+            <AnimatePresence mode="popLayout">
             {filtered.map((t) => {
               const cashierName = t.cashier_name
                 ? t.cashier_name.split(' ')[0]
@@ -429,8 +439,10 @@ export default function Page() {
               const itemsText = t.items.map((i) => `${i.name || i.menu_name || i.menuName} x${i.qty || i.quantity}`).join(", ")
 
               return (
-                <div
+                <motion.div
                   key={t.id}
+                  variants={rowVariants}
+                  layout
                   className="rounded-xl border bg-card shadow-sm overflow-hidden active:scale-[0.99] transition-transform cursor-pointer"
                   onClick={() => { setSelectedTransactionId(t.id); setShowDetailModal(true) }}
                 >
@@ -441,7 +453,7 @@ export default function Page() {
                   <div className="p-3 space-y-2">
                     <div className="flex items-center gap-3 text-xs">
                       <span className="text-muted-foreground">Kasir: <span className="text-foreground font-medium">{cashierName}</span></span>
-                      <span className={cn("px-1.5 py-0.5 rounded-full text-[10px] font-medium", paymentMethodStyles[t.paymentMethod] || 'bg-muted')}>{t.paymentMethod}</span>
+                      <span className={cn("px-1.5 py-0.5 rounded-full text-[10px]", paymentMethodStyles[t.paymentMethod] || 'bg-muted')}>{t.paymentMethod}</span>
                     </div>
                     <div className="flex items-center justify-between gap-2">
                       <div className="min-w-0 flex-1">
@@ -453,9 +465,10 @@ export default function Page() {
                       </a>
                     </div>
                   </div>
-                </div>
+                </motion.div>
               )
             })}
+            </AnimatePresence>
           </>
         )}
         {totalPages > 1 && (
