@@ -47,12 +47,6 @@ export default function DashboardPage() {
   // Use limit=1000 to fetch all transactions for dashboard stats
   const { transactions, isLoading: transactionsLoading } = useTransactions(cafeId, 1000);
   const router = useRouter();
-  const [isMounted, setIsMounted] = useState(false);
-
-  // Set mounted state after component mounts
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
 
   // Transactions are already filtered by cafe_id in the hook
   const cafeTransactions = transactions;
@@ -155,7 +149,7 @@ export default function DashboardPage() {
     }
   }, [user, userData, authLoading, router]);
 
-  if (authLoading || menuLoading || transactionsLoading || !isMounted) {
+  if (authLoading || menuLoading || transactionsLoading) {
     return <DashboardSkeleton />;
   }
 
