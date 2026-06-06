@@ -7,12 +7,22 @@ import { useAuth } from '@/lib/auth-context';
 import { useTransactionsPaginated, useCafeSettings } from "@/hooks/use-cafe-data"
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CheckCircle2, Clock, WifiOff, Upload, Filter, Receipt, TrendingUp, Calendar, FileText, RefreshCw, ChevronLeft, ChevronRight, ChevronFirst, ChevronLast, Loader2 } from 'lucide-react';
+import { CheckCircle2, Clock, WifiOff, Upload, Filter, Receipt, TrendingUp, Calendar as CalendarIcon, FileText, RefreshCw, ChevronLeft, ChevronRight, ChevronFirst, ChevronLast, Loader2 } from 'lucide-react';
 import { generateTransactionReport } from '@/lib/reports/transaction-report';
 import { toast } from 'sonner';
 import { TransactionsSkeleton } from '@/components/skeletons';
 import { TransactionDetailModal } from '@/components/transactions/transaction-detail-modal';
 import type { Transaction } from "../../types";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+  Calendar,
+  Button,
+} from '@/components/ui';
+import { format, parseISO } from 'date-fns';
+import { id } from 'date-fns/locale';
+import { cn } from '@/lib/utils';
 
 export default function Page() {
   // Set default dates to today
@@ -284,18 +294,38 @@ export default function Page() {
           <div className="col-span-2 flex flex-col gap-1.5">
             <label className="text-[10px] font-bold uppercase text-muted-foreground px-1">Periode</label>
             <div className="grid grid-cols-2 gap-x-5">
-              <input
-                type="date"
-                className="w-full h-11 rounded-xl border bg-background px-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all cursor-pointer"
-                value={from}
-                onChange={(e) => setFrom(e.target.value)}
-              />
-              <input
-                type="date"
-                className="w-full h-11 rounded-xl border bg-background px-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all cursor-pointer"
-                value={to}
-                onChange={(e) => setTo(e.target.value)}
-              />
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="w-full h-11 rounded-xl justify-start font-normal text-sm">
+                    <CalendarIcon className="w-4 h-4 mr-2 text-muted-foreground shrink-0" />
+                    <span className="truncate">{format(parseISO(from), 'dd MMM yyyy', { locale: id })}</span>
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0 rounded-xl shadow-xl" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={parseISO(from)}
+                    onSelect={(date) => date && setFrom(format(date, 'yyyy-MM-dd'))}
+                    locale={id}
+                  />
+                </PopoverContent>
+              </Popover>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="w-full h-11 rounded-xl justify-start font-normal text-sm">
+                    <CalendarIcon className="w-4 h-4 mr-2 text-muted-foreground shrink-0" />
+                    <span className="truncate">{format(parseISO(to), 'dd MMM yyyy', { locale: id })}</span>
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0 rounded-xl shadow-xl" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={parseISO(to)}
+                    onSelect={(date) => date && setTo(format(date, 'yyyy-MM-dd'))}
+                    locale={id}
+                  />
+                </PopoverContent>
+              </Popover>
             </div>
           </div>
         </div>
