@@ -54,10 +54,11 @@ export default function DashboardPage() {
   const today = new Date()
   today.setHours(0, 0, 0, 0)
 
-  const { totalHariIni, jumlahTransaksi, topItem, weeklyRevenue } = useMemo(() => {
+  const { totalHariIni, jumlahTransaksi, topItem, topItemCount, weeklyRevenue } = useMemo(() => {
     let totalHariIni = 0
     let jumlahTransaksi = 0
-    const itemCount: Record<string, number> = {}
+    const itemCountById: Record<string, number> = {}
+    const itemNameById: Record<string, string> = {}
     const todayStart = today.getTime();
 
     // Calculate weekly revenue
@@ -84,9 +85,13 @@ export default function DashboardPage() {
         totalHariIni += t.totalAmount || 0
         jumlahTransaksi += 1
         for (const it of t.items) {
-          const itemName = it.name || (it as any).menu_name || (it as any).menuName || "Unknown Item";
-          const itemQty = it.qty || (it as any).quantity || 1;
-          itemCount[itemName] = (itemCount[itemName] || 0) + itemQty;
+          const menuId = it.menuId || 'unknown'
+          const itemName = it.name || 'Unknown Item'
+          const itemQty = it.qty ?? (it.quantity ?? 1)
+          itemCountById[menuId] = (itemCountById[menuId] || 0) + itemQty
+          if (!itemNameById[menuId] || itemName.length <= itemNameById[menuId].length) {
+            itemNameById[menuId] = itemName
+          }
         }
       }
 
@@ -96,13 +101,16 @@ export default function DashboardPage() {
       }
     }
 
-    const topItem = Object.entries(itemCount).sort((a, b) => b[1] - a[1])[0]?.[0] || "-"
+    const sorted = Object.entries(itemCountById).sort((a, b) => b[1] - a[1])
+    const topEntry = sorted[0]
+    const topItem = topEntry ? (itemNameById[topEntry[0]] || topEntry[0].slice(0, 8)) : "-"
+    const topItemCount = topEntry ? topEntry[1] : 0
 
     const weeklyRevenue = Object.entries(weeklyMap)
       .map(([date, revenue]) => ({ date, revenue }))
       .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
-    return { totalHariIni, jumlahTransaksi, topItem, weeklyRevenue }
+    return { totalHariIni, jumlahTransaksi, topItem, topItemCount, weeklyRevenue }
   }, [cafeTransactions])
 
   const last5 = useMemo(() => {
@@ -186,7 +194,7 @@ export default function DashboardPage() {
             <StatCard
               title="Menu Terlaris"
               value={topItem}
-              description="Item paling banyak dipesan"
+              description={topItemCount > 0 ? `${topItemCount}x dipesan hari ini` : "Item paling banyak dipesan"}
               icon={TrendingUp}
               iconClassName="text-amber-400 bg-amber-400/10"
             />

@@ -305,15 +305,16 @@ export const transactionsApi = {
     params.set('limit', limit.toString());
     params.set('offset', offset.toString());
 
-    // Add date filters if provided
+    // Add date filters if provided - convert to local-timezone-aware ISO timestamps
+    // so that "2026-06-06" means June 6 in the user's timezone, not UTC midnight
     if (filters?.from) {
-      params.set('start_date', filters.from);
+      const fromDate = new Date(filters.from + 'T00:00:00');
+      params.set('start_date', fromDate.toISOString());
     }
     if (filters?.to) {
-      // Add one day to include the end date
-      const endDate = new Date(filters.to);
-      endDate.setDate(endDate.getDate() + 1);
-      params.set('end_date', endDate.toISOString().split('T')[0]);
+      const toDate = new Date(filters.to + 'T00:00:00');
+      toDate.setDate(toDate.getDate() + 1);
+      params.set('end_date', toDate.toISOString());
     }
     if (filters?.created_by && filters.created_by !== 'Semua') {
       params.set('created_by', filters.created_by);
