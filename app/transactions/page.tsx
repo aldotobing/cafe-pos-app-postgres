@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react"
 import { formatRupiah, formatTanggal } from "../../lib/format"
 import { useAuth } from '@/lib/auth-context';
 import { useTransactionsPaginated, useCafeSettings } from "@/hooks/use-cafe-data"
+import { transactionsApi } from '@/lib/api'
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Filter, Receipt, TrendingUp, Calendar as CalendarIcon, FileText, ChevronLeft, ChevronRight, ChevronFirst, ChevronLast, Loader2 } from 'lucide-react';
@@ -32,6 +33,7 @@ export default function Page() {
   const [to, setTo] = useState<string>(today)
   const [userFilter, setUserFilter] = useState<string>("Semua")
   const [usersList, setUsersList] = useState<Array<{id: string, full_name: string}>>([])
+  const [exporting, setExporting] = useState(false)
 
   const { userData, loading: authLoading, user } = useAuth();
   const cafeId = userData?.cafe_id;
@@ -189,9 +191,13 @@ export default function Page() {
       toast.error("Tidak ada data untuk diekspor.");
       return;
     }
+    setExporting(true);
     try {
+      const result = await transactionsApi.getPaginated(cafeId!, totalCount, 0, {
+        from, to, created_by: userFilter, payment_method: method
+      });
       await generateTransactionReport({
-        transactions: filtered,
+        transactions: result.data,
         users: usersList,
         dateRange: { from: new Date(from), to: new Date(to) },
         settings: (settings as any) || {},
@@ -200,6 +206,8 @@ export default function Page() {
       toast.success("Laporan berhasil diekspor.");
     } catch (e) {
       toast.error("Gagal mengekspor laporan.");
+    } finally {
+      setExporting(false);
     }
   }
 
@@ -219,10 +227,11 @@ export default function Page() {
         </div>
         <button
           onClick={handleExport}
-          className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-card border hover:bg-muted transition-all text-sm font-medium shadow-sm active:scale-95"
+          disabled={exporting}
+          className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-card border hover:bg-muted transition-all text-sm font-medium shadow-sm active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
         >
-          <FileText className="h-4 w-4 text-primary" />
-          <span>Export Laporan</span>
+          {exporting ? <Loader2 className="h-4 w-4 animate-spin text-primary" /> : <FileText className="h-4 w-4 text-primary" />}
+          <span>{exporting ? 'Mengekspor...' : 'Export Laporan'}</span>
         </button>
       </motion.div>
 

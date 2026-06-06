@@ -228,7 +228,9 @@ export default function StatistikPage() {
           categories.find(c => c.name === menuItem?.category);
         const categoryName = targetCategory?.name || menuItem?.category || 'Lainnya';
         const qty = Number(item.quantity || item.qty) || 0;
-        categorySales[categoryName] = (categorySales[categoryName] || 0) + qty;
+        const price = Number(item.price) || 0;
+        const lineTotal = item.lineTotal ? Number(item.lineTotal) : price * qty;
+        categorySales[categoryName] = (categorySales[categoryName] || 0) + lineTotal;
       });
     });
 
