@@ -13,6 +13,7 @@ import {
   Package,
   RefreshCw,
   FileText,
+  Loader2,
   ArrowUpRight,
   ArrowDownRight,
   DollarSign
@@ -49,6 +50,7 @@ export default function StatistikPage() {
     from: addDays(new Date(), -29),
     to: new Date(),
   });
+  const [exporting, setExporting] = useState(false);
 
   const toLocalISO = (dateStr: string) => new Date(dateStr + 'T00:00:00').toISOString();
 
@@ -525,6 +527,8 @@ export default function StatistikPage() {
                     toast.error("Tidak ada data untuk diekspor.");
                     return;
                   }
+                  setExporting(true);
+                  const loadingToast = toast.loading(`Menyiapkan laporan ${statisticData.totalTransactions} transaksi...`);
                   try {
                     await generateFinancialReport(
                       statisticData,
@@ -534,15 +538,17 @@ export default function StatistikPage() {
                       },
                       settings as any || {}
                     );
-                    toast.success("Laporan keuangan berhasil diekspor.");
+                    toast.success(`Laporan keuangan ${statisticData.totalTransactions} transaksi berhasil diekspor.`, { id: loadingToast });
                   } catch (error) {
-                    toast.error("Gagal mengekspor laporan keuangan.");
+                    toast.error("Gagal mengekspor laporan keuangan.", { id: loadingToast });
+                  } finally {
+                    setExporting(false);
                   }
                 }}
-                disabled={!statisticData}
+                disabled={!statisticData || exporting}
               >
-                <FileText className="h-4 w-4" />
-                <span className="hidden sm:inline">Export PDF</span>
+                {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
+                <span className="hidden sm:inline">{exporting ? 'Mengekspor...' : 'Export PDF'}</span>
               </Button>
             </div>
           </div>

@@ -61,6 +61,7 @@ export default function ProfitReportPage() {
     to: new Date(),
   })
   const [currentPage, setCurrentPage] = useState(1)
+  const [exporting, setExporting] = useState(false)
   const itemsPerPage = 10
 
   const toLocalISO = (dateStr: string) => new Date(dateStr + 'T00:00:00').toISOString();
@@ -368,6 +369,8 @@ export default function ProfitReportPage() {
                     toast.error('Tidak ada data untuk diekspor');
                     return;
                   }
+                  setExporting(true);
+                  const loadingToast = toast.loading(`Menyiapkan laporan ${profitData.length} item...`);
                   try {
                     await generateProfitReport({
                       profitData,
@@ -376,15 +379,17 @@ export default function ProfitReportPage() {
                       settings: settings as any || {},
                       itemCount: profitData.length,
                     });
-                    toast.success('Laporan laba rugi berhasil diekspor');
+                    toast.success(`Laporan laba rugi ${profitData.length} item berhasil diekspor`, { id: loadingToast });
                   } catch (err) {
-                    toast.error('Gagal mengekspor laporan laba rugi');
+                    toast.error('Gagal mengekspor laporan laba rugi', { id: loadingToast });
+                  } finally {
+                    setExporting(false);
                   }
                 }}
-                disabled={isFetching || isValidating || profitData.length === 0}
+                disabled={isFetching || isValidating || profitData.length === 0 || exporting}
               >
-                <FileText className="h-4 w-4" />
-                <span className="hidden sm:inline">Export PDF</span>
+                {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
+                <span className="hidden sm:inline">{exporting ? 'Mengekspor...' : 'Export PDF'}</span>
               </Button>
               <Button
                 variant="outline"

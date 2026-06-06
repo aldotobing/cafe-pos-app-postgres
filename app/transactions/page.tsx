@@ -192,10 +192,12 @@ export default function Page() {
       return;
     }
     setExporting(true);
+    const loadingToast = toast.loading(`Menyiapkan ${summaryStats.count.toLocaleString('id-ID')} transaksi...`);
     try {
       const result = await transactionsApi.getPaginated(cafeId!, totalCount, 0, {
         from, to, created_by: userFilter, payment_method: method
       });
+      toast.loading("Membuat laporan PDF...", { id: loadingToast });
       await generateTransactionReport({
         transactions: result.data,
         users: usersList,
@@ -203,9 +205,9 @@ export default function Page() {
         settings: (settings as any) || {},
         filters: { method, user: userFilter }
       });
-      toast.success("Laporan berhasil diekspor.");
+      toast.success(`Laporan ${result.data.length} transaksi berhasil diekspor.`, { id: loadingToast });
     } catch (e) {
-      toast.error("Gagal mengekspor laporan.");
+      toast.error("Gagal mengekspor laporan.", { id: loadingToast });
     } finally {
       setExporting(false);
     }
