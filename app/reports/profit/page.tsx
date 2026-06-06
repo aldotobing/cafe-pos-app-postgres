@@ -2,11 +2,11 @@
 
 import { AppShell } from "@/components/app-shell"
 import { useEffect, useState, useMemo } from "react"
-import { useMenu } from "@/hooks/use-cafe-data"
+import { useMenu, useCafeSettings } from "@/hooks/use-cafe-data"
 import { useAuth } from '@/lib/auth-context';
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion';
-import { TrendingUp, DollarSign, Package, BarChart3, ArrowUpRight, Calendar as CalendarIcon, RefreshCw, Info, ChevronLeft, ChevronRight, ChevronFirst, ChevronLast } from 'lucide-react'
+import { TrendingUp, DollarSign, Package, BarChart3, ArrowUpRight, Calendar as CalendarIcon, RefreshCw, Info, ChevronLeft, ChevronRight, ChevronFirst, ChevronLast, FileText } from 'lucide-react'
 import { formatRupiah } from "@/lib/format"
 import { DateRange } from 'react-day-picker';
 import { addDays, format, startOfDay } from 'date-fns';
@@ -14,7 +14,7 @@ import { id } from 'date-fns/locale';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
-import { generateFinancialReport } from '@/lib/reports/financial-report';
+import { generateProfitReport } from '@/lib/reports/profit-report';
 import { toast } from "sonner"
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -52,6 +52,7 @@ export default function ProfitReportPage() {
   const { user, userData, loading: authLoading } = useAuth();
   const cafeId = userData?.cafe_id;
   const { menu, isLoading: menuLoading } = useMenu(cafeId);
+  const { settings } = useCafeSettings(cafeId);
   const router = useRouter();
 
   const [tooltipId, setTooltipId] = useState<string | null>(null)
@@ -358,11 +359,38 @@ export default function ProfitReportPage() {
                 </PopoverContent>
               </Popover>
 
-              <Button 
-                variant="outline" 
-                size="icon" 
+              <Button
+                variant="outline"
+                size="default"
+                className="shrink-0 gap-2"
+                onClick={async () => {
+                  if (!date?.from || profitData.length === 0) {
+                    toast.error('Tidak ada data untuk diekspor');
+                    return;
+                  }
+                  try {
+                    await generateProfitReport({
+                      profitData,
+                      summary,
+                      dateRange: { from: date.from, to: date.to || date.from },
+                      settings: settings as any || {},
+                      itemCount: profitData.length,
+                    });
+                    toast.success('Laporan laba rugi berhasil diekspor');
+                  } catch (err) {
+                    toast.error('Gagal mengekspor laporan laba rugi');
+                  }
+                }}
+                disabled={isFetching || isValidating || profitData.length === 0}
+              >
+                <FileText className="h-4 w-4" />
+                <span className="hidden sm:inline">Export PDF</span>
+              </Button>
+              <Button
+                variant="outline"
+                size="icon"
                 className="shrink-0"
-                onClick={() => mutate()} 
+                onClick={() => mutate()}
                 disabled={isFetching || isValidating}
               >
                 <RefreshCw className={cn("h-4 w-4", (isFetching || isValidating) && "animate-spin")} />
