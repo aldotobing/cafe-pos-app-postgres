@@ -31,10 +31,12 @@ import { cn } from '@/lib/utils'
 
 function SortableCategoryRow({
   cat,
+  index,
   onEdit,
   onDelete,
 }: {
   cat: Category
+  index: number
   onEdit: (cat: Category) => void
   onDelete: (cat: Category) => void
 }) {
@@ -57,59 +59,60 @@ function SortableCategoryRow({
       ref={setNodeRef}
       style={style}
       className={cn(
-        "group flex items-center gap-2 p-3 sm:p-4 bg-card border rounded-2xl transition-all duration-200",
+        "group flex items-stretch border rounded-xl bg-card shadow-subtle transition-all duration-200 overflow-hidden",
         isSortableDragging
-          ? "z-50 shadow-2xl ring-2 ring-primary/20 scale-[1.02] opacity-90"
-          : "hover:bg-muted/50"
+          ? "z-50 shadow-xl ring-2 ring-primary/30 scale-[1.01] opacity-95 relative"
+          : "hover:shadow-md hover:border-primary/20"
       )}
     >
-      {/* Drag Handle */}
+      {/* Drag handle with position number */}
       <button
         {...attributes}
         {...listeners}
-        className="touch-none shrink-0 w-8 h-10 flex items-center justify-center rounded-lg text-muted-foreground/40 hover:text-muted-foreground hover:bg-muted/50 transition-colors cursor-grab active:cursor-grabbing"
+        className={cn(
+          "touch-none shrink-0 flex flex-col items-center justify-center gap-0.5 min-w-[52px] px-3 border-r border-border/50 transition-colors cursor-grab active:cursor-grabbing",
+          isSortableDragging
+            ? "bg-primary/10 text-primary"
+            : "bg-muted/30 text-muted-foreground group-hover:bg-muted/50 group-hover:text-foreground"
+        )}
         aria-label="Tahan dan geser untuk mengubah urutan"
         title="Tahan dan geser untuk mengubah urutan"
       >
-        <GripVertical className="h-5 w-5" />
+        <span className="text-xs font-bold tabular-nums leading-none">{index + 1}</span>
+        <GripVertical className="h-4 w-4 opacity-60" />
       </button>
 
-      {/* Icon + Name */}
-      <div className="flex items-center gap-4 flex-1 min-w-0">
+      {/* Content */}
+      <div className="flex items-center gap-3 p-3 sm:p-4 flex-1 min-w-0">
         <div
-          className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl shadow-inner shrink-0"
+          className="w-11 h-11 sm:w-12 sm:h-12 rounded-lg flex items-center justify-center text-xl shadow-inner shrink-0"
           style={{
-            backgroundColor: `${cat.color || '#6B7280'}15`,
+            backgroundColor: `${cat.color || '#6B7280'}18`,
             color: cat.color || '#6B7280',
           }}
         >
-          {cat.icon || <FolderOpen className="h-6 w-6 opacity-20" />}
+          <span className="leading-none">{cat.icon || <FolderOpen className="h-5 w-5 opacity-30" />}</span>
         </div>
-        <div className="min-w-0">
-          <div className="font-bold text-base sm:text-lg group-hover:text-primary transition-colors truncate">
-            {cat.name}
-          </div>
-          <div className="text-xs text-muted-foreground font-medium">
-            <span className="px-1.5 py-0.5 rounded bg-muted">Urutan {cat.sortOrder || 0}</span>
-          </div>
+        <div className="min-w-0 flex-1">
+          <div className="font-semibold text-sm sm:text-base truncate">{cat.name}</div>
         </div>
       </div>
 
       {/* Actions */}
-      <div className="flex items-center gap-2 shrink-0">
+      <div className="flex items-center gap-1 px-2 shrink-0 border-l border-border/50 bg-muted/10">
         <button
           onClick={() => onEdit(cat)}
-          className="w-11 h-11 sm:w-10 sm:h-10 flex items-center justify-center rounded-xl bg-background border hover:bg-muted transition-all text-muted-foreground hover:text-primary shadow-sm active:scale-95"
+          className="w-9 h-9 flex items-center justify-center rounded-lg hover:bg-background hover:text-primary transition-all text-muted-foreground active:scale-90"
           title="Edit"
         >
-          <Pencil className="h-5 w-5 sm:h-4 sm:w-4 transition-colors" />
+          <Pencil className="h-4 w-4" />
         </button>
         <button
           onClick={() => onDelete(cat)}
-          className="w-11 h-11 sm:w-10 sm:h-10 flex items-center justify-center rounded-xl bg-background border hover:bg-red-50 hover:border-red-200 transition-all text-muted-foreground hover:text-red-600 shadow-sm active:scale-95"
+          className="w-9 h-9 flex items-center justify-center rounded-lg hover:bg-red-50 hover:text-red-600 transition-all text-muted-foreground active:scale-90"
           title="Hapus"
         >
-          <Trash2 className="h-5 w-5 sm:h-4 sm:w-4 transition-colors" />
+          <Trash2 className="h-4 w-4" />
         </button>
       </div>
     </div>
@@ -317,7 +320,7 @@ export default function CategoriesPage() {
         <div className="space-y-1">
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Kategori Menu</h1>
           <p className="text-sm text-muted-foreground">
-            Atur dan kelompokkan menu Anda untuk navigasi yang lebih mudah.
+            Atur dan kelompokkan menu Anda. Tahan lalu geser untuk mengubah urutan tampil.
           </p>
         </div>
         <button
@@ -363,10 +366,11 @@ export default function CategoriesPage() {
                 transition={{ duration: 0.3, ease: "easeOut" }}
               >
                 <AnimatePresence mode="popLayout">
-                  {localCategories.map((cat) => (
+                  {localCategories.map((cat, idx) => (
                     <SortableCategoryRow
                       key={cat.id}
                       cat={cat}
+                      index={idx}
                       onEdit={handleEdit}
                       onDelete={handleDeleteClick}
                     />
