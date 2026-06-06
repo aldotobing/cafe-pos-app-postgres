@@ -97,15 +97,7 @@ export default function Page() {
     visible: { opacity: 1, scale: 1 }
   };
 
-  const tableVariants = {
-    hidden: { opacity: 0 },
-    visible: { opacity: 1, transition: { staggerChildren: 0.04 } }
-  };
 
-  const rowVariants = {
-    hidden: { opacity: 0, y: 8 },
-    visible: { opacity: 1, y: 0, transition: { duration: 0.25, ease: 'easeOut' } }
-  };
 
   useEffect(() => {
     // Check authentication - redirect if not logged in
@@ -149,6 +141,36 @@ export default function Page() {
 
   // Table display total (from current page only, filtered by method/user)
   const pageTotal = filtered.reduce((sum, t) => sum + (t.totalAmount || 0), 0)
+
+  // Pre-compute rows to avoid deep JSX nesting confusing the parser
+  const desktopSkeletonRows = Array.from({ length: 5 }).map((_, i) => (
+    <tr key={`skel-${i}`} className="border-b">
+      <td className="px-4 py-3"><div className="h-4 w-28 bg-muted animate-pulse rounded" /></td>
+      <td className="px-4 py-3"><div className="h-4 w-16 bg-muted animate-pulse rounded" /></td>
+      <td className="px-4 py-3"><div className="h-5 w-14 bg-muted animate-pulse rounded-full" /></td>
+      <td className="px-4 py-3 text-right"><div className="h-4 w-20 bg-muted animate-pulse rounded ml-auto" /></td>
+      <td className="px-4 py-3"><div className="h-4 w-36 bg-muted animate-pulse rounded" /></td>
+    </tr>
+  ))
+
+  const mobileSkeletonCards = Array.from({ length: 5 }).map((_, i) => (
+    <div key={`skel-m-${i}`} className="rounded-xl border bg-card shadow-sm overflow-hidden">
+      <div className="flex items-center justify-between p-3 border-b border-border/30 bg-muted/20">
+        <div className="h-4 w-28 bg-muted animate-pulse rounded" />
+        <div className="h-5 w-20 bg-muted animate-pulse rounded" />
+      </div>
+      <div className="p-3 space-y-2">
+        <div className="flex items-center gap-3">
+          <div className="h-4 w-24 bg-muted animate-pulse rounded" />
+          <div className="h-5 w-12 bg-muted animate-pulse rounded-full" />
+        </div>
+        <div className="flex items-center justify-between">
+          <div className="h-4 w-40 bg-muted animate-pulse rounded" />
+          <div className="h-4 w-4 bg-muted animate-pulse rounded" />
+        </div>
+      </div>
+    </div>
+  ))
 
   // Show full-page loading only for auth check, not for data fetching
   if (authLoading) {
@@ -327,22 +349,8 @@ export default function Page() {
       </div>
 
       {/* Desktop Table */}
-      <motion.div
-        className="hidden sm:block overflow-hidden rounded-xl border bg-card shadow-sm relative"
-        variants={tableVariants}
-        initial="hidden"
-        animate="visible"
-        transition={{ delay: 0.2, duration: 0.3, ease: "easeOut" }}
-      >
-        {isFetching && (
-          <div className="absolute inset-0 bg-background/80 backdrop-blur-sm z-20 flex items-center justify-center">
-            <div className="flex flex-col items-center gap-3">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
-              <span className="text-sm text-muted-foreground">Memuat data...</span>
-            </div>
-          </div>
-        )}
-        {filtered.length === 0 ? (
+      <div className="hidden sm:block overflow-hidden rounded-xl border bg-card shadow-sm relative">
+        {filtered.length === 0 && !isFetching ? (
           <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
             <Receipt className="h-16 w-16 text-muted-foreground/30 mb-4 mx-auto" />
             <h3 className="text-sm font-semibold mb-1">Tidak ada transaksi</h3>
@@ -360,18 +368,15 @@ export default function Page() {
               </tr>
             </thead>
             <tbody>
-              <AnimatePresence mode="popLayout">
-              {filtered.map((t) => {
+              {isFetching ? desktopSkeletonRows : filtered.map((t, idx) => {
                 const cashierName = t.cashier_name
                   ? t.cashier_name.split(' ')[0]
                   : usersList.find(u => String(u.id) === String(t.created_by))?.full_name?.split(' ')[0]
                   || (['local', 'system', 'unknown'].includes(t.created_by) ? '-' : (t.created_by ? `ID:${t.created_by.slice(0, 5)}` : '-'))
 
                 return (
-                  <motion.tr
+                  <tr
                     key={t.id}
-                    variants={rowVariants}
-                    layout
                     className="border-b last:border-b-0 cursor-pointer hover:bg-muted/50 transition-colors"
                     onClick={() => { setSelectedTransactionId(t.id); setShowDetailModal(true) }}
                   >
@@ -396,10 +401,9 @@ export default function Page() {
                         </a>
                       </div>
                     </td>
-                  </motion.tr>
+                  </tr>
                 )
               })}
-              </AnimatePresence>
             </tbody>
           </table>
         )}
@@ -412,7 +416,7 @@ export default function Page() {
             <button onClick={() => goToPage(totalPages)} disabled={currentPage === totalPages} className="w-8 h-8 rounded-lg border bg-background hover:bg-muted disabled:opacity-30 inline-flex items-center justify-center" title="Terakhir"><ChevronLast className="h-3.5 w-3.5" /></button>
           </div>
         )}
-      </motion.div>
+      </div>
 
       {/* Mobile Card List */}
       <div className="sm:hidden space-y-2">
@@ -423,12 +427,7 @@ export default function Page() {
             <p className="text-xs text-muted-foreground">Coba ubah filter atau tambahkan transaksi baru.</p>
           </div>
         ) : (
-          <>
-            {isFetching && (
-              <div className="flex items-center justify-center py-4">
-                <Loader2 className="h-5 w-5 animate-spin text-primary" />
-              </div>
-            )}
+          isFetching ? mobileSkeletonCards : (
             <AnimatePresence mode="popLayout">
             {filtered.map((t) => {
               const cashierName = t.cashier_name
@@ -441,8 +440,10 @@ export default function Page() {
               return (
                 <motion.div
                   key={t.id}
-                  variants={rowVariants}
-                  layout
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  transition={{ duration: 0.2, ease: 'easeOut' }}
                   className="rounded-xl border bg-card shadow-sm overflow-hidden active:scale-[0.99] transition-transform cursor-pointer"
                   onClick={() => { setSelectedTransactionId(t.id); setShowDetailModal(true) }}
                 >
@@ -469,7 +470,7 @@ export default function Page() {
               )
             })}
             </AnimatePresence>
-          </>
+          )
         )}
         {totalPages > 1 && (
           <div className="flex items-center justify-between gap-2 pt-3">
