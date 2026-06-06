@@ -1,16 +1,120 @@
 "use client"
 
 import { AppShell } from "@/components/app-shell"
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { useCategories, useMenu } from "@/hooks/use-cafe-data"
 import { useAuth } from '@/lib/auth-context';
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion';
-import { FolderOpen, Plus, Pencil, Trash2, X, Loader2 } from 'lucide-react'
+import { FolderOpen, Plus, Pencil, Trash2, X, Loader2, GripVertical } from 'lucide-react'
 import { toast } from "sonner"
 import type { Category } from "@/types"
 import { CategoriesSkeleton } from "@/components/skeletons"
 import { IconPicker } from "@/components/category/icon-picker"
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  TouchSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core'
+import {
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+  arrayMove,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
+import { cn } from '@/lib/utils'
+
+function SortableCategoryRow({
+  cat,
+  onEdit,
+  onDelete,
+}: {
+  cat: Category
+  onEdit: (cat: Category) => void
+  onDelete: (cat: Category) => void
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging: isSortableDragging,
+  } = useSortable({ id: cat.id })
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  }
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={cn(
+        "group flex items-center gap-2 p-3 sm:p-4 bg-card border rounded-2xl transition-all duration-200",
+        isSortableDragging
+          ? "z-50 shadow-2xl ring-2 ring-primary/20 scale-[1.02] opacity-90"
+          : "hover:bg-muted/50"
+      )}
+    >
+      {/* Drag Handle */}
+      <button
+        {...attributes}
+        {...listeners}
+        className="touch-none shrink-0 w-8 h-10 flex items-center justify-center rounded-lg text-muted-foreground/40 hover:text-muted-foreground hover:bg-muted/50 transition-colors cursor-grab active:cursor-grabbing"
+        aria-label="Tahan dan geser untuk mengubah urutan"
+        title="Tahan dan geser untuk mengubah urutan"
+      >
+        <GripVertical className="h-5 w-5" />
+      </button>
+
+      {/* Icon + Name */}
+      <div className="flex items-center gap-4 flex-1 min-w-0">
+        <div
+          className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl shadow-inner shrink-0"
+          style={{
+            backgroundColor: `${cat.color || '#6B7280'}15`,
+            color: cat.color || '#6B7280',
+          }}
+        >
+          {cat.icon || <FolderOpen className="h-6 w-6 opacity-20" />}
+        </div>
+        <div className="min-w-0">
+          <div className="font-bold text-base sm:text-lg group-hover:text-primary transition-colors truncate">
+            {cat.name}
+          </div>
+          <div className="text-xs text-muted-foreground font-medium">
+            <span className="px-1.5 py-0.5 rounded bg-muted">Urutan {cat.sortOrder || 0}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Actions */}
+      <div className="flex items-center gap-2 shrink-0">
+        <button
+          onClick={() => onEdit(cat)}
+          className="w-11 h-11 sm:w-10 sm:h-10 flex items-center justify-center rounded-xl bg-background border hover:bg-muted transition-all text-muted-foreground hover:text-primary shadow-sm active:scale-95"
+          title="Edit"
+        >
+          <Pencil className="h-5 w-5 sm:h-4 sm:w-4 transition-colors" />
+        </button>
+        <button
+          onClick={() => onDelete(cat)}
+          className="w-11 h-11 sm:w-10 sm:h-10 flex items-center justify-center rounded-xl bg-background border hover:bg-red-50 hover:border-red-200 transition-all text-muted-foreground hover:text-red-600 shadow-sm active:scale-95"
+          title="Hapus"
+        >
+          <Trash2 className="h-5 w-5 sm:h-4 sm:w-4 transition-colors" />
+        </button>
+      </div>
+    </div>
+  )
+}
 
 export default function CategoriesPage() {
   const { userData, loading: authLoading, user } = useAuth();
@@ -18,28 +122,74 @@ export default function CategoriesPage() {
   const { categories, isLoading: categoriesLoading, mutate: mutateCategories } = useCategories(cafeId);
   const { mutate: mutateMenu } = useMenu(cafeId);
   const router = useRouter();
-  const [isLoading, setIsLoading] = useState(true)
   const [showAddEdit, setShowAddEdit] = useState(false)
   const [editingCategory, setEditingCategory] = useState<Category | null>(null)
   const [form, setForm] = useState({ name: '', icon: '', color: '#6B7280', sortOrder: 0 })
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [localCategories, setLocalCategories] = useState<Category[]>([])
+  const [activeDragId, setActiveDragId] = useState<string | null>(null)
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 5 } })
+  )
+
+  useEffect(() => {
+    if (categories.length > 0) {
+      setLocalCategories([...categories].sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0)))
+    } else {
+      setLocalCategories([])
+    }
+  }, [categories])
+
+  const handleDragStart = useCallback((event: { active: { id: string | number } }) => {
+    setActiveDragId(String(event.active.id))
+  }, [])
+
+  const handleDragEnd = useCallback(
+    (event: DragEndEvent) => {
+      const { active, over } = event
+      setActiveDragId(null)
+
+      if (!over || active.id === over.id) return
+
+      setLocalCategories((items) => {
+        const oldIndex = items.findIndex((i) => i.id === active.id)
+        const newIndex = items.findIndex((i) => i.id === over.id)
+        const reordered = arrayMove(items, oldIndex, newIndex)
+
+        const orders = reordered.map((item, idx) => ({
+          id: item.id,
+          sort_order: idx + 1,
+          name: item.name,
+        }))
+
+        fetch('/api/categories/reorder', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ orders: orders.map(o => ({ id: o.id, sort_order: o.sort_order })) }),
+        })
+          .then(() => {
+            mutateCategories()
+            window.dispatchEvent(new CustomEvent('categoriesChanged'))
+          })
+          .catch(() => {
+            toast.error('Gagal menyimpan urutan')
+            setLocalCategories([...categories].sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0)))
+          })
+
+        return reordered
+      })
+    },
+    [categories, mutateCategories]
+  )
 
   // Animation variants
   const headerVariants = {
     hidden: { opacity: 0, y: -20 },
     visible: { opacity: 1, y: 0 }
-  };
-
-  const listVariants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: { opacity: 1, y: 0 }
-  };
-
-  const rowVariants = {
-    hidden: { opacity: 0, x: -20 },
-    visible: { opacity: 1, x: 0 }
   };
 
   // Authentication check
@@ -181,8 +331,8 @@ export default function CategoriesPage() {
 
       {/* Categories Content */}
       <div className="space-y-4">
-        {categories.length === 0 ? (
-          <motion.div 
+        {localCategories.length === 0 ? (
+          <motion.div
             className="flex flex-col items-center justify-center py-20 px-4 text-center bg-card/50 rounded-3xl border-2 border-dashed border-muted/50"
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -196,57 +346,35 @@ export default function CategoriesPage() {
             </p>
           </motion.div>
         ) : (
-          <div className="space-y-3">
-            <AnimatePresence mode="popLayout">
-              {categories.map((cat, idx) => (
-                <motion.div
-                  key={cat.id}
-                  layout
-                  className="group flex items-center justify-between p-3 sm:p-4 bg-card hover:bg-muted/50 border rounded-2xl transition-all duration-200"
-                  variants={rowVariants}
-                  initial="hidden"
-                  animate="visible"
-                  exit={{ opacity: 0, x: -20 }}
-                  transition={{ delay: idx * 0.03, duration: 0.15, ease: "easeOut" }}
-                >
-                  <div className="flex items-center gap-4">
-                    <div
-                      className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl shadow-inner"
-                      style={{ 
-                        backgroundColor: `${cat.color || '#6B7280'}15`,
-                        color: cat.color || '#6B7280'
-                      }}
-                    >
-                      {cat.icon || <FolderOpen className="h-6 w-6 opacity-20" />}
-                    </div>
-                    <div>
-                      <div className="font-bold text-base sm:text-lg group-hover:text-primary transition-colors">{cat.name}</div>
-                      <div className="text-xs text-muted-foreground font-medium flex items-center gap-2">
-                        <span className="px-1.5 py-0.5 rounded bg-muted">Urutan {cat.sortOrder || 0}</span>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => handleEdit(cat)}
-                      className="w-11 h-11 sm:w-10 sm:h-10 flex items-center justify-center rounded-xl bg-background border hover:bg-muted transition-all text-muted-foreground hover:text-primary shadow-sm active:scale-95 group/edit"
-                      title="Edit"
-                    >
-                      <Pencil className="h-5 w-5 sm:h-4 sm:w-4 transition-colors" />
-                    </button>
-                    <button
-                      onClick={() => handleDeleteClick(cat)}
-                      className="w-11 h-11 sm:w-10 sm:h-10 flex items-center justify-center rounded-xl bg-background border hover:bg-red-50 hover:border-red-200 transition-all text-muted-foreground hover:text-red-600 shadow-sm active:scale-95 group/delete"
-                      title="Hapus"
-                    >
-                      <Trash2 className="h-5 w-5 sm:h-4 sm:w-4 transition-colors" />
-                    </button>
-                  </div>
-                </motion.div>
-              ))}
-            </AnimatePresence>
-          </div>
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragStart={handleDragStart}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext
+              items={localCategories.map(c => c.id)}
+              strategy={verticalListSortingStrategy}
+            >
+              <motion.div
+                className="space-y-2"
+                initial="hidden"
+                animate="visible"
+                transition={{ duration: 0.3, ease: "easeOut" }}
+              >
+                <AnimatePresence mode="popLayout">
+                  {localCategories.map((cat) => (
+                    <SortableCategoryRow
+                      key={cat.id}
+                      cat={cat}
+                      onEdit={handleEdit}
+                      onDelete={handleDeleteClick}
+                    />
+                  ))}
+                </AnimatePresence>
+              </motion.div>
+            </SortableContext>
+          </DndContext>
         )}
       </div>
 
