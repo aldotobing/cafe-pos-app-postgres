@@ -253,11 +253,11 @@ export default function ExpensesPage() {
 
   return (
     <AppShell>
-      <div className="space-y-6 p-4 sm:p-6 lg:p-8 pb-16">
+      <div className="space-y-6 pb-16">
         {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-foreground tracking-tight">Pengeluaran</h1>
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6 mb-8">
+          <div className="space-y-1">
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Pengeluaran</h1>
             <p className="text-sm text-muted-foreground">
               Kelola pengeluaran operasional bisnis
             </p>
@@ -524,168 +524,158 @@ export default function ExpensesPage() {
 
       {/* Add/Edit Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="sm:max-w-[500px] max-w-[95vw] p-0 overflow-hidden">
-          <DialogHeader className="px-4 pt-4 pb-3 border-b border-border">
+        <DialogContent className="sm:max-w-[480px] max-w-[95vw] p-0 gap-0 overflow-hidden">
+          <DialogHeader className="px-5 pt-5 pb-4 border-b border-border">
             <DialogTitle className="text-lg font-semibold">
               {editingExpense ? 'Edit Pengeluaran' : 'Tambah Pengeluaran'}
             </DialogTitle>
-            <DialogDescription>
-              {editingExpense ? 'Perbarui data pengeluaran yang ada' : 'Tambah pengeluaran operasional baru'}
+            <DialogDescription className="text-sm text-muted-foreground">
+              {editingExpense ? 'Perbarui detail pengeluaran operasional' : 'Catat pengeluaran operasional baru'}
             </DialogDescription>
           </DialogHeader>
-          
-          <form onSubmit={handleSubmit} className="px-4 py-3 space-y-3">
-            {/* Primary Fields */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <Label htmlFor="category" className="text-sm font-medium text-foreground mb-2 block">
-                  Kategori <span className="text-destructive">*</span>
-                </Label>
-                <Select 
-                  value={formData.category_id} 
-                  onValueChange={(value: string) => setFormData({ ...formData, category_id: value })}
-                >
-                  <SelectTrigger className="h-10 border-input bg-background">
-                    <SelectValue placeholder="Pilih kategori" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {categories?.map(cat => (
-                      <SelectItem key={cat.id} value={cat.id}>
-                        <div className="flex items-center gap-2">
-                          <div 
-                            className="w-2.5 h-2.5 rounded-full ring-2 ring-background" 
-                            style={{ backgroundColor: cat.color }}
-                          />
-                          <span className="font-medium">{cat.name}</span>
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+
+          <form onSubmit={handleSubmit}>
+            <div className="px-5 py-4 space-y-4">
+              {/* Row 1: Kategori + Jumlah */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="category" className="text-sm font-medium">
+                    Kategori <span className="text-destructive">*</span>
+                  </Label>
+                  <Select
+                    value={formData.category_id}
+                    onValueChange={(value: string) => setFormData({ ...formData, category_id: value })}
+                  >
+                    <SelectTrigger className="h-10 rounded-lg">
+                      <SelectValue placeholder="Pilih kategori" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {categories?.map(cat => (
+                        <SelectItem key={cat.id} value={cat.id}>
+                          <div className="flex items-center gap-2">
+                            <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: cat.color }} />
+                            {cat.name}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="amount" className="text-sm font-medium">
+                    Jumlah (Rp) <span className="text-destructive">*</span>
+                  </Label>
+                  <Input
+                    id="amount"
+                    type="text"
+                    className="h-10 rounded-lg font-mono"
+                    value={amountDisplay}
+                    onChange={handleAmountChange}
+                    placeholder="0"
+                    required
+                  />
+                </div>
               </div>
-              
-              <div>
-                <Label htmlFor="amount" className="text-sm font-medium text-foreground mb-2 block">
-                  Jumlah (Rp) <span className="text-destructive">*</span>
+
+              {/* Row 2: Tanggal + Metode */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label className="text-sm font-medium">
+                    Tanggal <span className="text-destructive">*</span>
+                  </Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" className="w-full justify-start h-10 rounded-lg font-normal">
+                        <CalendarIcon className="w-4 h-4 mr-2 text-muted-foreground" />
+                        {formData.expense_date ? format(parseISO(formData.expense_date), 'dd MMM yyyy', { locale: id }) : 'Pilih tanggal'}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0 rounded-xl" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={parseISO(formData.expense_date)}
+                        onSelect={(date) => date && setFormData({ ...formData, expense_date: format(date, 'yyyy-MM-dd') })}
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label className="text-sm font-medium">
+                    Metode Pembayaran
+                  </Label>
+                  <Select
+                    value={formData.payment_method}
+                    onValueChange={(value: any) => setFormData({ ...formData, payment_method: value })}
+                  >
+                    <SelectTrigger className="h-10 rounded-lg">
+                      <SelectValue placeholder="Pilih metode" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {paymentMethods.map(method => (
+                        <SelectItem key={method} value={method}>{method}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {/* Deskripsi */}
+              <div className="space-y-1.5">
+                <Label htmlFor="description" className="text-sm font-medium">
+                  Deskripsi
                 </Label>
                 <Input
-                  id="amount"
-                  type="text"
-                  className="h-10 border-input bg-background font-mono"
-                  value={amountDisplay}
-                  onChange={handleAmountChange}
-                  placeholder="0"
-                  required
+                  id="description"
+                  className="h-10 rounded-lg"
+                  value={formData.description}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, description: e.target.value })}
+                  placeholder="Keterangan pengeluaran"
+                />
+              </div>
+
+              {/* Nomor Nota */}
+              <div className="space-y-1.5">
+                <Label htmlFor="receipt_number" className="text-sm font-medium">
+                  Nomor Nota
+                </Label>
+                <Input
+                  id="receipt_number"
+                  className="h-10 rounded-lg font-mono"
+                  value={formData.receipt_number}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, receipt_number: e.target.value })}
+                  placeholder="Nomor nota/referensi"
                 />
               </div>
             </div>
-            
-            {/* Secondary Fields */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <Label htmlFor="date" className="text-sm font-medium text-foreground mb-2 block">
-                  Tanggal <span className="text-destructive">*</span>
-                </Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button variant="outline" className="w-full justify-start h-10 border-input bg-background font-normal">
-                      <CalendarIcon className="w-4 h-4 mr-2 text-muted-foreground" />
-                      {formData.expense_date ? format(parseISO(formData.expense_date), 'dd MMM yyyy', { locale: id }) : 'Pilih tanggal'}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={parseISO(formData.expense_date)}
-                      onSelect={(date) => date && setFormData({ ...formData, expense_date: format(date, 'yyyy-MM-dd') })}
-                    />
-                  </PopoverContent>
-                </Popover>
-              </div>
-              
-              <div>
-                <Label htmlFor="payment_method" className="text-sm font-medium text-foreground mb-2 block">
-                  Metode Pembayaran
-                </Label>
-                <Select 
-                  value={formData.payment_method} 
-                  onValueChange={(value: any) => setFormData({ ...formData, payment_method: value })}
-                >
-                  <SelectTrigger className="h-10 border-input bg-background">
-                    <SelectValue placeholder="Pilih metode" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {paymentMethods.map(method => (
-                      <SelectItem key={method} value={method} className="font-medium">{method}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+
+            {/* Actions */}
+            <div className="flex items-center justify-end gap-2 px-5 py-3 border-t border-border bg-muted/30">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsDialogOpen(false)}
+                className="h-9 px-4 rounded-lg"
+              >
+                Batal
+              </Button>
+              <Button
+                type="submit"
+                className="h-9 px-5 rounded-lg"
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                    {editingExpense ? 'Menyimpan...' : 'Menambah...'}
+                  </>
+                ) : (
+                  editingExpense ? 'Simpan Perubahan' : 'Tambah Pengeluaran'
+                )}
+              </Button>
             </div>
-            
-            {/* Optional Fields - Collapsed */}
-            <details className="space-y-3">
-              <summary className="text-sm font-medium text-muted-foreground cursor-pointer hover:text-foreground">
-                + Opsional (Deskripsi & Nota)
-              </summary>
-              <div className="space-y-3">
-                <div>
-                  <Label htmlFor="description" className="text-sm font-medium text-foreground mb-2 block">
-                    Deskripsi
-                  </Label>
-                  <Input
-                    id="description"
-                    className="h-10 border-input bg-background"
-                    value={formData.description}
-                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, description: e.target.value })}
-                    placeholder="Keterangan (opsional)"
-                  />
-                </div>
-                
-                <div>
-                  <Label htmlFor="receipt_number" className="text-sm font-medium text-foreground mb-2 block">
-                    Nomor Nota
-                  </Label>
-                  <Input
-                    id="receipt_number"
-                    className="h-10 border-input bg-background font-mono"
-                    value={formData.receipt_number}
-                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, receipt_number: e.target.value })}
-                    placeholder="Nomor nota (opsional)"
-                  />
-                </div>
-              </div>
-            </details>
           </form>
-          
-          {/* Actions */}
-          <div className="grid grid-cols-2 gap-2 px-4 py-3 border-t border-border bg-muted/30">
-            <Button 
-              type="button" 
-              variant="outline" 
-              onClick={() => setIsDialogOpen(false)}
-              className="h-9 px-3 text-sm"
-            >
-              Batal
-            </Button>
-            <Button 
-              type="submit" 
-              onClick={(e) => { e.preventDefault(); handleSubmit(e as any); }}
-              className="h-9 px-4 text-sm"
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? (
-                <>
-                  <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                  {editingExpense ? 'Menyimpan...' : 'Menambah...'}
-                </>
-              ) : (
-                <>
-                  {editingExpense ? 'Simpan' : 'Tambah'}
-                </>
-              )}
-            </Button>
-          </div>
         </DialogContent>
       </Dialog>
       

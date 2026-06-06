@@ -392,7 +392,7 @@ export default function StatistikPage() {
 
   return (
     <AppShell>
-      <div className="space-y-8 sm:space-y-12 p-4 sm:p-6 lg:p-8 pb-16 relative">
+      <div className="space-y-6 pb-16 relative">
         {/* Global Loading Overlay for revalidating */}
         <AnimatePresence>
           {(isFetching || isValidating) && txs && (
@@ -411,10 +411,10 @@ export default function StatistikPage() {
         </AnimatePresence>
  
         {/* Header Section */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
-          <div>
-            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold tracking-tight">Statistik</h1>
-            <p className="text-sm text-muted-foreground mt-1.5 max-w-lg leading-relaxed">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6 mb-8">
+          <div className="space-y-1">
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Statistik</h1>
+            <p className="text-sm text-muted-foreground">
               Analisis performa bisnis dan ringkasan pendapatan Anda secara real-time.
             </p>
           </div>
@@ -561,7 +561,7 @@ export default function StatistikPage() {
           >
             {/* Summary Cards */}
             <div className="grid gap-8 grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 max-w-7xl mx-auto">
-              <motion.div variants={itemVariants}>
+              <motion.div variants={itemVariants} className="h-full">
                 <StatCard
                   title="Total Pendapatan"
                   value={formatRupiah(statisticData.totalRevenue)}
@@ -575,7 +575,7 @@ export default function StatistikPage() {
                   }}
                 />
               </motion.div>
-              <motion.div variants={itemVariants}>
+              <motion.div variants={itemVariants} className="h-full">
                 <StatCard
                   title="Total Transaksi"
                   value={statisticData.totalTransactions.toString()}
@@ -589,7 +589,7 @@ export default function StatistikPage() {
                   }}
                 />
               </motion.div>
-              <motion.div variants={itemVariants}>
+              <motion.div variants={itemVariants} className="h-full">
                 <StatCard
                   title="Rata-rata Transaksi"
                   value={formatRupiah(statisticData.avgTransactionValue)}
@@ -598,7 +598,7 @@ export default function StatistikPage() {
                   iconClassName="bg-chart-3 text-primary"
                 />
               </motion.div>
-              <motion.div variants={itemVariants}>
+              <motion.div variants={itemVariants} className="h-full">
                 <StatCard
                   title="Item Terjual"
                   value={statisticData.topSellingItems.reduce((acc, item) => acc + item.count, 0).toString()}

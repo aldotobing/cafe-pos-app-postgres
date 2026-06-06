@@ -31,7 +31,7 @@ export function StatCard({
 }: StatCardProps) {
     return (
         <Card className={cn(
-            "relative overflow-hidden rounded-lg border border-border shadow-subtle hover:shadow-md transition-all duration-300 group bg-card",
+            "relative overflow-hidden rounded-lg border border-border shadow-subtle hover:shadow-md transition-all duration-300 group bg-card h-full",
             className
         )}>
             {/* Content */}
