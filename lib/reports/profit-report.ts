@@ -36,28 +36,65 @@ interface ProfitReportOptions {
 
 type RGB = [number, number, number];
 
+async function loadImageAsBase64(url: string): Promise<string | null> {
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const blob = await res.blob();
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.onerror = () => resolve(null);
+      reader.readAsDataURL(blob);
+    });
+  } catch {
+    return null;
+  }
+}
+
 export const generateProfitReport = async (options: ProfitReportOptions) => {
   const { profitData, summary, dateRange, settings, itemCount } = options;
-  const doc = new jsPDF('landscape');
+  const doc = new jsPDF('p');
   const pageWidth = doc.internal.pageSize.width;
-  const margin = 14;
+  const pageHeight = doc.internal.pageSize.height;
+  const margin = 16;
   const contentWidth = pageWidth - margin * 2;
+  const footerHeight = 18;
 
-  const colors: Record<string, RGB> = {
-    primary: [26, 32, 44],
-    primaryLight: [44, 62, 80],
-    accent: [212, 175, 55],
-    success: [34, 139, 34],
-    warning: [217, 119, 6],
-    danger: [185, 28, 28],
-    muted: [113, 128, 150],
-    bgLight: [248, 250, 252],
-    border: [226, 232, 240],
-    textPrimary: [26, 32, 44],
-    textSecondary: [100, 116, 139],
+  const COLORS: Record<string, RGB> = {
+    primary: [30, 41, 59],
+    secondary: [71, 85, 105],
+    accent: [37, 99, 235],
+    success: [22, 101, 52],
+    warning: [180, 83, 9],
+    danger: [153, 27, 27],
+    muted: [100, 116, 139],
+    lightBg: [248, 250, 252],
+    border: [203, 213, 225],
   };
 
-  const periodText = `${format(dateRange.from, 'dd MMMM yyyy', { locale: id })} - ${format(dateRange.to, 'dd MMMM yyyy', { locale: id })}`;
+  const drawFooter = (pageData: any) => {
+    const count = (doc as any).internal.getNumberOfPages();
+    doc.setDrawColor(...COLORS.border);
+    doc.setLineWidth(0.3);
+    doc.line(margin, pageHeight - footerHeight, pageWidth - margin, pageHeight - footerHeight);
+    doc.setFont('helvetica', 'italic');
+    doc.setFontSize(7);
+    doc.setTextColor(148, 163, 184);
+    doc.text(`${settings.name} — Laporan Analisis Laba Rugi`, pageWidth / 2, pageHeight - 13, { align: 'center' });
+    doc.text(`Hal ${count} / ${count}`, pageWidth - margin, pageHeight - 8, { align: 'right' });
+  };
+
+  const atOptions = (overrides: Record<string, any> = {}): Record<string, any> => ({
+    theme: 'striped',
+    styles: { fontSize: 9, cellPadding: 4, lineColor: COLORS.border, lineWidth: 0.1 },
+    headStyles: { fillColor: COLORS.lightBg, textColor: COLORS.primary, fontStyle: 'bold', fontSize: 9 },
+    margin: { left: margin, right: margin, bottom: footerHeight + 4 },
+    didDrawPage: drawFooter,
+    ...overrides,
+  });
+
+  const periodText = `${format(dateRange.from, 'dd MMMM yyyy', { locale: id })} — ${format(dateRange.to, 'dd MMMM yyyy', { locale: id })}`;
 
   const sortedByProfit = [...profitData].sort((a, b) => b.totalProfit - a.totalProfit);
   const sortedByMargin = [...profitData].sort((a, b) => b.profitMargin - a.profitMargin);
@@ -80,194 +117,237 @@ export const generateProfitReport = async (options: ProfitReportOptions) => {
     .map(([name, data]) => ({ name, ...data, margin: data.revenue > 0 ? (data.profit / data.revenue) * 100 : 0 }))
     .sort((a, b) => b.profit - a.profit);
 
+  let logoData: string | null = null;
+  if (settings.logoUrl) {
+    logoData = await loadImageAsBase64(settings.logoUrl);
+  }
+
   // ==================== COVER PAGE ====================
-  doc.setFillColor(...colors.primary);
-  doc.rect(0, 0, 8, 297, 'F');
+  doc.setFillColor(249, 250, 251);
+  doc.rect(0, 0, pageWidth, 90, 'F');
+  doc.setDrawColor(...COLORS.border);
+  doc.setLineWidth(0.5);
+  doc.line(0, 90, pageWidth, 90);
 
-  doc.setFillColor(252, 252, 253);
-  doc.rect(8, 0, pageWidth - 8, 95, 'F');
-
-  doc.setFillColor(...colors.accent);
-  doc.rect(25, 30, 2, 45, 'F');
-
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(24);
-  doc.setTextColor(...colors.primary);
-  doc.text(settings.name.toUpperCase(), 32, 42);
-
-  if (settings.tagline) {
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(10);
-    doc.setTextColor(...colors.textSecondary);
-    doc.text(settings.tagline, 32, 48);
+  let textX = margin;
+  if (logoData) {
+    const logoSize = 24;
+    try {
+      doc.addImage(logoData, 'PNG', margin, 20, logoSize, logoSize);
+    } catch { /* skip */ }
+    textX = margin + logoSize + 12;
   }
 
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(14);
-  doc.setTextColor(...colors.accent);
-  doc.text('LAPORAN ANALISIS LABA RUGI', 32, 65);
+  doc.setFontSize(18);
+  doc.setTextColor(...COLORS.primary);
+  doc.text(settings.name, textX, 34);
+
+  if (settings.tagline) {
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.setTextColor(...COLORS.secondary);
+    doc.text(settings.tagline, textX, 42);
+  }
+
+  const details: string[] = [];
+  if (settings.address) details.push(settings.address);
+  if (settings.phone) details.push(settings.phone);
+  if (details.length > 0) {
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(...COLORS.muted);
+    const detailLines = doc.splitTextToSize(details.join('  |  '), pageWidth - textX - margin);
+    doc.text(detailLines, textX, 50);
+  }
+
+  const titleY = 110;
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(16);
+  doc.setTextColor(...COLORS.primary);
+  doc.text('LAPORAN ANALISIS LABA RUGI', pageWidth / 2, titleY, { align: 'center' });
+
+  doc.setDrawColor(...COLORS.accent);
+  doc.setLineWidth(1.5);
+  doc.line(pageWidth / 2 - 40, titleY + 5, pageWidth / 2 + 40, titleY + 5);
 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(10);
-  doc.setTextColor(...colors.textSecondary);
-  doc.text(`Periode Fiskal: ${periodText}`, 32, 72);
-  doc.setFontSize(8);
-  doc.text(`Generated on: ${format(new Date(), "EEEE, dd MMMM yyyy, HH:mm", { locale: id })}`, 32, 79);
-  doc.text(`${itemCount} item dianalisis dari ${summary.totalItems} produk aktif`, 32, 85);
+  doc.setTextColor(...COLORS.secondary);
+  doc.text(`Periode: ${periodText}`, pageWidth / 2, titleY + 17, { align: 'center' });
 
-  // ==================== TABLE OF CONTENTS ====================
-  let yPosition = 120;
+  doc.setFontSize(8);
+  doc.setTextColor(...COLORS.muted);
+  doc.text(`Dibuat: ${format(new Date(), 'EEEE, dd MMMM yyyy, HH:mm', { locale: id })}`, pageWidth / 2, titleY + 26, { align: 'center' });
+  doc.text(`${itemCount} item dianalisis  |  ${summary.totalItems} produk aktif`, pageWidth / 2, titleY + 34, { align: 'center' });
+
+  // TOC
+  let tocY = titleY + 52;
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(12);
-  doc.setTextColor(...colors.primary);
-  doc.text('DAFTAR ISI', margin + 10, yPosition);
-  yPosition += 4;
-  doc.setDrawColor(...colors.accent);
+  doc.setTextColor(...COLORS.primary);
+  doc.text('DAFTAR ISI', margin, tocY);
+  doc.setDrawColor(...COLORS.border);
   doc.setLineWidth(0.5);
-  doc.line(margin + 10, yPosition, margin + 25, yPosition);
-  yPosition += 12;
+  doc.line(margin, tocY + 3, margin + 34, tocY + 3);
+  tocY += 14;
 
   const tocItems = [
-    { num: 'I', title: 'Ringkasan Eksekutif', page: '02' },
-    { num: 'II', title: 'Indikator Profitabilitas', page: '03' },
-    { num: 'III', title: 'Distribusi Margin Laba', page: '03' },
-    { num: 'IV', title: 'Performa Kategori', page: '04' },
-    { num: 'V', title: 'Item Paling Menguntungkan', page: '05' },
-    { num: 'VI', title: 'Analisis Struktur Biaya', page: '06' },
-    { num: 'VII', title: 'Detail Laba Rugi per Item', page: '07' },
+    { num: 'I', title: 'Ringkasan Eksekutif' },
+    { num: 'II', title: 'Indikator Profitabilitas & Distribusi Margin' },
+    { num: 'III', title: 'Performa Kategori' },
+    { num: 'IV', title: 'Item Paling Menguntungkan' },
+    { num: 'V', title: 'Analisis Struktur Biaya' },
+    { num: 'VI', title: 'Detail Laba Rugi per Item' },
   ];
 
   tocItems.forEach(item => {
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(9);
-    doc.setTextColor(...colors.primary);
-    doc.text(item.num, margin + 10, yPosition);
+    doc.setTextColor(...COLORS.primary);
+    doc.text(item.num, margin + 6, tocY);
     doc.setFont('helvetica', 'normal');
-    doc.setTextColor(...colors.textSecondary);
-    doc.text(item.title, margin + 20, yPosition);
-    doc.setFont('helvetica', 'italic');
-    doc.text(item.page, pageWidth - margin - 10, yPosition, { align: 'right' });
-    yPosition += 8;
+    doc.setTextColor(...COLORS.secondary);
+    doc.text(item.title, margin + 18, tocY);
+    tocY += 11;
   });
+
+  // Cover footer
+  drawFooter(null);
+
+  // ==================== SECTION HEADER HELPER ====================
+  let y = 24;
+
+  const sectionHeader = (title: string, subtitle?: string) => {
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(14);
+    doc.setTextColor(...COLORS.primary);
+    doc.text(title, margin, y);
+    doc.setDrawColor(...COLORS.border);
+    doc.setLineWidth(0.8);
+    doc.line(margin, y + 4, margin + 30, y + 4);
+    y += 14;
+    if (subtitle) {
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8.5);
+      doc.setTextColor(...COLORS.muted);
+      doc.text(subtitle, margin, y);
+      y += 11;
+    }
+  };
 
   // ==================== PAGE 2: EXECUTIVE SUMMARY ====================
   doc.addPage();
-  yPosition = 25;
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(16);
-  doc.setTextColor(...colors.primary);
-  doc.text('Ringkasan Eksekutif', margin, yPosition);
-  doc.setDrawColor(...colors.accent);
-  doc.setLineWidth(0.8);
-  doc.line(margin, yPosition + 3, margin + 15, yPosition + 3);
-  yPosition += 15;
+  y = 24;
+  sectionHeader('Ringkasan Eksekutif');
 
+  const summaryText = `Laporan ini menyajikan analisis laba rugi untuk ${settings.name} selama periode ${periodText}. Analisis mencakup ${itemCount} item yang terjual dari ${summary.totalItems} produk aktif, dengan fokus pada profitabilitas per item, distribusi margin, struktur biaya (HPP), dan performa berdasarkan kategori produk.`;
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(10);
-  doc.setTextColor(...colors.textSecondary);
-  const summaryText = `Laporan ini menyajikan analisis laba rugi komprehensif untuk ${settings.name} selama periode ${periodText}. Analisis mencakup ${itemCount} item yang terjual dari ${summary.totalItems} produk aktif, dengan fokus pada profitabilitas per item, distribusi margin, struktur biaya (HPP), dan performa berdasarkan kategori produk.`;
-  const summaryLines = doc.splitTextToSize(summaryText, contentWidth - 10);
-  doc.text(summaryLines, margin, yPosition);
-  yPosition += summaryLines.length * 5 + 10;
+  doc.setFontSize(9.5);
+  doc.setTextColor(...COLORS.secondary);
+  const summaryLines = doc.splitTextToSize(summaryText, contentWidth);
+  doc.text(summaryLines, margin, y);
+  y += summaryLines.length * 5.5 + 16;
 
-  // Key Financial Metrics Cards
+  // Key Metrics cards
   const metrics = [
-    { label: 'Pendapatan Bruto', value: formatRupiah(summary.grandTotal), color: colors.primary },
-    { label: 'Total HPP', value: formatRupiah(summary.totalCOGS), color: colors.warning },
-    { label: 'Laba Kotor', value: formatRupiah(summary.totalProfit), color: summary.totalProfit >= 0 ? colors.success : colors.danger },
+    { label: 'Pendapatan Bruto', value: formatRupiah(summary.grandTotal), color: COLORS.primary },
+    { label: 'Total HPP', value: formatRupiah(summary.totalCOGS), color: COLORS.warning },
+    { label: 'Laba Kotor', value: formatRupiah(summary.totalProfit), color: summary.totalProfit >= 0 ? COLORS.success : COLORS.danger },
   ];
 
-  const cardWidth = (contentWidth - 10) / 3;
-  const cardHeight = 32;
-  const cardGap = 5;
+  const cardW = (contentWidth - 12) / 3;
+  const cardH = 32;
 
   metrics.forEach((metric, index) => {
-    const x = margin + (index * (cardWidth + cardGap));
-    doc.setFillColor(252, 252, 253);
-    doc.roundedRect(x, yPosition, cardWidth, cardHeight, 1.5, 1.5, 'F');
-    doc.setDrawColor(235, 238, 241);
-    doc.setLineWidth(0.1);
-    doc.roundedRect(x, yPosition, cardWidth, cardHeight, 1.5, 1.5, 'S');
+    const cx = margin + index * (cardW + 6);
+    doc.setFillColor(249, 250, 251);
+    doc.rect(cx, y, cardW, cardH, 'F');
+    doc.setDrawColor(...COLORS.border);
+    doc.setLineWidth(0.3);
+    doc.rect(cx, y, cardW, cardH, 'S');
+
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(7);
-    doc.setTextColor(...colors.textSecondary);
-    doc.text(metric.label.toUpperCase(), x + 5, yPosition + 8);
+    doc.setFontSize(7.5);
+    doc.setTextColor(...COLORS.muted);
+    doc.text(metric.label, cx + 6, y + 10);
+
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(11);
+    doc.setFontSize(12);
     doc.setTextColor(...metric.color);
-    doc.text(metric.value, x + 5, yPosition + 19);
-    doc.setFillColor(...colors.accent);
-    doc.rect(x + 5, yPosition + 23, 10, 0.5, 'F');
+    doc.text(metric.value, cx + 6, y + 24);
   });
 
-  yPosition += cardHeight + 10;
+  y += cardH + 12;
 
-  const marginColor = summary.avgMargin >= 50 ? colors.success : summary.avgMargin >= 30 ? colors.warning : colors.danger;
+  const marginColor = summary.avgMargin >= 50 ? COLORS.success : summary.avgMargin >= 30 ? COLORS.warning : COLORS.danger;
   const marginMetrics = [
     { label: 'Margin Rata-rata', value: `${summary.avgMargin.toFixed(1)}%`, color: marginColor },
-    { label: 'Item Dianalisis', value: `${itemCount}`, color: colors.primary },
-    { label: 'Produk Aktif', value: `${summary.totalItems}`, color: colors.primaryLight },
+    { label: 'Item Dianalisis', value: `${itemCount}`, color: COLORS.primary },
+    { label: 'Produk Aktif', value: `${summary.totalItems}`, color: COLORS.secondary },
   ];
 
-  metrics.forEach((_) => { /* reuse layout */ });
   marginMetrics.forEach((metric, index) => {
-    const x = margin + (index * (cardWidth + cardGap));
-    doc.setFillColor(252, 252, 253);
-    doc.roundedRect(x, yPosition, cardWidth, cardHeight, 1.5, 1.5, 'F');
-    doc.setDrawColor(235, 238, 241);
-    doc.setLineWidth(0.1);
-    doc.roundedRect(x, yPosition, cardWidth, cardHeight, 1.5, 1.5, 'S');
+    const cx = margin + index * (cardW + 6);
+    doc.setFillColor(249, 250, 251);
+    doc.rect(cx, y, cardW, cardH, 'F');
+    doc.setDrawColor(...COLORS.border);
+    doc.setLineWidth(0.3);
+    doc.rect(cx, y, cardW, cardH, 'S');
+
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(7);
-    doc.setTextColor(...colors.textSecondary);
-    doc.text(metric.label.toUpperCase(), x + 5, yPosition + 8);
+    doc.setFontSize(7.5);
+    doc.setTextColor(...COLORS.muted);
+    doc.text(metric.label, cx + 6, y + 10);
+
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(11);
+    doc.setFontSize(12);
     doc.setTextColor(...metric.color);
-    doc.text(metric.value, x + 5, yPosition + 19);
-    doc.setFillColor(...colors.accent);
-    doc.rect(x + 5, yPosition + 23, 10, 0.5, 'F');
+    doc.text(metric.value, cx + 6, y + 24);
   });
 
-  yPosition += cardHeight + 20;
+  y += cardH + 16;
 
-  // Profitability insight box
-  doc.setFillColor(240, 253, 244);
-  doc.roundedRect(margin, yPosition, contentWidth, 22, 2, 2, 'F');
-  doc.setDrawColor(...colors.success);
-  doc.setLineWidth(0.5);
-  doc.roundedRect(margin, yPosition, contentWidth, 22, 2, 2, 'S');
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(9);
-  doc.setTextColor(...colors.success);
-  doc.text('Insight Profitabilitas:', margin + 4, yPosition + 7);
+  // Insight paragraph — border height matches text height
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8);
-  doc.setTextColor(80, 80, 80);
+  doc.setFontSize(9);
+  doc.setTextColor(...COLORS.secondary);
   const profitInsight = `Total laba kotor mencapai ${formatRupiah(summary.totalProfit)} dengan margin rata-rata ${summary.avgMargin.toFixed(1)}%. Dari ${itemCount} item, ${highMarginCount} item memiliki margin tinggi (≥50%), ${midMarginCount} item margin menengah, dan ${lowMarginCount} item margin rendah (<30%).`;
-  const profitInsightLines = doc.splitTextToSize(profitInsight, contentWidth - 15);
-  doc.text(profitInsightLines, margin + 4, yPosition + 13);
+  const profitInsightLines = doc.splitTextToSize(profitInsight, contentWidth - 12);
+  const insightH = profitInsightLines.length * 5.5 + 10;
+
+  doc.setDrawColor(...COLORS.accent);
+  doc.setLineWidth(2.5);
+  doc.line(margin, y, margin, y + insightH);
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(9.5);
+  doc.setTextColor(...COLORS.primary);
+  doc.text('Insight', margin + 6, y + 7);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.setTextColor(...COLORS.secondary);
+  doc.text(profitInsightLines, margin + 6, y + 14);
+
+  y += insightH + 6;
+
+  // Exec summary footer
+  drawFooter(null);
 
   // ==================== PAGE 3: KPIs & MARGIN DISTRIBUTION ====================
   doc.addPage();
-  yPosition = 25;
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(16);
-  doc.setTextColor(...colors.primary);
-  doc.text('Indikator Profitabilitas', margin, yPosition);
-  doc.setDrawColor(...colors.accent);
-  doc.setLineWidth(0.8);
-  doc.line(margin, yPosition + 3, margin + 15, yPosition + 3);
-  yPosition += 12;
+  y = 24;
+
+  sectionHeader('Indikator Profitabilitas', 'Rasio & metrik keuangan utama');
 
   const roi = summary.totalCOGS > 0 ? (summary.totalProfit / summary.totalCOGS) * 100 : 0;
   const markupAvg = profitData.length > 0
     ? profitData.filter(p => p.hppPrice > 0).reduce((sum, p) => sum + ((p.sellingPrice - p.hppPrice) / p.hppPrice * 100), 0) / profitData.filter(p => p.hppPrice > 0).length
     : 0;
 
-  autoTable(doc, {
-    startY: yPosition,
-    head: [['Indikator Utama', 'Nilai', 'Evaluasi']],
+  autoTable(doc, atOptions({
+    startY: y,
+    head: [['Indikator', 'Nilai', 'Evaluasi']],
     body: [
       ['Gross Profit Margin', `${summary.avgMargin.toFixed(1)}%`, summary.avgMargin >= 50 ? 'SEHAT' : summary.avgMargin >= 30 ? 'CUKUP' : 'PERLU REVIEW'],
       ['Return on COGS (ROI)', `${roi.toFixed(1)}%`, roi >= 100 ? 'SANGAT BAIK' : roi >= 50 ? 'BAIK' : 'RENDAH'],
@@ -276,22 +356,31 @@ export const generateProfitReport = async (options: ProfitReportOptions) => {
       ['Items Margin Tinggi (≥50%)', `${highMarginCount} dari ${itemCount}`, highMarginCount > itemCount * 0.4 ? 'PORTFOLIO KUAT' : 'DIVERSIFIKASI'],
       ['Nilai Laba per Item', profitData.length > 0 ? formatRupiah(summary.totalProfit / itemCount) : '-', '-'],
     ],
-    theme: 'striped',
-    headStyles: { fillColor: colors.bgLight, textColor: colors.primary, fontStyle: 'bold', fontSize: 9, cellPadding: 4 },
-    styles: { fontSize: 8.5, cellPadding: 3.5, lineColor: colors.border, lineWidth: 0.1 },
     columnStyles: {
-      0: { cellWidth: contentWidth * 0.44, fontStyle: 'bold' },
-      1: { halign: 'right', cellWidth: contentWidth * 0.28 },
+      0: { cellWidth: contentWidth * 0.46, fontStyle: 'bold' },
+      1: { halign: 'right', cellWidth: contentWidth * 0.26 },
       2: { halign: 'center', cellWidth: contentWidth * 0.28 },
     },
-  });
+  }));
 
-  yPosition = (doc as any).lastAutoTable.finalY + 15;
+  const kpiBottom = (doc as any).lastAutoTable.finalY + 14;
+
+  // Check if enough room for margin distribution section, else add page
+  if (kpiBottom > pageHeight - 80) {
+    doc.addPage();
+    y = 24;
+  } else {
+    y = kpiBottom;
+  }
+
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(13);
-  doc.setTextColor(...colors.primary);
-  doc.text('Distribusi Margin Laba', margin, yPosition);
-  yPosition += 8;
+  doc.setTextColor(...COLORS.primary);
+  doc.text('Distribusi Margin Laba', margin, y);
+  doc.setDrawColor(...COLORS.border);
+  doc.setLineWidth(0.8);
+  doc.line(margin, y + 4, margin + 24, y + 4);
+  y += 13;
 
   const marginDist = [
     ['Margin Tinggi (≥50%)', `${highMarginCount} item`, `${((highMarginCount / itemCount) * 100).toFixed(1)}%`, 'SEHAT'],
@@ -299,37 +388,29 @@ export const generateProfitReport = async (options: ProfitReportOptions) => {
     ['Margin Rendah (<30%)', `${lowMarginCount} item`, `${((lowMarginCount / itemCount) * 100).toFixed(1)}%`, lowMarginCount > itemCount * 0.5 ? 'PERHATIAN' : 'WAJAR'],
   ];
 
-  autoTable(doc, {
-    startY: yPosition,
+  autoTable(doc, atOptions({
+    startY: y,
     head: [['Kategori Margin', 'Jumlah Item', 'Proporsi', 'Status']],
     body: marginDist,
-    theme: 'striped',
-    headStyles: { fillColor: colors.bgLight, textColor: colors.primary, fontStyle: 'bold', fontSize: 9, cellPadding: 4 },
-    styles: { fontSize: 8.5, cellPadding: 3.5, lineColor: colors.border, lineWidth: 0.1 },
     columnStyles: {
-      0: { cellWidth: contentWidth * 0.35, fontStyle: 'bold' },
+      0: { cellWidth: contentWidth * 0.36, fontStyle: 'bold' },
       1: { halign: 'center', cellWidth: contentWidth * 0.22 },
-      2: { halign: 'right', cellWidth: contentWidth * 0.21 },
+      2: { halign: 'right', cellWidth: contentWidth * 0.20 },
       3: { halign: 'center', cellWidth: contentWidth * 0.22 },
     },
     foot: [['TOTAL', `${itemCount} item`, '100%', '-']],
-    footStyles: { fontStyle: 'bold', fillColor: colors.bgLight, textColor: colors.primary, fontSize: 9 },
-  });
+    footStyles: { fontStyle: 'bold', fillColor: COLORS.lightBg, textColor: COLORS.primary, fontSize: 9 },
+  }));
+
+  // KPI page footer handled by didDrawPage
 
   // ==================== PAGE 4: CATEGORY PERFORMANCE ====================
   doc.addPage();
-  yPosition = 25;
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(16);
-  doc.setTextColor(...colors.primary);
-  doc.text('Performa Profitabilitas Kategori', margin, yPosition);
-  doc.setDrawColor(...colors.accent);
-  doc.setLineWidth(0.8);
-  doc.line(margin, yPosition + 3, margin + 15, yPosition + 3);
-  yPosition += 12;
+  y = 24;
+  sectionHeader('Performa Profitabilitas Kategori', 'Kontribusi laba per kategori produk');
 
-  autoTable(doc, {
-    startY: yPosition,
+  autoTable(doc, atOptions({
+    startY: y,
     head: [['Kategori', 'Item', 'Pendapatan', 'HPP', 'Laba', 'Margin']],
     body: categoryBreakdown.map(c => [
       c.name,
@@ -339,62 +420,50 @@ export const generateProfitReport = async (options: ProfitReportOptions) => {
       formatRupiah(c.profit),
       `${c.margin.toFixed(1)}%`,
     ]),
-    theme: 'striped',
-    headStyles: { fillColor: colors.bgLight, textColor: colors.primary, fontStyle: 'bold', fontSize: 9, cellPadding: 4 },
-    styles: { fontSize: 8.5, cellPadding: 3.5, lineColor: colors.border, lineWidth: 0.1 },
     columnStyles: {
       0: { cellWidth: contentWidth * 0.22, fontStyle: 'bold' },
-      1: { halign: 'center', cellWidth: contentWidth * 0.12 },
+      1: { halign: 'center', cellWidth: contentWidth * 0.13 },
       2: { halign: 'right', cellWidth: contentWidth * 0.18 },
       3: { halign: 'right', cellWidth: contentWidth * 0.18 },
       4: { halign: 'right', cellWidth: contentWidth * 0.16 },
-      5: { halign: 'right', cellWidth: contentWidth * 0.14 },
+      5: { halign: 'right', cellWidth: contentWidth * 0.13 },
     },
-    foot: [
-      [`${categoryBreakdown.length} Kategori`, `${itemCount} item`, formatRupiah(summary.totalRevenue), formatRupiah(summary.totalCOGS), formatRupiah(summary.totalProfit), `${summary.avgMargin.toFixed(1)}%`],
-    ],
-    footStyles: { fontStyle: 'bold', fillColor: colors.bgLight, textColor: colors.primary, fontSize: 9 },
-    margin: { left: margin, right: margin },
-  });
+    foot: [[`${categoryBreakdown.length} Kategori`, `${itemCount} item`, formatRupiah(summary.totalRevenue), formatRupiah(summary.totalCOGS), formatRupiah(summary.totalProfit), `${summary.avgMargin.toFixed(1)}%`]],
+    footStyles: { fontStyle: 'bold', fillColor: COLORS.lightBg, textColor: COLORS.primary, fontSize: 9 },
+  }));
 
-  yPosition = (doc as any).lastAutoTable.finalY + 15;
+  const catBottom = (doc as any).lastAutoTable.finalY + 10;
   const topCategory = categoryBreakdown[0];
   if (topCategory) {
-    doc.setFillColor(252, 252, 253);
-    doc.roundedRect(margin, yPosition, contentWidth, 18, 2, 2, 'F');
-    doc.setDrawColor(...colors.primary);
-    doc.setLineWidth(0.2);
-    doc.rect(margin, yPosition, 1, 18, 'F');
+    y = catBottom > pageHeight - 40 ? 24 : catBottom;
+    if (catBottom > pageHeight - 40) doc.addPage();
+
+    doc.setDrawColor(...COLORS.accent);
+    doc.setLineWidth(2.5);
+    doc.line(margin, y, margin, y + 18);
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(8.5);
-    doc.setTextColor(...colors.primary);
-    doc.text('Kategori Terkuat:', margin + 4, yPosition + 7);
+    doc.setFontSize(9);
+    doc.setTextColor(...COLORS.primary);
+    doc.text('Kategori Terkuat:', margin + 6, y + 7);
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(8);
-    doc.setTextColor(...colors.textSecondary);
-    doc.text(`${topCategory.name} — Laba ${formatRupiah(topCategory.profit)} (${topCategory.margin.toFixed(1)}% margin) dari ${topCategory.items} item`, margin + 4, yPosition + 13);
+    doc.setFontSize(8.5);
+    doc.setTextColor(...COLORS.secondary);
+    doc.text(`${topCategory.name} — Laba ${formatRupiah(topCategory.profit)} (${topCategory.margin.toFixed(1)}% margin) dari ${topCategory.items} item`, margin + 6, y + 14);
   }
 
-  // ==================== PAGE 5: TOP ITEMS BY PROFIT ====================
+  // ==================== PAGE 5: TOP ITEMS ====================
   doc.addPage();
-  yPosition = 25;
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(16);
-  doc.setTextColor(...colors.primary);
-  doc.text('Item Paling Menguntungkan', margin, yPosition);
-  doc.setDrawColor(...colors.accent);
-  doc.setLineWidth(0.8);
-  doc.line(margin, yPosition + 3, margin + 15, yPosition + 3);
-  yPosition += 15;
+  y = 24;
+  sectionHeader('Item Paling Menguntungkan');
 
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(11);
-  doc.setTextColor(...colors.primaryLight);
-  doc.text('Top 10 Berdasarkan Total Laba', margin, yPosition);
-  yPosition += 8;
+  doc.setFontSize(10);
+  doc.setTextColor(...COLORS.secondary);
+  doc.text('Top 10 — Total Laba Tertinggi', margin, y);
+  y += 9;
 
-  autoTable(doc, {
-    startY: yPosition,
+  autoTable(doc, atOptions({
+    startY: y,
     head: [['No', 'Item', 'Kategori', 'Terjual', 'Harga', 'HPP', 'Laba', 'Margin']],
     body: sortedByProfit.slice(0, 10).map((p, i) => [
       `${i + 1}`,
@@ -406,31 +475,32 @@ export const generateProfitReport = async (options: ProfitReportOptions) => {
       formatRupiah(p.totalProfit),
       `${p.profitMargin.toFixed(1)}%`,
     ]),
-    theme: 'striped',
-    headStyles: { fillColor: colors.bgLight, textColor: colors.primary, fontStyle: 'bold', fontSize: 8, cellPadding: 3 },
-    styles: { fontSize: 7.5, cellPadding: 2.5, lineColor: colors.border, lineWidth: 0.1 },
+    styles: { fontSize: 8, cellPadding: 3 },
+    headStyles: { fontSize: 8, cellPadding: 3 },
     columnStyles: {
       0: { halign: 'center', cellWidth: contentWidth * 0.06, fontStyle: 'bold' },
-      1: { cellWidth: contentWidth * 0.20 },
+      1: { cellWidth: contentWidth * 0.21 },
       2: { cellWidth: contentWidth * 0.14 },
       3: { halign: 'center', cellWidth: contentWidth * 0.10 },
       4: { halign: 'right', cellWidth: contentWidth * 0.14 },
       5: { halign: 'right', cellWidth: contentWidth * 0.13 },
       6: { halign: 'right', cellWidth: contentWidth * 0.13 },
-      7: { halign: 'right', cellWidth: contentWidth * 0.10 },
+      7: { halign: 'right', cellWidth: contentWidth * 0.09 },
     },
-  });
+  }));
 
-  yPosition = (doc as any).lastAutoTable.finalY + 15;
+  const profitTableEnd = (doc as any).lastAutoTable.finalY + 12;
+  y = profitTableEnd > pageHeight - 70 ? 24 : profitTableEnd;
+  if (profitTableEnd > pageHeight - 70) doc.addPage();
 
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(11);
-  doc.setTextColor(...colors.primaryLight);
-  doc.text('Top 10 Margin Tertinggi', margin, yPosition);
-  yPosition += 8;
+  doc.setFontSize(10);
+  doc.setTextColor(...COLORS.secondary);
+  doc.text('Top 10 — Margin Tertinggi', margin, y);
+  y += 9;
 
-  autoTable(doc, {
-    startY: yPosition,
+  autoTable(doc, atOptions({
+    startY: y,
     head: [['No', 'Item', 'Kategori', 'Harga', 'HPP', 'Markup', 'Margin', 'Laba']],
     body: sortedByMargin.slice(0, 10).map((p, i) => {
       const markup = p.hppPrice > 0 ? ((p.sellingPrice - p.hppPrice) / p.hppPrice) * 100 : 0;
@@ -445,9 +515,8 @@ export const generateProfitReport = async (options: ProfitReportOptions) => {
         formatRupiah(p.totalProfit),
       ];
     }),
-    theme: 'striped',
-    headStyles: { fillColor: colors.bgLight, textColor: colors.primary, fontStyle: 'bold', fontSize: 8, cellPadding: 3 },
-    styles: { fontSize: 7.5, cellPadding: 2.5, lineColor: colors.border, lineWidth: 0.1 },
+    styles: { fontSize: 8, cellPadding: 3 },
+    headStyles: { fontSize: 8, cellPadding: 3 },
     columnStyles: {
       0: { halign: 'center', cellWidth: contentWidth * 0.06, fontStyle: 'bold' },
       1: { cellWidth: contentWidth * 0.20 },
@@ -458,56 +527,50 @@ export const generateProfitReport = async (options: ProfitReportOptions) => {
       6: { halign: 'right', cellWidth: contentWidth * 0.12 },
       7: { halign: 'right', cellWidth: contentWidth * 0.15 },
     },
-  });
+  }));
 
-  // ==================== PAGE 6: COST STRUCTURE ANALYSIS ====================
+  // ==================== PAGE 6: COST STRUCTURE ====================
   doc.addPage();
-  yPosition = 25;
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(16);
-  doc.setTextColor(...colors.primary);
-  doc.text('Analisis Struktur Biaya', margin, yPosition);
-  doc.setDrawColor(...colors.accent);
-  doc.setLineWidth(0.8);
-  doc.line(margin, yPosition + 3, margin + 15, yPosition + 3);
-  yPosition += 12;
+  y = 24;
+  sectionHeader('Analisis Struktur Biaya', 'Komposisi omzet, HPP, dan laba kotor');
 
   const costRatio = summary.totalRevenue > 0 ? (summary.totalCOGS / summary.grandTotal) * 100 : 0;
   const profitRatio = summary.grandTotal > 0 ? (summary.totalProfit / summary.grandTotal) * 100 : 0;
 
-  autoTable(doc, {
-    startY: yPosition,
-    head: [['Komponen Biaya', 'Nominal (IDR)', 'Proporsi dari Omzet']],
+  autoTable(doc, atOptions({
+    startY: y,
+    head: [['Komponen', 'Nominal', 'Proporsi']],
     body: [
-      ['Omzet Bruto', formatRupiah(summary.grandTotal), '100.0%'],
+      ['Omzet Bruto', formatRupiah(summary.grandTotal), '100%'],
       ['Harga Pokok Penjualan (HPP)', formatRupiah(summary.totalCOGS), `${costRatio.toFixed(1)}%`],
       [
-        { content: 'LABA KOTOR', styles: { fontStyle: 'bold', textColor: summary.totalProfit >= 0 ? colors.success : colors.danger } },
-        { content: formatRupiah(summary.totalProfit), styles: { fontStyle: 'bold', textColor: summary.totalProfit >= 0 ? colors.success : colors.danger } },
-        { content: `${profitRatio.toFixed(1)}%`, styles: { fontStyle: 'bold', textColor: summary.totalProfit >= 0 ? colors.success : colors.danger } },
+        { content: 'LABA KOTOR', styles: { fontStyle: 'bold', textColor: summary.totalProfit >= 0 ? COLORS.success : COLORS.danger } },
+        { content: formatRupiah(summary.totalProfit), styles: { fontStyle: 'bold', textColor: summary.totalProfit >= 0 ? COLORS.success : COLORS.danger } },
+        { content: `${profitRatio.toFixed(1)}%`, styles: { fontStyle: 'bold', textColor: summary.totalProfit >= 0 ? COLORS.success : COLORS.danger } },
       ],
     ],
-    theme: 'striped',
-    headStyles: { fillColor: colors.bgLight, textColor: colors.primary, fontStyle: 'bold', fontSize: 9.5, cellPadding: 4 },
-    styles: { fontSize: 9, cellPadding: 3.5, lineColor: colors.border, lineWidth: 0.1 },
     columnStyles: {
-      0: { cellWidth: contentWidth * 0.50 },
-      1: { halign: 'right', cellWidth: contentWidth * 0.25 },
-      2: { halign: 'right', cellWidth: contentWidth * 0.25 },
+      0: { cellWidth: contentWidth * 0.52 },
+      1: { halign: 'right', cellWidth: contentWidth * 0.26 },
+      2: { halign: 'right', cellWidth: contentWidth * 0.22 },
     },
-  });
+  }));
 
-  yPosition = (doc as any).lastAutoTable.finalY + 15;
+  const costEnd = (doc as any).lastAutoTable.finalY + 14;
+  y = costEnd > pageHeight - 70 ? 24 : costEnd;
+  if (costEnd > pageHeight - 70) doc.addPage();
 
-  // Cost distribution by category
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(11);
-  doc.setTextColor(...colors.primaryLight);
-  doc.text('Kontribusi Laba per Kategori', margin, yPosition);
-  yPosition += 8;
+  doc.setFontSize(12);
+  doc.setTextColor(...COLORS.primary);
+  doc.text('Kontribusi Laba per Kategori', margin, y);
+  doc.setDrawColor(...COLORS.border);
+  doc.setLineWidth(0.8);
+  doc.line(margin, y + 4, margin + 26, y + 4);
+  y += 13;
 
-  autoTable(doc, {
-    startY: yPosition,
+  autoTable(doc, atOptions({
+    startY: y,
     head: [['Kategori', 'Laba', 'Kontribusi Laba', 'Margin']],
     body: categoryBreakdown.map(c => [
       c.name,
@@ -515,120 +578,112 @@ export const generateProfitReport = async (options: ProfitReportOptions) => {
       `${summary.totalProfit > 0 ? ((c.profit / summary.totalProfit) * 100).toFixed(1) : '0.0'}%`,
       `${c.margin.toFixed(1)}%`,
     ]),
-    theme: 'striped',
-    headStyles: { fillColor: colors.bgLight, textColor: colors.primary, fontStyle: 'bold', fontSize: 9, cellPadding: 3.5 },
-    styles: { fontSize: 8.5, cellPadding: 3, lineColor: colors.border, lineWidth: 0.1 },
     columnStyles: {
-      0: { cellWidth: contentWidth * 0.28, fontStyle: 'bold' },
-      1: { halign: 'right', cellWidth: contentWidth * 0.26 },
-      2: { halign: 'right', cellWidth: contentWidth * 0.24 },
-      3: { halign: 'right', cellWidth: contentWidth * 0.22 },
+      0: { cellWidth: contentWidth * 0.30, fontStyle: 'bold' },
+      1: { halign: 'right', cellWidth: contentWidth * 0.28 },
+      2: { halign: 'right', cellWidth: contentWidth * 0.22 },
+      3: { halign: 'right', cellWidth: contentWidth * 0.20 },
     },
-  });
+  }));
 
   // ==================== PAGE 7+: FULL ITEM DETAIL ====================
   doc.addPage();
-  yPosition = 25;
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(16);
-  doc.setTextColor(...colors.primary);
-  doc.text('Detail Laba Rugi per Item', margin, yPosition);
-  doc.setDrawColor(...colors.accent);
-  doc.setLineWidth(0.8);
-  doc.line(margin, yPosition + 3, margin + 15, yPosition + 3);
-  yPosition += 15;
+  y = 24;
+  sectionHeader('Detail Laba Rugi per Item', `Seluruh ${itemCount} item`);
 
-  autoTable(doc, {
-    startY: yPosition,
-    head: [['No', 'Item', 'Kategori', 'Qty', 'Harga', 'HPP', 'Pendapatan', 'HPP Total', 'Laba', 'Margin']],
+  autoTable(doc, atOptions({
+    startY: y,
+    head: [['No', 'Item', 'Kategori', 'Qty', 'Pendapatan', 'Laba', 'Margin']],
     body: profitData.map((p, i) => [
       `${i + 1}`,
       p.menuName,
       p.category,
       `${p.totalQtySold}x`,
-      formatRupiah(p.sellingPrice),
-      formatRupiah(p.hppPrice),
       formatRupiah(p.totalRevenue),
-      formatRupiah(p.totalCOGS),
       formatRupiah(p.totalProfit),
       `${p.profitMargin.toFixed(1)}%`,
     ]),
-    theme: 'striped',
-    headStyles: { fillColor: colors.bgLight, textColor: colors.primary, fontStyle: 'bold', fontSize: 7, cellPadding: 2.5 },
-    styles: { fontSize: 6.5, cellPadding: 2, lineColor: colors.border, lineWidth: 0.1 },
+    styles: { fontSize: 8, cellPadding: 3, lineColor: COLORS.border },
+    headStyles: { fontSize: 8, cellPadding: 4 },
     columnStyles: {
-      0: { halign: 'center', cellWidth: contentWidth * 0.04, fontStyle: 'bold' },
-      1: { cellWidth: contentWidth * 0.16 },
-      2: { cellWidth: contentWidth * 0.11 },
-      3: { halign: 'center', cellWidth: contentWidth * 0.06 },
-      4: { halign: 'right', cellWidth: contentWidth * 0.10 },
-      5: { halign: 'right', cellWidth: contentWidth * 0.09 },
-      6: { halign: 'right', cellWidth: contentWidth * 0.11 },
-      7: { halign: 'right', cellWidth: contentWidth * 0.10 },
-      8: { halign: 'right', cellWidth: contentWidth * 0.11 },
-      9: { halign: 'right', cellWidth: contentWidth * 0.10 },
+      0: { halign: 'center', cellWidth: contentWidth * 0.06, fontStyle: 'bold' },
+      1: { cellWidth: contentWidth * 0.24 },
+      2: { cellWidth: contentWidth * 0.15 },
+      3: { halign: 'center', cellWidth: contentWidth * 0.09 },
+      4: { halign: 'right', cellWidth: contentWidth * 0.19 },
+      5: { halign: 'right', cellWidth: contentWidth * 0.18 },
+      6: { halign: 'right', cellWidth: contentWidth * 0.09 },
     },
-  });
+  }));
 
   // ==================== SIGNATURES ====================
-  let sigY = (doc as any).lastAutoTable.finalY + 30;
-  const sigBoxWidth = 65;
+  const sigBoxW = 72;
+  const detailEnd = (doc as any).lastAutoTable.finalY;
+  const pageNum = (doc as any).internal.getNumberOfPages();
 
-  if (sigY > 230) {
+  // Determine which page the detail table ended on, and if there's room for signatures
+  // autoTable finalY is relative to the page the table ends on
+  doc.setPage(pageNum);
+  let sigY = detailEnd + 24;
+
+  if (sigY > pageHeight - 55) {
     doc.addPage();
     sigY = 30;
   }
 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(13);
-  doc.setTextColor(...colors.primary);
+  doc.setTextColor(...COLORS.primary);
   doc.text('Otorisasi & Persetujuan', margin, sigY);
-  doc.setDrawColor(...colors.accent);
+  doc.setDrawColor(...COLORS.border);
   doc.setLineWidth(0.8);
-  doc.line(margin, sigY + 3, margin + 15, sigY + 3);
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8.5);
-  doc.setTextColor(...colors.textSecondary);
-  doc.text('Laporan laba rugi ini telah diverifikasi dan disetujui.', margin, sigY + 12);
+  doc.line(margin, sigY + 4, margin + 26, sigY + 4);
+  sigY += 16;
 
-  const sigY2 = sigY + 20;
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(9);
-  doc.setTextColor(...colors.textPrimary);
-  doc.text('Disiapkan Oleh:', margin, sigY2);
-  doc.setDrawColor(...colors.border);
+  doc.setTextColor(...COLORS.primary);
+  doc.text('Disiapkan Oleh:', margin, sigY);
+  doc.setDrawColor(148, 163, 184);
   doc.setLineWidth(0.3);
-  doc.line(margin, sigY2 + 20, margin + sigBoxWidth, sigY2 + 20);
+  doc.line(margin, sigY + 22, margin + sigBoxW, sigY + 22);
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(8);
-  doc.setTextColor(...colors.textSecondary);
-  doc.text('( Bagian Keuangan )', margin + sigBoxWidth / 2, sigY2 + 26, { align: 'center' });
-  doc.text(`Tanggal: ${format(new Date(), 'dd MMMM yyyy', { locale: id })}`, margin + sigBoxWidth / 2, sigY2 + 32, { align: 'center' });
+  doc.setTextColor(...COLORS.muted);
+  doc.text('Bagian Keuangan', margin + sigBoxW / 2, sigY + 28, { align: 'center' });
+  doc.text(`Tanggal: ${format(new Date(), 'dd MMMM yyyy', { locale: id })}`, margin + sigBoxW / 2, sigY + 34, { align: 'center' });
 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(9);
-  doc.setTextColor(...colors.textPrimary);
-  doc.text('Disetujui Oleh:', pageWidth - margin - sigBoxWidth, sigY2);
-  doc.line(pageWidth - margin - sigBoxWidth, sigY2 + 20, pageWidth - margin, sigY2 + 20);
+  doc.setTextColor(...COLORS.primary);
+  doc.text('Disetujui Oleh:', pageWidth - margin - sigBoxW, sigY);
+  doc.line(pageWidth - margin - sigBoxW, sigY + 22, pageWidth - margin, sigY + 22);
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(8);
-  doc.setTextColor(...colors.textSecondary);
-  doc.text('( Manager / Owner )', pageWidth - margin - sigBoxWidth / 2, sigY2 + 26, { align: 'center' });
-  doc.text(`Tanggal: ________________`, pageWidth - margin - sigBoxWidth / 2, sigY2 + 32, { align: 'center' });
+  doc.setTextColor(...COLORS.muted);
+  doc.text('Manager / Owner', pageWidth - margin - sigBoxW / 2, sigY + 28, { align: 'center' });
+  doc.text('Tanggal: ________________', pageWidth - margin - sigBoxW / 2, sigY + 34, { align: 'center' });
 
-  // ==================== FOOTER ====================
-  const pageCount = (doc as any).internal.getNumberOfPages();
-  for (let i = 1; i <= pageCount; i++) {
+  // Signature footer
+  drawFooter(null);
+
+  // ==================== FOOTER ON MANUAL PAGES ====================
+  // Pages 1-2 (cover, exec summary) don't have autoTable didDrawPage footer
+  // Page 3+ have autoTable footers via didDrawPage
+  // The signature page also needs footer (handled above)
+  // Cover already has footer. Exec summary already has footer.
+  // For safety, redraw footer on pages 1-2 only
+  for (let i = 1; i <= 2; i++) {
     doc.setPage(i);
-    doc.setDrawColor(...colors.border);
-    doc.setLineWidth(0.2);
-    doc.line(margin, doc.internal.pageSize.height - 20, pageWidth - margin, doc.internal.pageSize.height - 20);
+    doc.setDrawColor(...COLORS.border);
+    doc.setLineWidth(0.3);
+    doc.line(margin, pageHeight - footerHeight, pageWidth - margin, pageHeight - footerHeight);
     doc.setFont('helvetica', 'italic');
     doc.setFontSize(7);
-    doc.setTextColor(...colors.muted);
-    doc.text(`${settings.name} — Laporan Analisis Laba Rugi | Kasirku.biz.id`, pageWidth / 2, doc.internal.pageSize.height - 15, { align: 'center' });
-    doc.text(`Halaman ${i} dari ${pageCount}`, pageWidth - margin, doc.internal.pageSize.height - 10, { align: 'right' });
-    doc.text(format(new Date(), 'dd/MM/yyyy HH:mm', { locale: id }), margin, doc.internal.pageSize.height - 10);
+    doc.setTextColor(148, 163, 184);
+    doc.text(`${settings.name} — Laporan Analisis Laba Rugi`, pageWidth / 2, pageHeight - 13, { align: 'center' });
+    const pc = (doc as any).internal.getNumberOfPages();
+    doc.text(`Hal ${i} / ${pc}`, pageWidth - margin, pageHeight - 8, { align: 'right' });
   }
 
   const filename = `Laporan_LabaRugi_${settings.name.replace(/\s+/g, '_')}_${format(new Date(), 'yyyyMMdd_HHmm')}.pdf`;
