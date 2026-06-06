@@ -50,6 +50,8 @@ export default function StatistikPage() {
     to: new Date(),
   });
 
+  const toLocalISO = (dateStr: string) => new Date(dateStr + 'T00:00:00').toISOString();
+
   // Format dates for previous period - memoized to prevent unnecessary recalculations
   const prevDateParams = useMemo(() => {
     if (!date?.from || !date?.to) {
@@ -57,21 +59,21 @@ export default function StatistikPage() {
       const defaultEnd = addDays(new Date(), -30);
       const defaultStartStr = format(defaultStart, 'yyyy-MM-dd');
       const defaultEndStr = format(addDays(defaultEnd, 1), 'yyyy-MM-dd');
-      return { startDateStr: defaultStartStr, endDateStr: defaultEndStr };
+      return { startDateStr: toLocalISO(defaultStartStr), endDateStr: toLocalISO(defaultEndStr) };
     }
     const duration = addDays(date.to, 1).getTime() - date.from.getTime();
     const prevStart = addDays(date.from, -Math.ceil(duration / (1000 * 60 * 60 * 24)));
     const prevEnd = addDays(date.from, -1);
     const prevStartStr = format(prevStart, 'yyyy-MM-dd');
     const prevEndStr = format(addDays(prevEnd, 1), 'yyyy-MM-dd');
-    return { startDateStr: prevStartStr, endDateStr: prevEndStr };
+    return { startDateStr: toLocalISO(prevStartStr), endDateStr: toLocalISO(prevEndStr) };
   }, [date]);
 
   // Date params for current period
   const dateParams = useMemo(() => {
     const startDateStr = format(date?.from || addDays(new Date(), -29), 'yyyy-MM-dd');
     const endDateStr = format(addDays(date?.to || date?.from || new Date(), 1), 'yyyy-MM-dd');
-    return { startDateStr, endDateStr };
+    return { startDateStr: toLocalISO(startDateStr), endDateStr: toLocalISO(endDateStr) };
   }, [date]);
 
   // Use SWR for fetching and caching
@@ -560,7 +562,7 @@ export default function StatistikPage() {
             className="space-y-10 sm:space-y-12"
           >
             {/* Summary Cards */}
-            <div className="grid gap-8 grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 max-w-7xl mx-auto">
+            <div className="grid gap-8 grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4">
               <motion.div variants={itemVariants} className="h-full">
                 <StatCard
                   title="Total Pendapatan"

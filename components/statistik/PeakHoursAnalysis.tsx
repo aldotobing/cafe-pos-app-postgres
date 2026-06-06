@@ -220,40 +220,6 @@ export function PeakHoursAnalysis({ data }: PeakHoursAnalysisProps) {
         </div>
       </div>
 
-      {/* Recommendations */}
-      <div className="bg-card rounded-xl border border-border p-6">
-        <h4 className="text-sm font-semibold text-foreground mb-4">Rekomendasi Operasional</h4>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="space-y-3">
-            <div className="p-3 bg-chart-1/5 rounded-lg">
-              <h5 className="text-xs font-semibold text-chart-1 mb-2">Stafing Optimal</h5>
-              <p className="text-xs text-muted-foreground">
-                Tambahkan staf pada jam {peakHours.map(h => h.hour).join(', ')} untuk mengantisipasi lonjakan pelanggan.
-              </p>
-            </div>
-            <div className="p-3 bg-chart-2/5 rounded-lg">
-              <h5 className="text-xs font-semibold text-chart-2 mb-2">Promosi Jam Sepi</h5>
-              <p className="text-xs text-muted-foreground">
-                Jalankan promo khusus pada jam {quietHours.map(h => h.hour).join(', ')} untuk meningkatkan penjualan.
-              </p>
-            </div>
-          </div>
-          <div className="space-y-3">
-            <div className="p-3 bg-chart-3/5 rounded-lg">
-              <h5 className="text-xs font-semibold text-chart-3 mb-2">Optimasi Shift</h5>
-              <p className="text-xs text-muted-foreground">
-                Pertimbangkan untuk memulai shift 1 jam sebelum jam puncak dan berakhir 1 jam setelahnya.
-              </p>
-            </div>
-            <div className="p-3 bg-chart-4/5 rounded-lg">
-              <h5 className="text-xs font-semibold text-chart-4 mb-2">Analisis Trend</h5>
-              <p className="text-xs text-muted-foreground">
-                {Number(peakPercentage) > 50 ? 'Lebih dari 50% penjualan terjadi pada jam puncak, pertimbangkan ekspansi.' : 'Distribusi penjualan merata, pertahankan strategi saat ini.'}
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
     </div>
   );
 }
