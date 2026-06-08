@@ -34,6 +34,9 @@ export default function ReceiptPage() {
           paymentAmount: data.payment_amount || 0,
           changeAmount: data.change_amount || 0,
           orderNote: data.order_note || '',
+          discountType: data.discount_type || 'none',
+          discountValue: data.discount_value || 0,
+          discountAmount: data.discount_amount || 0,
           createdAt: data.created_at || new Date().toISOString(),
           items: data.transaction_items || data.items || [],
         };
@@ -246,6 +249,12 @@ export default function ReceiptPage() {
             <span style={{ width: "18mm", flexShrink: 0 }}>Subtotal</span>
             <span style={{ flex: 1, textAlign: "right", fontSize: "8px", whiteSpace: "nowrap" }}>{formatRupiah(tx.subtotal)}</span>
           </div>
+          {(tx.discountType || (tx as any).discount_type) !== 'none' && (tx.discountAmount || (tx as any).discount_amount) > 0 && (
+            <div style={{ display: "flex" }}>
+              <span style={{ width: "18mm", flexShrink: 0, fontSize: "8px" }}>Diskon</span>
+              <span style={{ flex: 1, textAlign: "right", fontSize: "8px", whiteSpace: "nowrap" }}>-{formatRupiah(tx.discountAmount || (tx as any).discount_amount || 0)}</span>
+            </div>
+          )}
           {settings && settings.taxPercent > 0 && (
             <div style={{ display: "flex" }}>
               <span style={{ width: "18mm", flexShrink: 0 }}>PPN {settings.taxPercent}%</span>

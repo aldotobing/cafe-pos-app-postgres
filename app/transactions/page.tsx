@@ -8,7 +8,7 @@ import { useTransactionsPaginated, useCafeSettings } from "@/hooks/use-cafe-data
 import { transactionsApi } from '@/lib/api'
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Filter, Receipt, TrendingUp, Calendar as CalendarIcon, FileText, ChevronLeft, ChevronRight, ChevronFirst, ChevronLast, Loader2 } from 'lucide-react';
+import { Filter, Receipt, TrendingUp, Calendar as CalendarIcon, FileText, ChevronLeft, ChevronRight, ChevronFirst, ChevronLast, Loader2, BadgePercent } from 'lucide-react';
 import { generateTransactionReport } from '@/lib/reports/transaction-report';
 import { toast } from 'sonner';
 import { TransactionsSkeleton } from '@/components/skeletons';
@@ -398,7 +398,15 @@ export default function Page() {
                         {t.paymentMethod}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-right font-semibold tabular-nums">{formatRupiah(t.totalAmount || 0)}</td>
+                    <td className="px-4 py-3 text-right font-semibold tabular-nums">
+                      <div>{formatRupiah(t.totalAmount || 0)}</div>
+                      {(t.discountType || t.discount_type) !== 'none' && (t.discountAmount || t.discount_amount) > 0 && (
+                        <div className="text-[10px] text-emerald-600 font-medium flex items-center justify-end gap-0.5 mt-0.5">
+                          <BadgePercent className="h-3 w-3" />
+                          Promo
+                        </div>
+                      )}
+                    </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
                         <div className="min-w-0 flex-1">
@@ -460,7 +468,15 @@ export default function Page() {
                 >
                   <div className="flex items-center justify-between p-3 border-b border-border/30 bg-muted/20">
                     <div className="text-xs text-muted-foreground">{formatTanggal(t.createdAt)}</div>
-                    <div className="font-bold text-sm tabular-nums">{formatRupiah(t.totalAmount || 0)}</div>
+                    <div className="flex items-center gap-2">
+                      {(t.discountType || t.discount_type) !== 'none' && (t.discountAmount || t.discount_amount) > 0 && (
+                        <div className="text-[10px] text-emerald-600 font-medium flex items-center gap-0.5 bg-emerald-50 px-1.5 py-0.5 rounded-full">
+                          <BadgePercent className="h-3 w-3" />
+                          Promo
+                        </div>
+                      )}
+                      <div className="font-bold text-sm tabular-nums">{formatRupiah(t.totalAmount || 0)}</div>
+                    </div>
                   </div>
                   <div className="p-3 space-y-2">
                     <div className="flex items-center gap-3 text-xs">

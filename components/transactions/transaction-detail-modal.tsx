@@ -8,7 +8,7 @@ import { useAuth } from "@/lib/auth-context"
 import { useRouter } from "next/navigation"
 import { swrConfig } from "@/lib/swr-config"
 import type { Transaction, TransactionItem } from "@/types"
-import { X, Printer, Calendar, User, CreditCard, Hash, Loader2 } from "lucide-react"
+import { X, Printer, Calendar, User, CreditCard, Hash, Loader2, BadgePercent } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import { cn } from "@/lib/utils"
 
@@ -64,6 +64,9 @@ export function TransactionDetailModal({ transactionId, isOpen, onClose }: Trans
           paymentAmount: data.payment_amount || 0,
           changeAmount: data.change_amount || 0,
           orderNote: data.order_note || '',
+          discountType: data.discount_type || 'none',
+          discountValue: data.discount_value || 0,
+          discountAmount: data.discount_amount || 0,
           createdAt: data.created_at || new Date().toISOString(),
           items: data.transaction_items || data.items || [],
         }
@@ -367,6 +370,15 @@ function ModalContent({
                   <span className="text-muted-foreground">Subtotal</span>
                   <span className="font-medium tabular-nums">{formatRupiah(tx.subtotal)}</span>
                 </div>
+                {(tx.discountType || tx.discount_type) !== 'none' && (tx.discountAmount || tx.discount_amount) > 0 && (
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-emerald-600 font-medium flex items-center gap-1">
+                      <BadgePercent className="h-3.5 w-3.5" />
+                      Promo Diskon
+                    </span>
+                    <span className="font-medium text-emerald-600 tabular-nums">-{formatRupiah(tx.discountAmount || tx.discount_amount || 0)}</span>
+                  </div>
+                )}
                 {(settings?.taxPercent || 0) > 0 && (
                   <div className="flex justify-between items-center text-sm">
                     <span className="text-muted-foreground">PPN {settings?.taxPercent}%</span>

@@ -281,6 +281,9 @@ export const transactionsApi = {
       paymentAmount: tx.payment_amount || 0,
       changeAmount: tx.change_amount || 0,
       orderNote: tx.order_note || '',
+      discountType: tx.discount_type || 'none',
+      discountValue: tx.discount_value || 0,
+      discountAmount: tx.discount_amount || 0,
       items: (tx.transaction_items || []).map((item: any) => ({
         id: item.id || '',
         transactionId: item.transaction_id || item.transactionId || '',
@@ -341,6 +344,9 @@ export const transactionsApi = {
       paymentAmount: tx.payment_amount || 0,
       changeAmount: tx.change_amount || 0,
       orderNote: tx.order_note || '',
+      discountType: tx.discount_type || 'none',
+      discountValue: tx.discount_value || 0,
+      discountAmount: tx.discount_amount || 0,
       items: (tx.transaction_items || []).map((item: any) => ({
         id: item.id || '',
         transactionId: item.transaction_id || item.transactionId || '',
@@ -376,6 +382,9 @@ export const transactionsApi = {
       paymentAmount: tx.payment_amount,
       changeAmount: tx.change_amount,
       orderNote: tx.order_note,
+      discountType: tx.discount_type || 'none',
+      discountValue: tx.discount_value || 0,
+      discountAmount: tx.discount_amount || 0,
       items: (tx.transaction_items || tx.items || []).map((item: any) => ({
         id: item.id || '',
         transactionId: item.transaction_id || item.transactionId || '',
@@ -405,6 +414,9 @@ export const transactionsApi = {
       order_note: tx.orderNote,
       created_by: tx.created_by,
       cafe_id: tx.cafe_id || cafeId,
+      discount_type: tx.discount_type || 'none',
+      discount_value: tx.discount_value || 0,
+      discount_amount: tx.discount_amount || 0,
       items: tx.items?.map((item: any) => ({
         menu_id: item.menuId,
         menu_name: item.name,
@@ -432,6 +444,9 @@ export const transactionsApi = {
       paymentAmount: serverTx.payment_amount || 0,
       changeAmount: serverTx.change_amount || 0,
       orderNote: serverTx.order_note || '',
+      discountType: serverTx.discount_type || 'none',
+      discountValue: serverTx.discount_value || 0,
+      discountAmount: serverTx.discount_amount || 0,
       cashier_name: serverTx.cashier_name,
       items: (serverTx.transaction_items || []).map((item: any) => ({
         id: item.id || '',

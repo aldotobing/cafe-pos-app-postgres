@@ -146,6 +146,12 @@ export interface Transaction {
   updated_at?: string
   updatedAt?: string
   deleted_at?: string
+  discount_type?: string
+  discountType?: string
+  discount_value?: number
+  discountValue?: number
+  discount_amount?: number
+  discountAmount?: number
   items: TransactionItem[]
 }
 

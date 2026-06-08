@@ -5,7 +5,7 @@ import { useCafeSettings } from "@/hooks/use-cafe-data"
 import { formatRupiah, formatTanggal } from "@/lib/format"
 import { useAuth } from "@/lib/auth-context"
 import type { Transaction, TransactionItem } from "@/types"
-import { X, ArrowUpRight } from "lucide-react"
+import { X, ArrowUpRight, BadgePercent } from "lucide-react"
 
 interface ReceiptModalProps {
   transaction: Transaction | null
@@ -148,6 +148,12 @@ export function ReceiptModal({ transaction, isOpen, onClose }: ReceiptModalProps
                   <span style={{ width: "18mm", flexShrink: 0 }}>Subtotal</span>
                   <span style={{ flex: 1, textAlign: "right", fontSize: "8px", whiteSpace: "nowrap" }}>{formatRupiah(tx.subtotal)}</span>
                 </div>
+                {(tx.discountType || (tx as any).discount_type) !== 'none' && (tx.discountAmount || (tx as any).discount_amount) > 0 && (
+                  <div style={{ display: "flex" }}>
+                    <span style={{ width: "18mm", flexShrink: 0, fontSize: "8px" }}>Diskon</span>
+                    <span style={{ flex: 1, textAlign: "right", fontSize: "8px", whiteSpace: "nowrap" }}>-{formatRupiah(tx.discountAmount || (tx as any).discount_amount || 0)}</span>
+                  </div>
+                )}
                 {settings && settings.taxPercent > 0 && (
                   <div style={{ display: "flex" }}>
                     <span style={{ width: "18mm", flexShrink: 0 }}>PPN {settings.taxPercent}%</span>
