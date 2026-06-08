@@ -5,6 +5,17 @@ import { useState } from "react"
 import { cn } from "@/lib/utils"
 import { ImageIcon } from "lucide-react"
 
+const CDN_PATTERNS = ["img.kasirku.biz.id", ".r2.dev", ".r2.cloudflarestorage.com"]
+const isCdnUrl = (url: string) => CDN_PATTERNS.some((p) => url.includes(p))
+
+const imageProxyLoader = ({ src, width, quality }: { src: string; width: number; quality?: number }) => {
+  if (typeof src !== "string" || !isCdnUrl(src)) return src
+  const params = new URLSearchParams({ url: src })
+  if (width) params.set("w", String(width))
+  if (quality) params.set("q", String(quality))
+  return `/api/image-proxy?${params.toString()}`
+}
+
 interface OptimizedImageProps {
   src: string | null | undefined
   alt: string
@@ -37,6 +48,7 @@ export function OptimizedImage({
   fallback,
 }: OptimizedImageProps) {
   const [error, setError] = useState(false)
+  const externalCdn = typeof src === "string" && isCdnUrl(src)
 
   if (!src || error) {
     return (
@@ -87,6 +99,7 @@ export function OptimizedImage({
         placeholder={placeholder}
         blurDataURL={blurDataURL}
         onError={() => setError(true)}
+        loader={externalCdn ? imageProxyLoader : undefined}
         unoptimized={false}
       />
     </div>

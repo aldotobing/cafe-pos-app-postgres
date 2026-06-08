@@ -4,6 +4,7 @@ import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { formatRupiah } from '../format';
 import { CafeSettings } from '@/types';
+import { loadImageAsBase64 } from './image-utils';
 
 interface ReportData {
     totalTransactions: number;
@@ -33,22 +34,6 @@ interface ReportData {
 }
 
 type RGB = [number, number, number];
-
-async function loadImageAsBase64(url: string): Promise<string | null> {
-    try {
-        const res = await fetch(url);
-        if (!res.ok) return null;
-        const blob = await res.blob();
-        return new Promise((resolve) => {
-            const reader = new FileReader();
-            reader.onloadend = () => resolve(reader.result as string);
-            reader.onerror = () => resolve(null);
-            reader.readAsDataURL(blob);
-        });
-    } catch {
-        return null;
-    }
-}
 
 export const generateFinancialReport = async (
     data: ReportData,
