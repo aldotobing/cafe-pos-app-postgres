@@ -57,7 +57,7 @@ export function ToasterWithTheme() {
     <Toaster
       position={isMobile ? "bottom-center" : "top-center"}
       gap={isMobile ? 6 : 8}
-      offset={isMobile ? "5rem" : "5.5rem"}
+      offset={isMobile ? "5rem" : "1rem"}
       theme={theme as any}
       richColors
       toastOptions={{
