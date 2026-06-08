@@ -11,6 +11,7 @@ interface ReportData {
     totalRevenue: number;
     avgTransactionValue: number;
     totalSubtotal: number;
+    totalDiscount: number;
     totalTax: number;
     totalService: number;
     topSellingItems: Array<{
@@ -267,6 +268,7 @@ export const generateFinancialReport = async (
         head: [['Pos Keuangan', 'Nominal (IDR)', 'Alokasi Pendapatan']],
         body: [
             ['Pendapatan Kotor (Subtotal)', formatRupiah(data.totalSubtotal || data.totalRevenue), `${data.totalRevenue > 0 ? (((data.totalSubtotal || data.totalRevenue) / data.totalRevenue) * 100).toFixed(1) : '0.0'}%`],
+            ['Total Diskon', formatRupiah(data.totalDiscount || 0), `${data.totalRevenue > 0 ? (((data.totalDiscount || 0) / (data.totalSubtotal || data.totalRevenue)) * 100).toFixed(1) : '0.0'}%`],
             ['Total Retensi PPN (Tax)', formatRupiah(data.totalTax), `${data.totalRevenue > 0 ? ((data.totalTax / data.totalRevenue) * 100).toFixed(1) : '0.0'}%`],
             ['Total Biaya Layanan Operasional', formatRupiah(data.totalService), `${data.totalRevenue > 0 ? ((data.totalService / data.totalRevenue) * 100).toFixed(1) : '0.0'}%`],
             [

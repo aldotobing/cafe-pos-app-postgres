@@ -241,6 +241,7 @@ export default function StatistikPage() {
       .sort((a, b) => b.value - a.value);
 
     const totalSubtotal = filteredTransactions.reduce((sum, tx) => sum + (Number(tx.subtotal) || 0), 0);
+    const totalDiscount = filteredTransactions.reduce((sum, tx) => sum + (Number(tx.discount_amount || tx.discountAmount) || 0), 0);
     const totalTax = filteredTransactions.reduce((sum, tx) => sum + (Number(tx.tax_amount || tx.taxAmount) || 0), 0);
     const totalService = filteredTransactions.reduce((sum, tx) => sum + (Number(tx.service_charge || tx.serviceCharge) || 0), 0);
 
@@ -364,6 +365,7 @@ export default function StatistikPage() {
       dailyRevenue,
       categoryDistribution,
       totalSubtotal,
+      totalDiscount,
       totalTax,
       totalService,
       paymentBreakdown,

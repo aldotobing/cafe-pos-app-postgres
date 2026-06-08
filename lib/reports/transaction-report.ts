@@ -18,6 +18,9 @@ interface Transaction {
     }>;
     totalAmount?: number;
     subtotal?: number;
+    discountAmount?: number;
+    discountValue?: number;
+    discountType?: string;
     taxAmount?: number;
     serviceCharge?: number;
     paymentMethod?: string;
@@ -101,6 +104,7 @@ export const generateTransactionReport = async (options: ReportOptions) => {
     const avgTransaction = transactions.length > 0 ? totalRevenue / transactions.length : 0;
     const totalTax = transactions.reduce((sum, t) => sum + (t.taxAmount || 0), 0);
     const totalService = transactions.reduce((sum, t) => sum + (t.serviceCharge || 0), 0);
+    const totalDiscount = transactions.reduce((sum, t) => sum + (t.discountAmount || 0), 0);
     const totalItems = transactions.reduce((sum, t) => sum + t.items.reduce((s, i) => s + (i.qty || i.quantity || 0), 0), 0);
 
     // Payment method breakdown
@@ -317,6 +321,7 @@ export const generateTransactionReport = async (options: ReportOptions) => {
         head: [['Komponen Keuangan', 'Nilai (IDR)', 'Portofolio']],
         body: [
             ['Total Subtotal Transaksi', formatRupiah(transactions.reduce((s, t) => s + (t.subtotal || 0), 0)), '100%'],
+            ['Total Diskon', formatRupiah(totalDiscount), `${totalDiscount > 0 ? ((totalDiscount / transactions.reduce((s, t) => s + (t.subtotal || 0), 0)) * 100).toFixed(1) : '0.0'}%`],
             ['Total PPN (Tax)', formatRupiah(totalTax), `${totalRevenue > 0 ? ((totalTax / totalRevenue) * 100).toFixed(1) : '0.0'}%`],
             ['Total Biaya Layanan', formatRupiah(totalService), `${totalRevenue > 0 ? ((totalService / totalRevenue) * 100).toFixed(1) : '0.0'}%`],
             [
@@ -539,6 +544,7 @@ export const generateTransactionReport = async (options: ReportOptions) => {
 
     const summaryData = [
         ['Total Subtotal (Bruto)', formatRupiah(transactions.reduce((s, t) => s + (t.subtotal || 0), 0))],
+        ['Total Diskon', formatRupiah(totalDiscount)],
         ['Total PPN 11% (Tax)', formatRupiah(totalTax)],
         ['Total Service Charge', formatRupiah(totalService)],
         ['TOTAL AKHIR (Nett)', formatRupiah(totalRevenue)]

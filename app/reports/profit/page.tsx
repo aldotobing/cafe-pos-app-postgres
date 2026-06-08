@@ -246,6 +246,7 @@ export default function ProfitReportPage() {
     const totalCOGS = profitData.reduce((sum, p) => sum + p.totalCOGS, 0)
     const totalProfit = profitData.reduce((sum, p) => sum + p.totalProfit, 0)
     const avgMargin = totalRevenue > 0 ? (totalProfit / totalRevenue) * 100 : 0
+    const totalDiscount = transactions?.reduce((sum: number, tx: any) => sum + (Number(tx.discount_amount || tx.discountAmount) || 0), 0) || 0
 
     return {
       totalRevenue,
@@ -253,9 +254,10 @@ export default function ProfitReportPage() {
       totalProfit,
       avgMargin,
       grandTotal: grandTotalResult,
+      totalDiscount,
       totalItems: profitData.length,
     }
-  }, [profitData, grandTotalResult])
+  }, [profitData, grandTotalResult, transactions])
 
   if (authLoading || menuLoading) {
     return <ProfitSkeleton />;

@@ -151,6 +151,9 @@ export async function POST(request: Request) {
         payment_amount: body.payment_amount || 0,
         change_amount: body.change_amount || 0,
         order_note: body.order_note,
+        discount_type: body.discount_type || 'none',
+        discount_value: body.discount_value || 0,
+        discount_amount: body.discount_amount || 0,
       })
       .select()
       .single();

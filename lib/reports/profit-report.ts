@@ -24,6 +24,7 @@ interface ProfitSummary {
   totalProfit: number;
   avgMargin: number;
   grandTotal: number;
+  totalDiscount: number;
   totalItems: number;
 }
 
@@ -522,11 +523,13 @@ export const generateProfitReport = async (options: ProfitReportOptions) => {
   const costRatio = summary.totalRevenue > 0 ? (summary.totalCOGS / summary.grandTotal) * 100 : 0;
   const profitRatio = summary.grandTotal > 0 ? (summary.totalProfit / summary.grandTotal) * 100 : 0;
 
+  const discountRatio = summary.grandTotal > 0 && summary.totalDiscount > 0 ? ((summary.totalDiscount / summary.grandTotal) * 100).toFixed(1) : '0.0';
   autoTable(doc, atOptions({
     startY: y,
     head: [['Komponen', 'Nominal', 'Proporsi']],
     body: [
       ['Omzet Bruto', formatRupiah(summary.grandTotal), '100%'],
+      ...(summary.totalDiscount > 0 ? [['Total Diskon', formatRupiah(summary.totalDiscount), `${discountRatio}%`]] : [] as any[]),
       ['Harga Pokok Penjualan (HPP)', formatRupiah(summary.totalCOGS), `${costRatio.toFixed(1)}%`],
       [
         { content: 'LABA KOTOR', styles: { fontStyle: 'bold', textColor: summary.totalProfit >= 0 ? COLORS.success : COLORS.danger } },

@@ -21,7 +21,8 @@ interface CartContextType {
     userName?: string,
     cafeId?: number,
     settings?: any,
-    menuMap?: Map<string, MenuItem>
+    menuMap?: Map<string, MenuItem>,
+    discountInfo?: { type: string; value: number; amount: number }
   ) => Promise<Transaction | null>;
 }
 
@@ -132,7 +133,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
     userName?: string,
     cafeId?: number,
     settings?: any,
-    menuMap?: Map<string, MenuItem>
+    menuMap?: Map<string, MenuItem>,
+    discountInfo?: { type: string; value: number; amount: number }
   ) => {
     if (cart.length === 0) return null;
 
@@ -174,7 +176,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     const currentCafeId = cafeId !== null && cafeId !== undefined ? Number(cafeId) : 1;
     const currentUserId = userId || "unknown";
 
-    const txData = {
+    const txData: Record<string, unknown> = {
       subtotal,
       taxAmount: tax,
       serviceCharge: service,
@@ -185,6 +187,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
       orderNote: orderNote || "",
       cafe_id: currentCafeId,
       created_by: currentUserId,
+      discount_type: discountInfo?.type || 'none',
+      discount_value: discountInfo?.value || 0,
+      discount_amount: discountInfo?.amount || 0,
       items: items.map((it) => ({
         menuId: it.menuId,
         name: it.name,

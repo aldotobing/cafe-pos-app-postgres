@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { useCart } from "../../contexts/cart-context"
 import { useAuth } from "@/lib/auth-context"
@@ -9,6 +9,7 @@ import { formatRupiah } from "../../lib/format"
 import { toast } from "sonner"
 import { ReceiptModal } from "../receipt/receipt-modal"
 import { Minus, Plus, Trash2, ShoppingCart, Loader2 } from "lucide-react"
+import { findBestPromo, type PromoRule } from "@/lib/promo-matcher"
 
 export function CartPanel() {
   const router = useRouter()
@@ -31,11 +32,67 @@ export function CartPanel() {
   const [receiptTransaction, setReceiptTransaction] = useState<any>(null)
   const [showReceiptModal, setShowReceiptModal] = useState(false)
   const [focusedDiscountId, setFocusedDiscountId] = useState<string | null>(null)
+  const [discountType, setDiscountType] = useState<'percent' | 'flat'>('percent')
+  const [discountValue, setDiscountValue] = useState<number>(0)
+  const [promotions, setPromotions] = useState<PromoRule[]>([])
+  const [appliedPromoName, setAppliedPromoName] = useState<string | null>(null)
+  const manualDiscountSet = useRef(false)
+
+  useEffect(() => {
+    if (!userData?.cafe_id) return
+    fetch(`/api/promotions?cafeId=${userData.cafe_id}`)
+      .then(r => r.json())
+      .then(d => setPromotions((d.promotions || []).filter((p: PromoRule) => p.isActive)))
+      .catch(() => {})
+  }, [userData?.cafe_id])
 
   const subtotal = cart.reduce((sum: number, c: any) => sum + Math.max(0, c.price * c.qty - (c.discount ?? 0)), 0)
-  const tax = Math.round(((settings?.taxPercent || 0) / 100) * subtotal)
-  const service = Math.round(((settings?.servicePercent || 0) / 100) * subtotal)
-  const total = subtotal + tax + service
+  const discountAmount = discountType === 'percent'
+    ? Math.round(subtotal * discountValue / 100)
+    : discountValue
+  const discountedSubtotal = Math.max(0, subtotal - discountAmount)
+  const tax = Math.round(((settings?.taxPercent || 0) / 100) * discountedSubtotal)
+  const service = Math.round(((settings?.servicePercent || 0) / 100) * discountedSubtotal)
+  const total = discountedSubtotal + tax + service
+
+  useEffect(() => {
+    if (!cart.length || !promotions.length) return
+    if (manualDiscountSet.current) return
+
+    const cartItems = cart.map((item: any) => {
+      const menuItem = menu.find((m: any) => m.id === item.menuId)
+      return {
+        menuId: item.menuId,
+        name: item.name,
+        categoryId: menuItem?.categoryId || menuItem?.category_id,
+        price: item.price,
+        qty: item.qty,
+        discount: item.discount || 0,
+      }
+    })
+
+    const match = findBestPromo(cartItems, subtotal, promotions)
+    if (match.promo && match.discountAmount > 0) {
+      setAppliedPromoName(match.promo.name)
+      if (match.promo.type === 'percent') {
+        setDiscountType('percent')
+      } else {
+        setDiscountType('flat')
+      }
+      setDiscountValue(match.promo.value)
+    } else {
+      setAppliedPromoName(null)
+    }
+  }, [cart, subtotal, promotions, menu])
+
+  const handleDiscountChange = (type: 'percent' | 'flat', value: number) => {
+    manualDiscountSet.current = value > 0
+    setDiscountType(type)
+    setDiscountValue(value)
+    if (value === 0) {
+      setAppliedPromoName(null)
+    }
+  }
 
   return (
     <div className="flex flex-col h-full bg-card">
@@ -151,6 +208,65 @@ export function CartPanel() {
             <span>Subtotal</span>
             <span>{formatRupiah(subtotal)}</span>
           </div>
+          {discountAmount > 0 && (
+            <>
+              <div className="flex items-center justify-between text-destructive">
+                <div className="flex items-center gap-2">
+                  <span>Diskon</span>
+                  <select
+                    className="text-xs border rounded px-1 py-0.5 bg-background"
+                    value={discountType}
+                    onChange={(e) => handleDiscountChange(e.target.value as 'percent' | 'flat', discountValue)}
+                  >
+                    <option value="percent">%</option>
+                    <option value="flat">Rp</option>
+                  </select>
+                  <input
+                    type="number"
+                    className="w-16 text-xs border rounded px-1 py-0.5 bg-background"
+                    value={discountValue || ''}
+                    placeholder="0"
+                    min={0}
+                    onChange={(e) => handleDiscountChange(discountType, Math.max(0, Number(e.target.value) || 0))}
+                  />
+                </div>
+                <span>-{formatRupiah(discountAmount)}</span>
+              </div>
+              {appliedPromoName && (
+                <div className="text-xs text-emerald-600 font-medium">
+                  Promo &quot;{appliedPromoName}&quot; diterapkan
+                </div>
+              )}
+              <div className="flex items-center justify-between text-muted-foreground text-xs">
+                <span>Subtotal setelah diskon</span>
+                <span>{formatRupiah(discountedSubtotal)}</span>
+              </div>
+            </>
+          )}
+          {discountAmount === 0 && (
+            <div className="flex items-center justify-between text-muted-foreground">
+              <div className="flex items-center gap-2">
+                <span>Diskon</span>
+                <select
+                  className="text-xs border rounded px-1 py-0.5 bg-background opacity-60"
+                  value={discountType}
+                  onChange={(e) => handleDiscountChange(e.target.value as 'percent' | 'flat', discountValue)}
+                >
+                  <option value="percent">%</option>
+                  <option value="flat">Rp</option>
+                </select>
+                <input
+                  type="number"
+                  className="w-16 text-xs border rounded px-1 py-0.5 bg-background opacity-60"
+                  value={discountValue || ''}
+                  placeholder="0"
+                  min={0}
+                  onChange={(e) => handleDiscountChange(discountType, Math.max(0, Number(e.target.value) || 0))}
+                />
+              </div>
+              <span>{formatRupiah(0)}</span>
+            </div>
+          )}
           <div className="flex items-center justify-between text-muted-foreground">
             <span>PPN ({settings?.taxPercent || 0}%)</span>
             <span>{formatRupiah(tax)}</span>
@@ -192,7 +308,11 @@ export function CartPanel() {
             setIsProcessing(true);
             try {
               const menuMap = new Map((menu as any[]).map((m: any) => [m.id, m]));
-              const tx = await checkout(payment, orderNote, user?.id, userData?.full_name, userData?.cafe_id, settings, menuMap)
+              const tx = await checkout(payment, orderNote, user?.id, userData?.full_name, userData?.cafe_id, settings, menuMap, {
+                type: discountType,
+                value: discountValue,
+                amount: discountAmount,
+              })
               if (tx) {
                 toast.success('Transaksi berhasil disimpan!', {
                   description: `Total: ${formatRupiah(tx.totalAmount || tx.total_amount || 0)}`
