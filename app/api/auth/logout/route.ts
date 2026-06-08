@@ -6,26 +6,45 @@ const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!
 
 export async function POST(request: Request) {
   try {
-    const supabase = createClient(supabaseUrl, supabaseKey)
-    
-    // Sign out dari Supabase
-    await supabase.auth.signOut()
-    
-    // Clear cookies
+    // Extract token from cookie to properly identify the session on the server
+    const cookieHeader = request.headers.get('Cookie') || ''
+    const accessToken = cookieHeader.split('; ').find(row => row.startsWith('sb-access-token='))?.split('=')[1]
+
+    if (accessToken) {
+      const supabase = createClient(supabaseUrl, supabaseKey, {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false,
+        },
+        global: {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        },
+      })
+      await supabase.auth.signOut()
+    }
+
     const isProduction = process.env.NODE_ENV === 'production'
     const secureFlag = isProduction ? '; Secure' : ''
-    
+    const cookieSuffix = `HttpOnly; Path=/; SameSite=Lax; Max-Age=0${secureFlag}`
+
     const response = NextResponse.json({ success: true })
-    
-    // Clear access token cookie
-    response.headers.set(
-      'Set-Cookie',
-      `sb-access-token=; HttpOnly; Path=/; SameSite=Lax; Max-Age=0${secureFlag}`
-    )
-    
+
+    // Clear all Supabase auth cookies
+    response.headers.append('Set-Cookie', `sb-access-token=; ${cookieSuffix}`)
+    response.headers.append('Set-Cookie', `sb-refresh-token=; ${cookieSuffix}`)
+
     return response
   } catch (error) {
     console.error('Logout error:', error)
-    return NextResponse.json({ success: true }) // Still return success even if error
+
+    // Even on error, clear cookies so the client doesn't stay in a broken auth state
+    const isProduction = process.env.NODE_ENV === 'production'
+    const secureFlag = isProduction ? '; Secure' : ''
+    const cookieSuffix = `HttpOnly; Path=/; SameSite=Lax; Max-Age=0${secureFlag}`
+
+    const response = NextResponse.json({ success: true })
+    response.headers.append('Set-Cookie', `sb-access-token=; ${cookieSuffix}`)
+    response.headers.append('Set-Cookie', `sb-refresh-token=; ${cookieSuffix}`)
+    return response
   }
 }

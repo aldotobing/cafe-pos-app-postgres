@@ -1,7 +1,19 @@
 'use client';
 
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!;
+
+const supabase = createClient(supabaseUrl, supabaseKey, {
+  auth: {
+    autoRefreshToken: false,
+    persistSession: false,
+    detectSessionInUrl: false,
+  },
+});
 
 interface AuthContextType {
   user: any | null;
@@ -32,20 +44,66 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [signingOut, setSigningOut] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
+  const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     checkSession();
+    return () => {
+      if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
+    };
   }, []);
+
+  const scheduleRefresh = (expiresAt: number | null) => {
+    if (refreshTimerRef.current) {
+      clearTimeout(refreshTimerRef.current);
+      refreshTimerRef.current = null;
+    }
+    if (!expiresAt) return;
+
+    const now = Date.now() / 1000;
+    const refreshAt = expiresAt - 300; // 5 minutes before expiry
+    const delay = Math.max(0, (refreshAt - now) * 1000);
+
+    if (delay <= 0) {
+      refreshSession();
+      return;
+    }
+
+    refreshTimerRef.current = setTimeout(() => refreshSession(), delay);
+  };
+
+  const refreshSession = async () => {
+    try {
+      const res = await fetch('/api/auth/refresh', {
+        method: 'POST',
+        credentials: 'include',
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.user) {
+          setUser((prev: any) => prev?.id === data.user.id ? { ...prev, ...data.user } : prev);
+        }
+        scheduleRefresh(data.expires_at);
+      } else {
+        setUser(null);
+        setUserData(null);
+        router.push('/login');
+      }
+    } catch {
+      refreshTimerRef.current = setTimeout(() => refreshSession(), 2 * 60 * 1000);
+    }
+  };
 
   const checkSession = async () => {
     try {
       const response = await fetch('/api/auth/me', {
-        credentials: 'include', // Important: send cookies
+        credentials: 'include',
       });
       if (response.ok) {
         const data = await response.json();
         setUser(data.user);
         setUserData(data.userData);
+        scheduleRefresh(data.expires_at);
         return data;
       } else {
         setUser(null);
@@ -80,6 +138,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     setUser(data.user);
     setUserData(data.userData);
+    scheduleRefresh(data.session?.expires_at ?? null);
     return data.userData;
   };
 
@@ -123,10 +182,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOutUser = async (): Promise<{ success: boolean; error?: string }> => {
     setSigningOut(true);
+    if (refreshTimerRef.current) {
+      clearTimeout(refreshTimerRef.current);
+      refreshTimerRef.current = null;
+    }
     try {
-      // 1. Clear localStorage items
+      // 1. Sign out from Supabase client (clears browser-stored session)
+      try {
+        await supabase.auth.signOut();
+      } catch (e) {
+        // Ignore — client may not have a session if auth is cookie-only
+      }
+
+      // 2. Clear all Supabase-managed localStorage keys (sb-*)
       try {
         if (typeof window !== 'undefined') {
+          const keysToRemove: string[] = [];
+          for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key?.startsWith('sb-')) {
+              keysToRemove.push(key);
+            }
+          }
+          keysToRemove.forEach(key => localStorage.removeItem(key));
           localStorage.removeItem('pwa-install-dismissed-at');
           localStorage.removeItem('cart');
           localStorage.removeItem('cafe-settings');
@@ -136,7 +214,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Ignore
       }
 
-      // 2. Clear sessionStorage
+      // 3. Clear sessionStorage
       try {
         if (typeof window !== 'undefined') {
           sessionStorage.clear();
@@ -145,26 +223,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Ignore
       }
 
-      // 3. Call logout API to clear session cookie
+      // 4. Call logout API to clear server-side cookies
       await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
 
-      // 4. Clear auth state
+      // 5. Clear auth state
       setUser(null);
       setUserData(null);
       setError(null);
 
-      // 5. Small delay to show completion, then redirect
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
       // 6. Redirect to login
       router.push('/login');
       return { success: true };
-    } catch (error) {
-      // Even if there's an error, clear state and redirect
-      setUser(null);
-      setUserData(null);
-      router.push('/login');
-      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    } catch (err) {
+      const isNetworkError = err instanceof TypeError && (
+        err.message === 'Failed to fetch' || err.message === 'NetworkError when attempting to fetch resource.'
+      );
+      const message = isNetworkError
+        ? 'Tidak ada koneksi internet. Periksa jaringan Anda dan coba lagi.'
+        : (err instanceof Error ? err.message : 'Gagal menghubungi server');
+      setError(message);
+      return { success: false, error: message };
     } finally {
       setSigningOut(false);
     }

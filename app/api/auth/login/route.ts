@@ -92,12 +92,21 @@ export async function POST(request: Request) {
       }
     })
 
-    // Set cookies untuk session
-    response.headers.set(
+    const accessMaxAge = data.session?.expires_in ?? 3600;
+    const refreshMaxAge = 60 * 60 * 24 * 30; // 30 days
+
+    // Set access token cookie (short-lived)
+    response.headers.append(
       'Set-Cookie',
-      `sb-access-token=${data.session?.access_token}; HttpOnly; Path=/; SameSite=Lax; Max-Age=${data.session?.expires_in}${secureFlag}`
+      `sb-access-token=${data.session?.access_token}; HttpOnly; Path=/; SameSite=Lax; Max-Age=${accessMaxAge}${secureFlag}`
     )
-    
+
+    // Set refresh token cookie (long-lived, for silent session renewal)
+    response.headers.append(
+      'Set-Cookie',
+      `sb-refresh-token=${data.session?.refresh_token}; HttpOnly; Path=/; SameSite=Lax; Max-Age=${refreshMaxAge}${secureFlag}`
+    )
+
     return response
 
   } catch (error) {

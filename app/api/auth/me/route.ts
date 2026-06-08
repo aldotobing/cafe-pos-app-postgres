@@ -26,6 +26,8 @@ export async function GET(request: Request) {
       }
     })
 
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+
     // Get user dari token
     const { data: { user }, error } = await supabase.auth.getUser()
     
@@ -40,6 +42,20 @@ export async function GET(request: Request) {
       .eq('user_id', user.id)
       .single()
 
+    if (profile?.is_active === false) {
+      const isProduction = process.env.NODE_ENV === 'production'
+      const secureFlag = isProduction ? '; Secure' : ''
+      const cookieSuffix = `HttpOnly; Path=/; SameSite=Lax; Max-Age=0${secureFlag}`
+
+      const response = NextResponse.json(
+        { error: 'Akun Anda telah dinonaktifkan.', code: 'ACCOUNT_DISABLED' },
+        { status: 403 }
+      )
+      response.headers.append('Set-Cookie', `sb-access-token=; ${cookieSuffix}`)
+      response.headers.append('Set-Cookie', `sb-refresh-token=; ${cookieSuffix}`)
+      return response
+    }
+
     return NextResponse.json({
       user: {
         id: user.id,
@@ -47,10 +63,11 @@ export async function GET(request: Request) {
       },
       userData: profile ? {
         ...profile,
-        id: profile.user_id, // Map user_id to id for frontend compatibility
+        id: profile.user_id,
         cafe: profile.cafes,
-        email: user.email, // Include email from auth user
-      } : null
+        email: user.email,
+      } : null,
+      expires_at: session?.expires_at ?? null,
     });
   } catch (error) {
     console.error('Me route error:', error);

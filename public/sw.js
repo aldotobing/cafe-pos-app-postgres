@@ -89,7 +89,7 @@ self.addEventListener('fetch', (event) => {
         .catch((error) => {
           console.log('[SW] API request failed after retries:', url.pathname);
           // Notify client about API failure
-          notifyClients('API_ERROR', 'Tidak dapat terhubung ke server. Data mungkin tidak terbaru.', {
+          notifyClients('API_ERROR', 'Tidak dapat terhubung ke server. Periksa koneksi internet Anda.', {
             url: url.pathname,
             error: error.message
           });
