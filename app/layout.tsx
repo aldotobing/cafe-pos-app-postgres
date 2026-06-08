@@ -1,6 +1,6 @@
 import type React from "react"
 import type { Metadata } from "next"
-import { Plus_Jakarta_Sans } from 'next/font/google'
+import { Plus_Jakarta_Sans, Playfair_Display } from 'next/font/google'
 import { Analytics } from "@vercel/analytics/next"
 import { Suspense } from "react"
 import { AuthProvider } from '@/lib/auth-context';
@@ -18,6 +18,14 @@ const plusJakarta = Plus_Jakarta_Sans({
   subsets: ['latin'],
   variable: '--font-plus-jakarta',
   display: 'swap',
+})
+
+const playfair = Playfair_Display({
+  subsets: ['latin'],
+  variable: '--font-playfair',
+  display: 'swap',
+  weight: ['400', '700', '800'],
+  style: ['normal', 'italic'],
 })
 
 const title = 'KasirKu - Aplikasi Kasir POS Modern untuk Semua Jenis Bisnis';
@@ -168,7 +176,7 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
       </head>
-      <body className={`${plusJakarta.variable} font-sans antialiased bg-background text-foreground`} suppressHydrationWarning>
+      <body className={`${plusJakarta.variable} ${playfair.variable} font-sans antialiased bg-background text-foreground`} suppressHydrationWarning>
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false} storageKey="kasirku-theme">
           <AuthProvider>
             <LoadingProvider>

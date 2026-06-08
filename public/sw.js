@@ -1,6 +1,6 @@
 // sw.js - Service Worker for KasirKu PWA
 
-const CACHE_NAME = 'kasirku-v2.0.0';
+const CACHE_NAME = 'kasirku-v2.1.0';
 const STATIC_CACHE_URLS = [
   '/',
   '/site.webmanifest',
