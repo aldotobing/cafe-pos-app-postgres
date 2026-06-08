@@ -2,13 +2,12 @@
 
 import { useState, useEffect, useMemo } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { X, Minus, Plus, Package, ShoppingCart, AlertCircle, ChevronDown } from "lucide-react"
+import { X, Minus, Plus, Package, ShoppingCart, ChevronDown, Check } from "lucide-react"
 import { formatRupiah } from "@/lib/utils"
 import { toast } from "sonner"
 import type { ProductVariant } from "@/types"
 import { OptimizedImage } from "@/components/ui/optimized-image"
 
-// Mobile detection helper
 const isMobileDevice = () => {
   if (typeof window === 'undefined') return false
   return window.innerWidth < 768 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
@@ -34,7 +33,6 @@ export function VariantSelector({ menuItem, isOpen, onClose, onAddToCart }: Vari
   const [displayLimit, setDisplayLimit] = useState(15)
   const [isAddingToCart, setIsAddingToCart] = useState(false)
 
-  // Check mobile on mount
   useEffect(() => {
     setIsMobile(isMobileDevice())
     const handleResize = () => setIsMobile(isMobileDevice())
@@ -42,11 +40,7 @@ export function VariantSelector({ menuItem, isOpen, onClose, onAddToCart }: Vari
     return () => window.removeEventListener('resize', handleResize)
   }, [])
 
-  // Virtualized variants - only show limited number initially
-  const displayedVariants = useMemo(() => {
-    return variants.slice(0, displayLimit)
-  }, [variants, displayLimit])
-  
+  const displayedVariants = useMemo(() => variants.slice(0, displayLimit), [variants, displayLimit])
   const hasMoreVariants = variants.length > displayLimit
 
   useEffect(() => {
@@ -62,12 +56,8 @@ export function VariantSelector({ menuItem, isOpen, onClose, onAddToCart }: Vari
     try {
       const response = await fetch(`/api/rest/product_variants?menu_id=${menuItem.id}`)
       const data = await response.json()
-
-      // Handle different response formats
       const variantsList = Array.isArray(data) ? data : (data.data || data.results || [])
-      
-      // Only show active variants
-      const activeVariants = variantsList.filter((v: ProductVariant) => 
+      const activeVariants = variantsList.filter((v: ProductVariant) =>
         v.is_active !== 0 && v.isActive !== false
       )
       setVariants(activeVariants)
@@ -80,40 +70,34 @@ export function VariantSelector({ menuItem, isOpen, onClose, onAddToCart }: Vari
   }
 
   const handleAddToCart = () => {
-    // Debounce - prevent double click
     if (isAddingToCart) return
-    
     if (selectedVariants.length === 0) {
-      toast.error("Pilih minimal satu varian")
+      toast.error("Pilih minimal satu varian", { id: "variant-select" })
       return
     }
-
     setIsAddingToCart(true)
 
-    // Check stock for all selected variants
+    const errors: string[] = []
     for (const { variant, quantity } of selectedVariants) {
       const stock = variant.stockQuantity || variant.stock_quantity || 0
       if (stock === 0) {
-        toast.error(`${variant.variantName || variant.variant_name}: Stok habis.`)
-        setIsAddingToCart(false)
-        return
-      }
-      if (stock < quantity) {
-        toast.error(`${variant.variantName || variant.variant_name}: Stok tidak mencukupi. Tersisa: ${stock}`)
-        setIsAddingToCart(false)
-        return
+        errors.push(`${variant.variantName || variant.variant_name}: habis`)
+      } else if (stock < quantity) {
+        errors.push(`${variant.variantName || variant.variant_name}: hanya tersedia ${stock}`)
       }
     }
+    if (errors.length > 0) {
+      toast.error(errors.join(" • "), { id: "variant-stock", duration: 3000 })
+      setIsAddingToCart(false)
+      return
+    }
 
-    // Add all selected variants to cart
     selectedVariants.forEach(({ variant, quantity }) => {
       onAddToCart(menuItem, variant, quantity)
     })
 
     const totalItems = selectedVariants.reduce((sum, { quantity }) => sum + quantity, 0)
     toast.success(`${totalItems} item ditambahkan ke pesanan`)
-    
-    // Delay close to prevent UI jank
     setTimeout(() => {
       onClose()
       setIsAddingToCart(false)
@@ -133,16 +117,7 @@ export function VariantSelector({ menuItem, isOpen, onClose, onAddToCart }: Vari
     setSelectedVariants(prev => prev.map(sv => {
       if (sv.variant.id === variantId) {
         const stock = sv.variant.stockQuantity || sv.variant.stock_quantity || 0
-        const newQty = Math.max(1, sv.quantity + delta)
-
-        if (stock === 0) {
-          toast.error(`Stok habis.`)
-          return sv
-        }
-        if (newQty > stock) {
-          toast.error(`Stok tidak mencukupi. Tersisa: ${stock}`)
-          return sv
-        }
+        const newQty = Math.min(stock, Math.max(1, sv.quantity + delta))
         return { ...sv, quantity: newQty }
       }
       return sv
@@ -164,20 +139,17 @@ export function VariantSelector({ menuItem, isOpen, onClose, onAddToCart }: Vari
   }, 0)
 
   const menuImage = menuItem?.image_url || menuItem?.imageUrl
+  const basePrice = menuItem?.price || 0
 
-  // Add body class to prevent background scroll when modal is open
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = 'hidden'
     } else {
       document.body.style.overflow = ''
     }
-    return () => {
-      document.body.style.overflow = ''
-    }
+    return () => { document.body.style.overflow = '' }
   }, [isOpen])
 
-  // Return null if modal closed or no menuItem (setelah semua hooks)
   if (!isOpen || !menuItem) return null
 
   return (
@@ -188,197 +160,221 @@ export function VariantSelector({ menuItem, isOpen, onClose, onAddToCart }: Vari
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
       >
-        {/* Backdrop - higher opacity to completely cover mobile cart */}
         <motion.div
-          className="absolute inset-0 bg-black/80"
+          className="absolute inset-0 bg-black/70 backdrop-blur-sm"
           onClick={onClose}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
         />
 
-        {/* Modal - z-[61] to ensure it's above backdrop */}
         <motion.div
-          className="relative z-[61] w-full max-w-md sm:max-w-lg bg-background rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] sm:max-h-[85vh] border"
-          initial={{ scale: 0.9, opacity: 0, y: 20 }}
+          className="relative z-[61] w-full max-w-md sm:max-w-lg bg-card rounded-[1.25rem] shadow-2xl overflow-hidden flex flex-col max-h-[90vh] sm:max-h-[85vh] border border-border/50"
+          initial={{ scale: 0.92, opacity: 0, y: 24 }}
           animate={{ scale: 1, opacity: 1, y: 0 }}
-          exit={{ scale: 0.9, opacity: 0, y: 20 }}
-          transition={{ type: "spring", damping: 25, stiffness: 300 }}
+          exit={{ scale: 0.92, opacity: 0, y: 24 }}
+          transition={{ type: "spring", damping: 26, stiffness: 320 }}
         >
-          {/* Header with Product Image */}
-          <div className="relative">
-            <div className="absolute inset-0 bg-gradient-to-b from-primary/5 to-transparent" />
-            <div className="px-4 sm:px-6 py-4 sm:py-5 border-b flex items-center gap-3 sm:gap-4 shrink-0 relative">
-              {/* Product Thumbnail */}
-              <div className="relative shrink-0">
-                <OptimizedImage
-                  src={menuImage}
-                  alt={menuItem.name}
-                  width={64}
-                  height={64}
-                  className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl shadow-md border"
-                  fallback={
-                    <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center shadow-md border">
-                      <Package className="w-6 h-6 sm:w-7 sm:h-7 text-primary/60" />
+
+          {/* ══════ HERO HEADER ══════ */}
+          <div className="relative shrink-0">
+            <div className="relative w-full h-36 xs:h-40 sm:h-48 overflow-hidden bg-muted">
+              <OptimizedImage
+                src={menuImage}
+                alt={menuItem.name}
+                width={512}
+                height={256}
+                className="w-full h-full object-cover"
+                fallback={
+                  <div className="w-full h-full bg-gradient-to-br from-primary/10 via-primary/5 to-muted flex items-center justify-center">
+                    <div className="flex flex-col items-center gap-3">
+                      <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center">
+                        <Package className="w-7 h-7 text-primary/50" />
+                      </div>
+                      <span className="text-sm text-muted-foreground/60 font-medium">No image</span>
                     </div>
-                  }
-                />
-                {selectedVariants.length > 0 && (
-                  <motion.div
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    className="absolute -bottom-1 -right-1 w-5 h-5 bg-primary rounded-full flex items-center justify-center shadow-sm"
-                  >
-                    <span className="text-[10px] font-bold text-primary-foreground">{selectedVariants.length}</span>
-                  </motion.div>
-                )}
-              </div>
+                  </div>
+                }
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/25 to-black/10" />
+            </div>
 
-              {/* Title & Subtitle */}
-              <div className="flex-1 min-w-0">
-                <h3 className="font-semibold text-base sm:text-lg truncate leading-tight">{menuItem.name}</h3>
-                <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
-                  {selectedVariants.length > 0
-                    ? `${selectedVariants.length} varian dipilih • Total: ${formatRupiah(totalSelectedPrice)}`
-                    : `Pilih dari ${variants.length} varian tersedia`
-                  }
-                </p>
-              </div>
+            <button
+              onClick={onClose}
+              className="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/20 backdrop-blur-md hover:bg-white/35 flex items-center justify-center transition shadow-sm"
+            >
+              <X className="h-4 w-4 text-white" />
+            </button>
 
-              {/* Close Button */}
-              <button
-                onClick={onClose}
-                className="p-2 rounded-full hover:bg-muted transition shrink-0 -mr-1"
+            {selectedVariants.length > 0 && (
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                className="absolute top-3 left-3 px-2.5 py-1 rounded-full bg-white/20 backdrop-blur-md flex items-center gap-1.5 shadow-sm"
               >
-                <X className="h-5 w-5 text-muted-foreground" />
-              </button>
+                <ShoppingCart className="w-3 h-3 text-white" />
+                <span className="text-xs font-semibold text-white">{selectedVariants.length} varian</span>
+              </motion.div>
+            )}
+
+            <div className="absolute bottom-0 left-0 right-0 px-4 sm:px-5 pb-4 sm:pb-5 pt-3">
+              <h2 className="text-lg sm:text-xl font-bold text-white tracking-tight leading-tight line-clamp-1">
+                {menuItem.name}
+              </h2>
+              <p className="text-sm text-white/80 mt-1 flex items-center gap-2">
+                <span className="px-2 py-0.5 rounded-md bg-white/15 text-xs font-medium backdrop-blur-sm">
+                  {formatRupiah(basePrice)}
+                </span>
+                <span className="text-white/60">
+                  {variants.length > 0 ? `${variants.length} varian` : 'Tidak ada varian'}
+                </span>
+              </p>
             </div>
           </div>
 
-          {/* Content - Scrollable */}
-          <div className="flex-1 overflow-y-auto p-3 sm:p-5">
+          {/* ══════ CONTENT ══════ */}
+          <div className="flex-1 overflow-y-auto">
             {isLoading ? (
-              <div className="flex flex-col items-center justify-center py-10 sm:py-14">
-                <div className="w-8 h-8 sm:w-10 sm:h-10 border-3 border-primary border-t-transparent rounded-full animate-spin" />
+              <div className="flex flex-col items-center justify-center py-14">
+                <div className="relative">
+                  <div className="w-10 h-10 rounded-full border-2 border-muted" />
+                  <div className="absolute inset-0 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+                </div>
                 <p className="text-sm text-muted-foreground mt-4 font-medium">Memuat varian...</p>
               </div>
             ) : variants.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-10 sm:py-14 text-muted-foreground">
-                <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mb-3">
-                  <Package className="w-6 h-6" />
+              <div className="flex flex-col items-center justify-center py-14 text-muted-foreground">
+                <div className="w-14 h-14 rounded-2xl bg-muted flex items-center justify-center mb-4">
+                  <Package className="w-6 h-6 opacity-40" />
                 </div>
-                <p className="text-sm sm:text-base font-medium">Tidak ada varian aktif</p>
-                <p className="text-xs sm:text-sm mt-1 text-muted-foreground/70">Hubungi admin untuk menambahkan varian</p>
+                <p className="text-sm font-medium">Tidak ada varian aktif</p>
+                <p className="text-xs mt-1.5 text-muted-foreground/60">Hubungi admin untuk menambahkan varian</p>
               </div>
             ) : (
-              <div className="space-y-2.5">
+              <div className="p-3 sm:p-4 space-y-2">
                 {displayedVariants.map((variant, index) => {
-                  const price = variant.price || menuItem.price
+                  const price = variant.price || basePrice
                   const stock = variant.stockQuantity || variant.stock_quantity || 0
                   const isOutOfStock = stock === 0
                   const isLowStock = stock > 0 && stock <= (variant.minStock || variant.min_stock || 5)
+                  const selected = isSelected(variant.id)
+                  const variantName = variant.variantName || variant.variant_name
+
+                  const stockColor = isOutOfStock
+                    ? 'bg-red-500'
+                    : isLowStock
+                    ? 'bg-amber-500'
+                    : 'bg-emerald-500'
+
+                  const stockTextColor = isOutOfStock
+                    ? 'text-red-600 dark:text-red-400'
+                    : isLowStock
+                    ? 'text-amber-600 dark:text-amber-400'
+                    : 'text-emerald-600 dark:text-emerald-400'
 
                   return (
                     <motion.div
                       key={variant.id}
-                      initial={isMobile ? false : { opacity: 0, y: 10 }}
+                      initial={isMobile ? false : { opacity: 0, y: 8 }}
                       animate={{ opacity: 1, y: 0 }}
-                      transition={isMobile ? { duration: 0 } : { delay: index * 0.05 }}
-                      className={`w-full rounded-xl border-2 overflow-hidden transition-all ${
-                        isSelected(variant.id)
-                          ? 'border-primary bg-primary/5 shadow-sm'
+                      transition={isMobile ? { duration: 0 } : { delay: index * 0.04, duration: 0.2 }}
+                      className={`group rounded-xl transition-all duration-200 ${
+                        selected
+                          ? 'bg-primary/[0.07] ring-2 ring-primary/40 shadow-sm'
                           : isOutOfStock
-                          ? 'border-muted bg-muted/20 opacity-60'
-                          : 'border-border bg-card hover:border-primary/30 hover:shadow-sm'
+                          ? 'bg-muted/40 ring-1 ring-transparent'
+                          : 'bg-card ring-1 ring-border/60 hover:ring-border hover:bg-muted/30 hover:shadow-sm cursor-pointer'
                       }`}
                     >
-                      {/* Main Variant Row */}
-                      <button
-                        onClick={() => {
-                          if (!isOutOfStock) {
-                            toggleVariant(variant)
-                          }
-                        }}
-                        disabled={isOutOfStock}
-                        className="w-full p-3.5 sm:p-4 text-left transition-all"
+                      <div
+                        onClick={() => !isOutOfStock && toggleVariant(variant)}
+                        className={`p-3.5 sm:p-4 flex items-center gap-3.5 ${
+                          isOutOfStock ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'
+                        }`}
                       >
-                        <div className="flex items-center justify-between gap-3">
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2">
-                              <span className="font-semibold text-sm sm:text-base truncate">
-                                {variant.variantName || variant.variant_name}
-                              </span>
-                              {isSelected(variant.id) && (
-                                <span className="shrink-0 px-1.5 py-0.5 rounded-full bg-primary text-primary-foreground text-[10px] font-medium">
-                                  Dipilih
-                                </span>
-                              )}
-                            </div>
+                        {/* Selection indicator */}
+                        <div className={`shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all duration-200 ${
+                          selected
+                            ? 'border-primary bg-primary scale-110'
+                            : 'border-muted-foreground/30 group-hover:border-muted-foreground/50'
+                        }`}>
+                          {selected && <Check className="w-3 h-3 text-primary-foreground" strokeWidth={3} />}
+                        </div>
+
+                        {/* Info */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className={`font-semibold text-sm sm:text-[15px] truncate ${
+                              selected ? 'text-primary' : 'text-foreground'
+                            }`}>
+                              {variantName}
+                            </span>
                             {(variant.sku || variant.barcode) && (
-                              <div className="flex items-center gap-2 mt-1.5 text-xs text-muted-foreground">
-                                {variant.sku && (
-                                  <span className="px-1.5 py-0.5 rounded bg-muted font-medium">SKU: {variant.sku}</span>
-                                )}
-                                {variant.barcode && (
-                                  <span className="px-1.5 py-0.5 rounded bg-muted">{variant.barcode}</span>
-                                )}
-                              </div>
+                              <span className="shrink-0 text-[10px] text-muted-foreground/60 bg-muted/60 px-1.5 py-px rounded">
+                                {variant.sku || variant.barcode}
+                              </span>
                             )}
                           </div>
-                          <div className="text-right shrink-0">
-                            <div className="font-bold text-sm sm:text-base text-foreground">
-                              {formatRupiah(price)}
-                            </div>
-                            <div className={`text-xs mt-0.5 font-medium ${
-                            isOutOfStock
-                              ? 'text-red-500 flex items-center gap-1'
-                              : isLowStock
-                              ? 'text-amber-500'
-                              : 'text-emerald-600'
-                          }`}>
-                            {isOutOfStock && <AlertCircle className="w-3 h-3 inline" />}
-                            {isOutOfStock ? 'Stok habis' : `Stok: ${stock}`}
-                          </div>
+                          <div className="flex items-center gap-2 mt-1">
+                            <div className={`w-1.5 h-1.5 rounded-full ${stockColor}`} />
+                            <span className={`text-xs font-medium ${stockTextColor}`}>
+                              {isOutOfStock ? 'Habis' : `Stok ${stock}`}
+                            </span>
                           </div>
                         </div>
-                      </button>
 
-                      {/* Quantity Controls - Show when selected */}
+                        {/* Price */}
+                        <div className="text-right shrink-0">
+                          <div className={`font-bold text-sm sm:text-[15px] tabular-nums ${
+                            selected ? 'text-primary' : 'text-foreground'
+                          }`}>
+                            {formatRupiah(price)}
+                          </div>
+                          {price !== basePrice && (
+                            <div className="text-[10px] text-muted-foreground/70 line-through tabular-nums">
+                              {formatRupiah(basePrice)}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Quantity stepper */}
                       <AnimatePresence>
-                        {isSelected(variant.id) && (
+                        {selected && (
                           <motion.div
                             initial={isMobile ? { opacity: 0 } : { height: 0, opacity: 0 }}
                             animate={{ height: 'auto', opacity: 1 }}
                             exit={isMobile ? { opacity: 0 } : { height: 0, opacity: 0 }}
                             transition={{ duration: isMobile ? 0.1 : 0.2 }}
-                            className="border-t border-border/50 bg-muted/30"
+                            className="overflow-hidden border-t border-primary/10"
                           >
-                            <div className="px-3.5 sm:px-4 py-2.5 flex items-center justify-between">
-                              <span className="text-xs sm:text-sm text-muted-foreground">Jumlah:</span>
-                              <div className="flex items-center gap-1 bg-background rounded-lg border p-0.5 shadow-sm">
-                                <motion.button
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    updateQuantity(variant.id, -1)
-                                  }}
-                                  whileTap={{ scale: 0.9 }}
-                                  className="w-7 h-7 sm:w-8 sm:h-8 rounded-md bg-muted hover:bg-muted/80 flex items-center justify-center transition"
+                            <div className="px-4 py-3 flex items-center justify-between bg-primary/[0.03]">
+                              <div className="flex items-center gap-3">
+                                <span className="text-xs text-muted-foreground font-medium">
+                                  Jumlah
+                                </span>
+                                <span className="text-[10px] text-muted-foreground/50">
+                                  Max: {variant.stockQuantity || variant.stock_quantity || 0}
+                                </span>
+                              </div>
+                              <div className="flex items-center">
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); updateQuantity(variant.id, -1) }}
+                                  disabled={getSelectedQuantity(variant.id) <= 1}
+                                  className="w-8 h-8 rounded-l-lg border border-border bg-background hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center transition"
                                 >
-                                  <Minus className="w-3 h-3 sm:w-4 sm:h-4" />
-                                </motion.button>
-                                <span className="w-8 sm:w-10 text-center font-semibold text-sm sm:text-base">
+                                  <Minus className="w-3.5 h-3.5" />
+                                </button>
+                                <span className="w-9 h-8 border-y border-border bg-background flex items-center justify-center text-sm font-bold tabular-nums">
                                   {getSelectedQuantity(variant.id)}
                                 </span>
-                                <motion.button
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    updateQuantity(variant.id, 1)
-                                  }}
-                                  whileTap={{ scale: 0.9 }}
-                                  className="w-7 h-7 sm:w-8 sm:h-8 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 flex items-center justify-center transition"
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); updateQuantity(variant.id, 1) }}
+                                  disabled={getSelectedQuantity(variant.id) >= (variant.stockQuantity || variant.stock_quantity || 0)}
+                                  className="w-8 h-8 rounded-r-lg border border-border bg-background hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center transition"
                                 >
-                                  <Plus className="w-3 h-3 sm:w-4 sm:h-4" />
-                                </motion.button>
+                                  <Plus className="w-3.5 h-3.5" />
+                                </button>
                               </div>
                             </div>
                           </motion.div>
@@ -387,86 +383,99 @@ export function VariantSelector({ menuItem, isOpen, onClose, onAddToCart }: Vari
                     </motion.div>
                   )
                 })}
+
+                {/* Load More */}
+                {hasMoreVariants && (
+                  <button
+                    onClick={() => setDisplayLimit(prev => prev + 15)}
+                    className="w-full py-3 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors rounded-xl border border-dashed border-border flex items-center justify-center gap-2"
+                  >
+                    <ChevronDown className="w-4 h-4" />
+                    <span>
+                      {Math.min(variants.length - displayLimit, 15)} varian lagi
+                      <span className="text-muted-foreground/50 ml-1">({variants.length - displayLimit} tersisa)</span>
+                    </span>
+                  </button>
+                )}
               </div>
             )}
-
-            {/* Load More Button */}
-            {hasMoreVariants && (
-              <button
-                onClick={() => setDisplayLimit(prev => prev + 15)}
-                className="w-full py-3 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors rounded-lg border border-dashed"
-              >
-                <ChevronDown className="w-4 h-4 inline mr-1" />
-                Tampilkan {Math.min(variants.length - displayLimit, 15)} varian lagi 
-                ({variants.length - displayLimit} tersisa)
-              </button>
-            )}
-
-            {/* Summary when multiple variants selected */}
-            <AnimatePresence>
-              {selectedVariants.length > 0 && (
-                <motion.div
-                  initial={isMobile ? { opacity: 0 } : { opacity: 0, height: 0, marginTop: 0 }}
-                  animate={{ opacity: 1, height: 'auto', marginTop: 16 }}
-                  exit={isMobile ? { opacity: 0 } : { opacity: 0, height: 0, marginTop: 0 }}
-                  transition={isMobile ? { duration: 0.15 } : { type: "spring", damping: 20, stiffness: 300 }}
-                  className="overflow-hidden"
-                >
-                  <div className="p-4 rounded-xl border bg-gradient-to-br from-primary/5 to-background shadow-sm border-primary/20">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                          <ShoppingCart className="w-5 h-5 text-primary" />
-                        </div>
-                        <div>
-                          <span className="text-sm font-semibold block">Ringkasan Pesanan</span>
-                          <p className="text-xs text-muted-foreground">
-                            {totalSelectedItems} item dari {selectedVariants.length} varian
-                          </p>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <span className="font-bold text-lg text-primary">
-                          {formatRupiah(totalSelectedPrice)}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
           </div>
 
-          {/* Footer - Elegant dual button */}
-          <div className="px-4 sm:px-6 py-4 border-t bg-muted/30 flex gap-3 shrink-0">
-            <motion.button
+          {/* ══════ SUMMARY & FOOTER ══════ */}
+          <AnimatePresence>
+            {selectedVariants.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ type: "spring", damping: 22, stiffness: 300 }}
+                className="overflow-hidden shrink-0"
+              >
+                <div className="mx-3 sm:mx-4 mb-2 p-3 rounded-xl bg-primary/[0.05] border border-primary/15">
+                  {selectedVariants.map(({ variant, quantity }) => {
+                    const vName = variant.variantName || variant.variant_name
+                    const vPrice = variant.price || basePrice
+                    const subtotal = vPrice * quantity
+                    return (
+                      <div key={variant.id} className="flex items-center justify-between py-1.5 first:pt-0 last:pb-0">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="text-xs font-medium text-muted-foreground bg-muted/60 px-1.5 py-0.5 rounded tabular-nums">
+                            {quantity}x
+                          </span>
+                          <span className="text-xs font-medium truncate">{vName}</span>
+                        </div>
+                        <span className="text-xs font-semibold tabular-nums shrink-0 ml-2">
+                          {formatRupiah(subtotal)}
+                        </span>
+                      </div>
+                    )
+                  })}
+                  <div className="flex items-center justify-between pt-2 mt-2 border-t border-border/60">
+                    <span className="text-xs font-semibold text-muted-foreground">
+                      Total {totalSelectedItems} item
+                    </span>
+                    <span className="text-sm font-bold text-primary tabular-nums">
+                      {formatRupiah(totalSelectedPrice)}
+                    </span>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* ══════ FOOTER ══════ */}
+          <div className="px-4 sm:px-5 py-4 border-t border-border/60 bg-muted/20 flex gap-3 shrink-0">
+            <button
               onClick={onClose}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              className="px-5 py-2.5 rounded-xl border bg-background hover:bg-muted transition text-sm font-medium shadow-sm"
+              className="px-5 py-2.5 rounded-xl border border-border bg-background hover:bg-muted transition text-sm font-medium shadow-sm"
             >
               Batal
-            </motion.button>
+            </button>
             <motion.button
               onClick={handleAddToCart}
               disabled={selectedVariants.length === 0 || variants.length === 0 || isAddingToCart}
               whileHover={!isMobile && selectedVariants.length > 0 ? { scale: 1.02 } : {}}
               whileTap={selectedVariants.length > 0 && !isAddingToCart ? { scale: 0.98 } : {}}
-              className="flex-1 px-5 py-2.5 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 transition text-sm font-semibold shadow-lg shadow-primary/25 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none flex items-center justify-center gap-2"
+              className="flex-1 px-5 py-2.5 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 active:bg-primary/80 transition text-sm font-semibold shadow-lg shadow-primary/25 disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none flex items-center justify-center gap-2"
             >
-              {selectedVariants.length > 0 ? (
+              {isAddingToCart ? (
+                <>
+                  <div className="w-4 h-4 rounded-full border-2 border-primary-foreground/50 border-t-primary-foreground animate-spin" />
+                  <span>Menambahkan...</span>
+                </>
+              ) : selectedVariants.length > 0 ? (
                 <>
                   <ShoppingCart className="w-4 h-4" />
                   <span>Tambah ke Pesanan</span>
-                  <span className="bg-primary-foreground/20 px-2 py-0.5 rounded-full text-xs">
+                  <span className="bg-primary-foreground/20 px-2 py-0.5 rounded-full text-xs font-bold tabular-nums">
                     {totalSelectedItems}
                   </span>
                 </>
               ) : (
-                <span className="flex items-center gap-2">
+                <>
                   <Package className="w-4 h-4" />
-                  Pilih Varian
-                </span>
+                  <span>Pilih Varian</span>
+                </>
               )}
             </motion.button>
           </div>

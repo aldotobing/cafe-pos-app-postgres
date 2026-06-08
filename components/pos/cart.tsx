@@ -93,7 +93,7 @@ export function CartPanel() {
                         const maxStock = menuItem?.trackStock ? (menuItem.stockQuantity || 0) : Infinity;
 
                         if (c.qty + 1 > maxStock) {
-                          toast.error(`Stok ${c.name} tidak mencukupi! Tersisa: ${maxStock - c.qty}`);
+                          toast.error(`Stok ${c.name} tidak mencukupi! Tersisa: ${maxStock - c.qty}`, { id: "cart-stock" });
                           return;
                         }
 

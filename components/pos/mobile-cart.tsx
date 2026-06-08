@@ -60,7 +60,7 @@ const MemoizedCartItem = memo(function CartItem({
               const maxStock = menuItem?.trackStock ? (menuItem.stockQuantity || 0) : Infinity;
 
               if (item.qty + 1 > maxStock) {
-                toast.error(`Stok ${item.name} tidak mencukupi! Tersisa: ${maxStock - item.qty}`);
+                toast.error(`Stok ${item.name} tidak mencukupi! Tersisa: ${maxStock - item.qty}`, { id: "cart-stock" });
                 return;
               }
 

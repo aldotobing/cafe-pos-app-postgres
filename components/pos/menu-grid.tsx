@@ -439,7 +439,7 @@ function MenuCard({ item, index, addToCart, catInfo, cart, onSelectVariant }: {
     }
 
     if (shouldDisable) {
-      toast.error(`Stok ${item.name} habis!`);
+      toast.error(`Stok ${item.name} habis!`, { id: "menu-stock" });
       return;
     }
 
@@ -451,16 +451,16 @@ function MenuCard({ item, index, addToCart, catInfo, cart, onSelectVariant }: {
 
       if (currentQty >= maxStock) {
         if (maxStock === 0) {
-          toast.error(`Stok ${item.name} habis!`);
+          toast.error(`Stok ${item.name} habis!`, { id: "menu-stock" });
         } else {
-          toast.error(`Stok ${item.name} tidak mencukupi! Tersisa: ${maxStock - currentQty}`);
+          toast.error(`Stok ${item.name} tidak mencukupi! Tersisa: ${maxStock - currentQty}`, { id: "menu-stock" });
         }
         return;
       }
     }
 
     addToCart(item);
-    toast.success(`${item.name} ditambahkan ke pesanan`);
+    toast.success(`${item.name} ditambahkan ke pesanan`, { id: "menu-added" });
   };
 
   return (
