@@ -164,15 +164,15 @@ export default function Page() {
   return (
     <AppShell>
       <motion.div
-        className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4"
+        className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6 mb-8"
         variants={headerVariants}
         initial="hidden"
         animate="visible"
         transition={{ duration: 0.5, ease: "easeOut" }}
       >
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Kelola Barang</h1>
-          <p className="text-muted-foreground mt-1">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Kelola Barang</h1>
+          <p className="text-sm text-muted-foreground">
             Tambah, ubah, dan kelola semua inventaris bisnis Anda.
           </p>
         </div>

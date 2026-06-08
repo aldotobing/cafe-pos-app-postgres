@@ -106,14 +106,8 @@ export function MenuList({
         transition={{ delay: 0.2, duration: 0.5, ease: "easeOut" }}
         className="mt-8 space-y-4"
       >
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-bold flex items-center gap-2">
-            <Package className="h-5 w-5 text-primary" />
-            Daftar Barang
-          </h2>
-          <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded-full font-medium">
-            {filteredMenuList.length} Barang ditemukan
-          </span>
+        <div className="text-[11px] text-muted-foreground/70 mb-1">
+          {filteredMenuList.length} barang ditemukan
         </div>
 
         {/* Search Bar */}
@@ -126,7 +120,7 @@ export function MenuList({
             placeholder="Cari nama barang atau kategori..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-card border border-border/80 rounded-2xl py-3 pl-11 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all shadow-sm"
+            className="w-full bg-background border rounded-xl py-2.5 pl-11 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all shadow-sm"
           />
           {searchQuery && (
             <button
@@ -146,19 +140,17 @@ export function MenuList({
              </div>
              <div className="flex gap-2">
                {[
-                 { id: 'all', label: 'SEMUA STATUS', color: 'primary' },
-                 { id: 'available', label: 'TERSEDIA', color: 'emerald-500' },
-                 { id: 'unavailable', label: 'NONAKTIF', color: 'red-500' }
+                 { id: 'all', label: 'Semua' },
+                 { id: 'available', label: 'Tersedia' },
+                 { id: 'unavailable', label: 'Nonaktif' }
                ].map((item) => (
                  <button
                    key={item.id}
                    onClick={() => setStatusFilter(item.id as any)}
                    className={cn(
-                     "px-4 py-1.5 rounded-xl text-[10px] font-extrabold transition-all border flex-shrink-0",
+                     "px-4 py-1.5 rounded-xl text-xs font-semibold transition-all border flex-shrink-0",
                      statusFilter === item.id
-                       ? item.id === 'all' 
-                         ? "bg-foreground text-background border-transparent shadow-md"
-                         : `bg-${item.color} text-white border-transparent shadow-md`
+                       ? "bg-primary text-primary-foreground border-transparent shadow-sm"
                        : "bg-background text-muted-foreground hover:bg-muted border-border/80"
                    )}
                  >
@@ -217,27 +209,27 @@ export function MenuList({
                  <button
                    onClick={() => setSelectedCategory('all')}
                    className={cn(
-                     "px-4 py-1.5 rounded-xl text-[10px] font-extrabold transition-all border flex-shrink-0",
+                     "px-4 py-1.5 rounded-xl text-xs font-semibold transition-all border flex-shrink-0",
                      selectedCategory === 'all'
-                       ? "bg-primary text-primary-foreground border-transparent shadow-md"
+                       ? "bg-primary text-primary-foreground border-transparent shadow-sm"
                        : "bg-background text-muted-foreground hover:bg-muted border-border/80"
                    )}
                  >
-                   SEMUA KATEGORI
+                   Semua
                  </button>
                  {categories.map((cat) => (
                    <button
                      key={cat.id}
                      onClick={() => setSelectedCategory(cat.id)}
                      className={cn(
-                       "px-4 py-1.5 rounded-xl text-[10px] font-extrabold transition-all border flex-shrink-0 flex items-center gap-2",
+                       "px-4 py-1.5 rounded-xl text-xs font-semibold transition-all border flex-shrink-0 flex items-center gap-2",
                        selectedCategory === cat.id
-                         ? "bg-primary text-primary-foreground border-transparent shadow-md"
+                         ? "bg-primary text-primary-foreground border-transparent shadow-sm"
                          : "bg-background text-muted-foreground hover:bg-muted border-border/80"
                      )}
                    >
-                     {cat.icon && <span className="text-xs">{cat.icon}</span>}
-                     {cat.name.toUpperCase()}
+                     {cat.icon && <span>{cat.icon}</span>}
+                     {cat.name}
                    </button>
                  ))}
                </div>
@@ -247,7 +239,7 @@ export function MenuList({
       </motion.div>
 
       <motion.div
-        className="mt-4 sm:mt-6 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 sm:gap-3"
+        className="mt-6 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 sm:gap-3"
         variants={containerVariants}
         initial={false}
         animate="visible"
