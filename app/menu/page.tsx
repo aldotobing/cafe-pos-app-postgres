@@ -259,34 +259,25 @@ function VariantAttributesSection({ onAttributesChange }: { onAttributesChange?:
       initial="hidden"
       animate="visible"
       transition={{ delay: 0.2, duration: 0.5 }}
-      className="my-6 rounded-xl border bg-card overflow-hidden"
+      className="my-6 rounded-xl sm:rounded-2xl border bg-card shadow-sm overflow-hidden"
     >
       {/* Header - Click to expand */}
       <button
         onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full px-4 py-3 flex items-center justify-between bg-muted/30 hover:bg-muted/50 transition"
+        className="w-full px-5 py-4 flex items-center justify-between text-left hover:bg-muted/30 transition-colors"
       >
         <div className="flex items-center gap-3">
-          <div className="p-1.5 rounded-lg bg-purple-500/10">
-            <Layers className="h-4 w-4 text-purple-600" />
-          </div>
+          <Layers className="h-4 w-4 text-purple-600" />
           <div className="text-left">
-            <h3 className="text-sm font-medium">Atribut Varian</h3>
-            <p className="text-xs text-muted-foreground">
-              Kelola atribut untuk varian produk (warna, ukuran, model)
-            </p>
+            <h3 className="text-sm font-semibold">Atribut Varian</h3>
+            <p className="text-xs text-muted-foreground">Kelola atribut untuk varian (warna, ukuran, model)</p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <span className="text-xs px-2 py-0.5 rounded-full bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 font-medium">
-            Admin
-          </span>
-          {isExpanded ? (
-            <ChevronUp className="h-4 w-4 text-muted-foreground" />
-          ) : (
-            <ChevronDown className="h-4 w-4 text-muted-foreground" />
-          )}
-        </div>
+        {isExpanded ? (
+          <ChevronUp className="h-4 w-4 text-muted-foreground" />
+        ) : (
+          <ChevronDown className="h-4 w-4 text-muted-foreground" />
+        )}
       </button>
 
       {/* Expanded Content */}
@@ -299,7 +290,7 @@ function VariantAttributesSection({ onAttributesChange }: { onAttributesChange?:
             transition={{ duration: 0.2 }}
             className="overflow-hidden"
           >
-            <div className="p-4 border-t">
+            <div className="p-5 border-t">
               <VariantAttributesManager cafeId={cafeId} onChange={onAttributesChange} />
             </div>
           </motion.div>
