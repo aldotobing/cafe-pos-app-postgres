@@ -55,7 +55,10 @@ export async function GET(request: Request) {
     }
 
     return NextResponse.json({
-      data,
+      data: data.map((item: any) => ({
+        ...item,
+        product_variants: (item.product_variants || []).filter((v: any) => !v.deleted_at),
+      })),
       meta: { total: count, limit, offset }
     });
 

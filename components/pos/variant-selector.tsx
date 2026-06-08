@@ -92,13 +92,16 @@ export function VariantSelector({ menuItem, isOpen, onClose, onAddToCart }: Vari
 
     // Check stock for all selected variants
     for (const { variant, quantity } of selectedVariants) {
-      if (variant.trackStock || variant.track_stock) {
-        const stock = variant.stockQuantity || variant.stock_quantity || 0
-        if (stock < quantity) {
-          toast.error(`${variant.variantName || variant.variant_name}: Stok tidak mencukupi. Tersisa: ${stock}`)
-          setIsAddingToCart(false)
-          return
-        }
+      const stock = variant.stockQuantity || variant.stock_quantity || 0
+      if (stock === 0) {
+        toast.error(`${variant.variantName || variant.variant_name}: Stok habis.`)
+        setIsAddingToCart(false)
+        return
+      }
+      if (stock < quantity) {
+        toast.error(`${variant.variantName || variant.variant_name}: Stok tidak mencukupi. Tersisa: ${stock}`)
+        setIsAddingToCart(false)
+        return
       }
     }
 
@@ -130,10 +133,13 @@ export function VariantSelector({ menuItem, isOpen, onClose, onAddToCart }: Vari
     setSelectedVariants(prev => prev.map(sv => {
       if (sv.variant.id === variantId) {
         const stock = sv.variant.stockQuantity || sv.variant.stock_quantity || 0
-        const isTrackingStock = !!(sv.variant.trackStock || sv.variant.track_stock)
         const newQty = Math.max(1, sv.quantity + delta)
-        
-        if (isTrackingStock && newQty > stock) {
+
+        if (stock === 0) {
+          toast.error(`Stok habis.`)
+          return sv
+        }
+        if (newQty > stock) {
           toast.error(`Stok tidak mencukupi. Tersisa: ${stock}`)
           return sv
         }
@@ -269,9 +275,8 @@ export function VariantSelector({ menuItem, isOpen, onClose, onAddToCart }: Vari
                 {displayedVariants.map((variant, index) => {
                   const price = variant.price || menuItem.price
                   const stock = variant.stockQuantity || variant.stock_quantity || 0
-                  const isTrackingStock = !!(variant.trackStock || variant.track_stock)
-                  const isOutOfStock = isTrackingStock && stock === 0
-                  const isLowStock = isTrackingStock && stock <= (variant.minStock || variant.min_stock || 5)
+                  const isOutOfStock = stock === 0
+                  const isLowStock = stock > 0 && stock <= (variant.minStock || variant.min_stock || 5)
 
                   return (
                     <motion.div
@@ -324,18 +329,16 @@ export function VariantSelector({ menuItem, isOpen, onClose, onAddToCart }: Vari
                             <div className="font-bold text-sm sm:text-base text-foreground">
                               {formatRupiah(price)}
                             </div>
-                            {isTrackingStock && (
-                              <div className={`text-xs mt-0.5 font-medium ${
-                                isOutOfStock 
-                                  ? 'text-red-500 flex items-center gap-1' 
-                                  : isLowStock 
-                                  ? 'text-amber-500' 
-                                  : 'text-emerald-600'
-                              }`}>
-                                {isOutOfStock && <AlertCircle className="w-3 h-3 inline" />}
-                                {isOutOfStock ? 'Stok habis' : `Stok: ${stock}`}
-                              </div>
-                            )}
+                            <div className={`text-xs mt-0.5 font-medium ${
+                            isOutOfStock
+                              ? 'text-red-500 flex items-center gap-1'
+                              : isLowStock
+                              ? 'text-amber-500'
+                              : 'text-emerald-600'
+                          }`}>
+                            {isOutOfStock && <AlertCircle className="w-3 h-3 inline" />}
+                            {isOutOfStock ? 'Stok habis' : `Stok: ${stock}`}
+                          </div>
                           </div>
                         </div>
                       </button>

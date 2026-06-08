@@ -417,13 +417,18 @@ function MenuCard({ item, index, addToCart, catInfo, cart, onSelectVariant }: {
   const variants = (item.productVariants || []) as any[];
   const hasVariants = item.hasVariants || !!item.has_variants;
 
-  let currentStock = hasVariants
-    ? (variants.length > 0 ? variants.reduce((sum: number, v: any) => sum + (v.stock_quantity || 0), 0) : null)
-    : (item.stockQuantity || 0);
+  const hasAnyActiveVariant = hasVariants && variants.some((v: any) => v.is_active !== false && v.isActive !== false);
+  const variantInStockCount = hasVariants ? variants.filter((v: any) => (v.stock_quantity || v.stockQuantity || 0) > 0).length : 0;
+  const allVariantsOutOfStock = hasVariants && variants.length > 0 && variants.every((v: any) => (v.stock_quantity || v.stockQuantity || 0) === 0);
+  const anyVariantLowStock = hasVariants && variants.some((v: any) => (v.stock_quantity || v.stockQuantity || 0) <= (v.min_stock || v.minStock || 5) && (v.stock_quantity || v.stockQuantity || 0) > 0);
 
-  const isOutOfStock = item.trackStock && currentStock === 0 && !hasVariants;
-  const isLowStock = item.trackStock && !hasVariants && currentStock <= (item.minStock || 5);
-  const shouldDisable = isOutOfStock;
+  const currentStock = hasVariants ? null : (item.stockQuantity || 0);
+
+  const isOutOfStock = (!hasVariants && item.trackStock && (item.stockQuantity || 0) === 0)
+    || (hasVariants && allVariantsOutOfStock);
+  const isLowStock = (!hasVariants && item.trackStock && (item.stockQuantity || 0) <= (item.minStock || 5))
+    || (hasVariants && anyVariantLowStock);
+  const shouldDisable = isOutOfStock || (hasVariants && !hasAnyActiveVariant);
   const [isPressing, setIsPressing] = useState(false);
 
   const handleAddToCart = () => {
@@ -476,7 +481,7 @@ function MenuCard({ item, index, addToCart, catInfo, cart, onSelectVariant }: {
       }}
     >
       {/* Stock Badge - show for all items with trackStock */}
-      {item.trackStock && (
+      {(item.trackStock || hasVariants) && (
         <div className={`absolute top-2 right-2 z-10 px-2 py-0.5 rounded-full text-[10px] font-semibold shadow-sm backdrop-blur-sm ${
           isOutOfStock
             ? 'bg-red-500/90 text-white'
@@ -484,15 +489,15 @@ function MenuCard({ item, index, addToCart, catInfo, cart, onSelectVariant }: {
             ? 'bg-amber-500/90 text-white'
             : 'bg-emerald-500/80 text-white'
         }`}>
-          {hasVariants 
-            ? (currentStock === null 
-                ? 'Cek varian' 
-                : `Stok ${currentStock}`)
-            : isOutOfStock 
-              ? 'Habis' 
-              : isLowStock 
-                ? `Sisa ${currentStock}` 
-                : `Stok ${currentStock}`}
+          {hasVariants
+            ? (allVariantsOutOfStock
+                ? 'Stok habis'
+                : `${variantInStockCount} varian`)
+            : isOutOfStock
+              ? 'Habis'
+              : isLowStock
+                ? `Sisa ${item.stockQuantity || 0}`
+                : `Stok ${item.stockQuantity || 0}`}
         </div>
       )}
 
@@ -504,7 +509,7 @@ function MenuCard({ item, index, addToCart, catInfo, cart, onSelectVariant }: {
       )}
 
       {/* Image */}
-      <div className={`aspect-[4/3] w-full bg-muted/30 overflow-hidden ${isOutOfStock && !hasVariants ? 'opacity-50 grayscale' : ''}`}>
+      <div className={`aspect-[4/3] w-full bg-muted/30 overflow-hidden ${isOutOfStock ? 'opacity-50 grayscale' : ''}`}>
         <Image
           src={
             item.imageUrl ||

@@ -196,9 +196,8 @@ export async function POST(request: Request) {
             .eq('id', itemMenuId)
             .single();
 
-          if (!menuItem?.track_stock) return null;
-
-          let hppPrice = menuItem.hpp_price;
+          let hppPrice = menuItem?.hpp_price || 0;
+          let shouldTrack = !!menuItem?.track_stock;
 
           if (itemVariantId) {
             const { data: variant } = await supabaseAdmin
@@ -206,10 +205,15 @@ export async function POST(request: Request) {
               .select('hpp_price, track_stock')
               .eq('id', itemVariantId)
               .single();
-            if (variant?.track_stock) {
-              hppPrice = variant.hpp_price || hppPrice;
+            if (variant) {
+              shouldTrack = variant.track_stock === true ? true : shouldTrack;
+              if (shouldTrack) {
+                hppPrice = variant.hpp_price || hppPrice;
+              }
             }
           }
+
+          if (!shouldTrack) return null;
 
           return supabaseAdmin
             .from('stock_mutations')
