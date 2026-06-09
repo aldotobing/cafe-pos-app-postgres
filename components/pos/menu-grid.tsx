@@ -519,8 +519,8 @@ function MenuCard({ item, index, addToCart, catInfo, cart, onSelectVariant }: {
           alt={item.name}
           width={200}
           height={150}
-          priority={index < 3}
-          loading={index < 3 ? 'eager' : 'lazy'}
+          priority={index < 8}
+          loading={index < 8 ? 'eager' : 'lazy'}
           className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
           sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
         />
