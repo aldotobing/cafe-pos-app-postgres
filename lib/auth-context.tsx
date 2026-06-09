@@ -3,6 +3,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
+import { fetchClient, FetchError } from '@/lib/fetch-client';
 
 interface AuthContextType {
   user: any | null;
@@ -96,39 +97,49 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signIn = async (email: string, password: string) => {
     setError(null);
-    const res = await fetch('/api/auth/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password }),
-      credentials: 'include',
-    });
-    if (!res.ok) {
+    try {
+      const res = await fetchClient('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+        credentials: 'include',
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        const error: any = new Error(data.error || 'Login failed');
+        error.code = data.code;
+        error.status = res.status;
+        throw error;
+      }
       const data = await res.json();
-      const error: any = new Error(data.error || 'Login failed');
-      error.code = data.code;
-      error.status = res.status;
-      throw error;
+      if (!data.userData) {
+        throw new Error('Profil pengguna tidak ditemukan. Silakan hubungi admin atau daftar ulang.');
+      }
+      setUser(data.user);
+      setUserData(data.userData);
+      return data.userData;
+    } catch (err) {
+      if (err instanceof FetchError) {
+        throw new Error(err.message);
+      }
+      throw err;
     }
-    const data = await res.json();
-    if (!data.userData) {
-      throw new Error('Profil pengguna tidak ditemukan. Silakan hubungi admin atau daftar ulang.');
-    }
-    setUser(data.user);
-    setUserData(data.userData);
-    return data.userData;
   };
 
   const signUp = async (email: string, password: string, fullName: string) => {
     setError(null);
     let res: Response;
     try {
-      res = await fetch('/api/auth/signup', {
+      res = await fetchClient('/api/auth/signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password, fullName }),
         credentials: 'include',
       });
     } catch (networkErr) {
+      if (networkErr instanceof FetchError) {
+        throw new Error(networkErr.message);
+      }
       throw new Error('Tidak dapat terhubung ke server. Periksa koneksi internet Anda.');
     }
 
@@ -187,7 +198,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       // Call logout API to clear server-side cookies
-      await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
+      await fetchClient('/api/auth/logout', { method: 'POST', credentials: 'include' });
 
       setUser(null);
       setUserData(null);
@@ -196,11 +207,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       router.push('/login');
       return { success: true };
     } catch (err) {
-      const isNetworkError = err instanceof TypeError && (
-        err.message === 'Failed to fetch' || err.message === 'NetworkError when attempting to fetch resource.'
-      );
-      const message = isNetworkError
-        ? 'Tidak ada koneksi internet. Periksa jaringan Anda dan coba lagi.'
+      const message = err instanceof FetchError
+        ? err.message
         : (err instanceof Error ? err.message : 'Gagal menghubungi server');
       setError(message);
       return { success: false, error: message };

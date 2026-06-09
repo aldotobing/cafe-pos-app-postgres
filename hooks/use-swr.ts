@@ -1,5 +1,6 @@
 import useSWR, { SWRConfiguration } from 'swr';
 import { swrConfig, swrConfigForTransactions, swrConfigForStaticData } from '@/lib/swr-config';
+import { fetchWithError, FetchError, getUserMessage } from '@/lib/fetch-client';
 
 // Generic SWR hook with default config
 export function useApi<T>(url: string | null, config?: SWRConfiguration) {
@@ -66,22 +67,16 @@ export function useMutation<T = any, V = any>(
     setError(null);
 
     try {
-      const response = await fetch(url, {
+      const { data: result } = await fetchWithError<any>(url, {
         method,
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: method !== 'DELETE' ? JSON.stringify(data) : undefined,
       });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || errorData.message || `HTTP ${response.status}`);
-      }
-
-      return method === 'DELETE' ? true : await response.json();
+      return method === 'DELETE' ? true : result;
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
+      const errorMessage = err instanceof FetchError
+        ? err.message
+        : (err instanceof Error ? err.message : 'Terjadi kesalahan');
       setError(errorMessage);
       throw err;
     } finally {

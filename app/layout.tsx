@@ -9,6 +9,7 @@ import { CartProvider } from '@/contexts/cart-context';
 import { SWRProvider } from '@/components/swr-provider';
 import PWARegister from '@/components/pwa-register';
 import PWAInstallPrompt from '@/components/pwa-install-prompt';
+import { OfflineBanner } from '@/components/offline-banner';
 import { ToasterWithTheme } from '@/components/toaster-with-theme';
 import { ThemeProvider } from 'next-themes';
 import "./globals.css"
@@ -192,6 +193,7 @@ export default function RootLayout({
                     </div>
                   </div>
                 }>
+                  <OfflineBanner />
                   {children}
                   <ToasterWithTheme />
                   <PWARegister />

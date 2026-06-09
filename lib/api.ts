@@ -1,5 +1,6 @@
 import type { CafeSettings, MenuItem, Transaction, TransactionItem } from "../types";
 import { getJakartaNow } from "./format";
+import { fetchWithError, FetchError } from "./fetch-client";
 
 const API_BASE_URL = "/api";
 
@@ -20,26 +21,23 @@ class ApiError extends Error {
 }
 
 const apiRequest = async <T>(path: string, options: RequestInit = {}): Promise<T> => {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...options.headers,
-    },
-  });
-
-  if (!response.ok) {
-    throw new ApiError(`API request failed: ${response.statusText}`, response.status);
-  }
-
   try {
-    const data = await response.json();
-    return data as T;
-  } catch (e) {
-    if (response.status === 204) {
-      return {} as T;
+    const { data } = await fetchWithError<T>(`${API_BASE_URL}${path}`, {
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        ...options.headers,
+      },
+    });
+    return data;
+  } catch (err) {
+    if (err instanceof FetchError) {
+      if (err.status) {
+        throw new ApiError(err.message, err.status);
+      }
+      throw err;
     }
-    throw new ApiError("Invalid response format", 500);
+    throw err;
   }
 };
 

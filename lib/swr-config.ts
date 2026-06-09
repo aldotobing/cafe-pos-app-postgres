@@ -1,28 +1,28 @@
 import { SWRConfiguration } from 'swr';
 import { toast } from 'sonner';
+import { fetchWithError, FetchError, getUserMessage } from './fetch-client';
 
-// Global fetcher function with error handling
 export const apiFetcher = async <T>(url: string): Promise<T> => {
-  const res = await fetch(url);
-  
-  if (!res.ok) {
-    const errorData = await res.json().catch(() => ({}));
-    const errorMessage = errorData.error || errorData.message || `API Error: ${res.status}`;
-    throw new Error(errorMessage);
-  }
-  
-  return res.json();
+  const { data } = await fetchWithError<T>(url);
+  return data;
 };
 
 // Global SWR configuration
 export const swrConfig: SWRConfiguration = {
   fetcher: apiFetcher,
   onError: (error, key) => {
-    console.error('SWR Error:', error, 'Key:', key);
-    
-    // Show toast for user-facing errors
-    if (error.message && !error.message.includes('401')) {
-      toast.error(error.message);
+    const msg = error instanceof FetchError ? error.message : (error?.message || '');
+
+    if (msg && !msg.includes('401')) {
+      if (error instanceof FetchError && error.isNetworkError) {
+        toast.error(msg, {
+          id: 'swr-network-error',
+          duration: 8000,
+          action: { label: 'Coba Lagi', onClick: () => window.location.reload() },
+        });
+      } else if (msg) {
+        toast.error(msg);
+      }
     }
   },
   onErrorRetry: (error, key, config, revalidate, { retryCount }) => {
