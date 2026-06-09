@@ -101,19 +101,12 @@ export function NotificationSettings({ localSettings, setLocalSettings, setSetti
       transition={{ delay: 0.06, duration: 0.15, ease: "easeOut" }}
     >
       {/* Header with toggle */}
-      <div className="flex items-center gap-3 px-4 py-3 border-b border-border/50 bg-muted/30">
-        <div className={`flex items-center justify-center w-9 h-9 rounded-lg shrink-0 ${isEnabled ? 'bg-primary/10 text-primary' : 'bg-muted/80 text-muted-foreground'}`}>
-          {isEnabled ? (
-            <Bell className="h-[18px] w-[18px]" />
-          ) : (
-            <BellOff className="h-[18px] w-[18px]" />
-          )}
-        </div>
+      <div className="flex items-center gap-2 md:gap-3 px-4 md:px-5 py-2.5 md:py-3 border-b border-border/50 bg-muted/30">
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <h2 className="text-[15px] font-semibold leading-tight">Notifikasi Push</h2>
-          </div>
-          <p className="text-xs text-muted-foreground mt-0.5">Terima notifikasi transaksi baru, stok menipis, & masa uji coba</p>
+          <p className="text-sm">Push Notification</p>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            {isEnabled ? 'Aktif — menerima notifikasi di perangkat ini' : 'Nonaktif'}
+          </p>
         </div>
         <button
           onClick={handlePushToggle}
@@ -137,7 +130,7 @@ export function NotificationSettings({ localSettings, setLocalSettings, setSetti
       </div>
 
       {/* Info Body */}
-      <div className="px-4 py-4">
+      <div className="px-4 py-3 md:py-4">
         <div className="flex gap-3 items-start p-3 rounded-lg bg-primary/5">
           <Info className="h-4 w-4 text-primary shrink-0 mt-0.5" />
           <p className="text-[11px] text-muted-foreground leading-relaxed">

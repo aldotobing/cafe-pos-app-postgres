@@ -1,9 +1,8 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Users, UserPlus, Loader2, CheckCircle2, AlertCircle, Plus, X, UserX, UserCheck, Eye, EyeOff } from "lucide-react"
+import { UserPlus, Loader2, CheckCircle2, AlertCircle, Plus, X, UserX, UserCheck, Eye, EyeOff } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
-import { SectionCard } from "./section-card"
 import { SettingsField, SettingsInput } from "./settings-field"
 
 interface Cashier {
@@ -179,12 +178,13 @@ export function CashierManagement({ userId, cafeId }: CashierManagementProps) {
   }
 
   return (
-    <SectionCard
-      title="Manajemen Kasir"
-      description="Buat dan kelola akun kasir untuk toko Anda"
-      icon={Users}
-      delay={0.08}
+    <motion.div
+      className="rounded-xl border bg-card overflow-hidden"
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.2 }}
     >
+      <div className="p-4 md:p-5">
       {/* Add Button */}
       <div className="flex justify-end mb-4">
         <motion.button
@@ -505,6 +505,6 @@ export function CashierManagement({ userId, cafeId }: CashierManagementProps) {
           </motion.div>
         )}
       </AnimatePresence>
-    </SectionCard>
+    </div></motion.div>
   )
 }

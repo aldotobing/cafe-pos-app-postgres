@@ -1,9 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Calculator } from "lucide-react"
 import { motion } from "framer-motion"
-import { SectionCard } from "./section-card"
 import { SettingsField } from "./settings-field"
 
 interface TaxCalculationSettingsProps {
@@ -15,24 +13,19 @@ interface TaxCalculationSettingsProps {
 export function TaxCalculationSettings({ localSettings, canEdit, handleInputChange }: TaxCalculationSettingsProps) {
   const [focusedField, setFocusedField] = useState<string | null>(null)
 
-  const isZeroOrEmpty = (value: number | null | undefined) =>
-    value === 0 || value === null || value === undefined
-
   return (
-    <SectionCard
-      title="Pajak & Kalkulasi"
-      description="Atur tarif pajak, biaya layanan, dan mata uang"
-      icon={Calculator}
-      delay={0.04}
+    <motion.div
+      className="rounded-xl border bg-card overflow-hidden"
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.2 }}
     >
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-        <SettingsField label="PPN (%)">
-          <div className="relative">
+      <div className="p-4 md:p-5">
+        <div className="grid grid-cols-3 gap-3 md:gap-4">
+          <SettingsField label="PPN (%)">
             <motion.input
               type="number"
-              className={`w-full rounded-md border bg-background px-3 py-2 text-sm ${
-                (focusedField === 'taxPercent' || (localSettings.taxPercent && localSettings.taxPercent > 0)) ? '' : 'text-transparent'
-              }`}
+              className={`w-full rounded-md border bg-background px-3 py-2 text-sm ${focusedField === 'taxPercent' || (localSettings.taxPercent > 0) ? '' : 'text-muted-foreground/50'}`}
               disabled={!canEdit}
               value={focusedField === 'taxPercent' && localSettings.taxPercent === 0 ? '' : (localSettings.taxPercent ?? 0)}
               min={0}
@@ -42,21 +35,12 @@ export function TaxCalculationSettings({ localSettings, canEdit, handleInputChan
               whileFocus={{ scale: 1.01 }}
               transition={{ duration: 0.05 }}
             />
-            {focusedField !== 'taxPercent' && isZeroOrEmpty(localSettings.taxPercent) && (
-              <div className="absolute inset-0 flex items-center px-3 text-sm text-muted-foreground pointer-events-none">
-                0
-              </div>
-            )}
-          </div>
-        </SettingsField>
+          </SettingsField>
 
-        <SettingsField label="Service (%)">
-          <div className="relative">
+          <SettingsField label="Service (%)">
             <motion.input
               type="number"
-              className={`w-full rounded-md border bg-background px-3 py-2 text-sm ${
-                (focusedField === 'servicePercent' || (localSettings.servicePercent && localSettings.servicePercent > 0)) ? '' : 'text-transparent'
-              }`}
+              className={`w-full rounded-md border bg-background px-3 py-2 text-sm ${focusedField === 'servicePercent' || (localSettings.servicePercent > 0) ? '' : 'text-muted-foreground/50'}`}
               disabled={!canEdit}
               value={focusedField === 'servicePercent' && localSettings.servicePercent === 0 ? '' : (localSettings.servicePercent ?? 0)}
               min={0}
@@ -66,27 +50,18 @@ export function TaxCalculationSettings({ localSettings, canEdit, handleInputChan
               whileFocus={{ scale: 1.01 }}
               transition={{ duration: 0.05 }}
             />
-            {focusedField !== 'servicePercent' && isZeroOrEmpty(localSettings.servicePercent) && (
-              <div className="absolute inset-0 flex items-center px-3 text-sm text-muted-foreground pointer-events-none">
-                0
-              </div>
-            )}
-          </div>
-        </SettingsField>
+          </SettingsField>
 
-        <div className="col-span-2 sm:col-span-1">
           <SettingsField label="Mata Uang">
             <motion.input
-              className="w-full rounded-md border bg-background px-3 py-2 text-sm disabled:opacity-60 disabled:cursor-not-allowed"
+              className="w-full rounded-md border bg-muted/50 px-3 py-2 text-sm text-muted-foreground cursor-not-allowed"
               disabled
               value={localSettings.currency ?? "IDR"}
               readOnly
-              whileFocus={{ scale: 1.01 }}
-              transition={{ duration: 0.05 }}
             />
           </SettingsField>
         </div>
       </div>
-    </SectionCard>
+    </motion.div>
   )
 }
