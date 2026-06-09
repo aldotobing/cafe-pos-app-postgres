@@ -6,7 +6,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { cn } from '@/lib/utils'
 import Link from 'next/link'
 
-type NotifType = 'low_stock' | 'out_of_stock' | 'trial_expiring' | 'new_transaction'
+type NotifType = 'low_stock' | 'out_of_stock' | 'trial_expiring' | 'new_transaction' | 'target_achieved'
 
 interface Notification {
   id: string
@@ -39,6 +39,11 @@ const typeConfig: Record<NotifType, { icon: typeof Bell; color: string; link: (d
     icon: Clock,
     color: 'text-orange-500 bg-orange-500/10',
     link: () => '/settings'
+  },
+  target_achieved: {
+    icon: ShoppingCart,
+    color: 'text-emerald-500 bg-emerald-500/10',
+    link: () => '/expenses'
   }
 }
 

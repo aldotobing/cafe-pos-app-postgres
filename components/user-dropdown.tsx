@@ -122,15 +122,6 @@ export function UserDropdown({ fullName, email, role, avatarUrl, onLogout, signi
               <span>Muat Ulang</span>
             </button>
 
-            <Link
-              href="/settings"
-              className="w-full flex items-center gap-2 px-4 py-2 text-sm text-foreground hover:bg-accent transition-colors block"
-              onClick={() => setIsOpen(false)}
-            >
-              <Settings size={16} />
-              <span>Pengaturan</span>
-            </Link>
-
             <button
               className="w-full flex items-center gap-2 px-4 py-2 text-sm text-foreground hover:bg-accent transition-colors"
               onClick={() => {
@@ -141,6 +132,15 @@ export function UserDropdown({ fullName, email, role, avatarUrl, onLogout, signi
               {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
               <span>{theme === 'dark' ? 'Mode Terang' : 'Mode Gelap'}</span>
             </button>
+
+            <Link
+              href="/settings"
+              className="w-full flex items-center gap-2 px-4 py-2 text-sm text-foreground hover:bg-accent transition-colors block"
+              onClick={() => setIsOpen(false)}
+            >
+              <Settings size={16} />
+              <span>Pengaturan</span>
+            </Link>
 
             <div className="h-px bg-border mx-3 my-1" />
 

@@ -15,7 +15,7 @@ import {
 } from '@/components/ui';
 import { format, parseISO } from 'date-fns';
 import { id } from 'date-fns/locale';
-import { Calendar as CalendarIcon, Plus, Trash2, Edit2, RefreshCw, X, Wallet } from 'lucide-react';
+import { Calendar as CalendarIcon, Plus, Trash2, Edit2, RefreshCw, RotateCcw, X, Wallet } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -67,12 +67,16 @@ function CategoryBreakdown({ expenses, categories, total }: { expenses: Expense[
 export default function ExpensesPage() {
   const { userData } = useAuth();
   const cafeId = userData?.cafe_id;
+  const isAdmin = userData?.role === 'admin' || userData?.role === 'superadmin';
 
   const [startDate, setStartDate] = useState<Date>(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
   const [endDate, setEndDate] = useState<Date>(new Date());
   const [selectedCategory, setSelectedCategory] = useState<string>('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
+  const [isEditingTarget, setIsEditingTarget] = useState(false);
+  const [targetInput, setTargetInput] = useState('');
+  const [isSavingTarget, setIsSavingTarget] = useState(false);
   const [formData, setFormData] = useState<ExpenseFormData>({
     category_id: '', amount: 0, description: '', expense_date: format(new Date(), 'yyyy-MM-dd'),
     receipt_number: '', payment_method: 'Tunai'
@@ -91,8 +95,13 @@ export default function ExpensesPage() {
     apiFetcher, { revalidateOnFocus: false }
   );
 
-  const { data: summaryData } = useSWR<{ data: { totalRevenue: number } }>(
+  const { data: summaryData, mutate: mutateSummary } = useSWR<{ data: { totalRevenue: number; targetRevenue: number; targetAchievement: number; targetGap: number } }>(
     cafeId ? `/api/finance/summary?cafe_id=${cafeId}&start_date=${format(startDate, 'yyyy-MM-dd')}&end_date=${format(endDate, 'yyyy-MM-dd')}` : null,
+    apiFetcher, { revalidateOnFocus: false }
+  );
+
+  const { data: targetsData, mutate: mutateTargets } = useSWR<{ data: Array<{ id: string; monthly_target: number; target_month: number; target_year: number }> }>(
+    cafeId ? `/api/finance/targets?cafe_id=${cafeId}&year=${startDate.getFullYear()}&month=${startDate.getMonth() + 1}` : null,
     apiFetcher, { revalidateOnFocus: false }
   );
 
@@ -100,6 +109,9 @@ export default function ExpensesPage() {
   const expenses = Array.isArray(expensesData?.data) ? expensesData.data : [];
   const totalExpenses = expensesData?.total || 0;
   const totalRevenue = summaryData?.data?.totalRevenue || 0;
+  const targetRevenue = summaryData?.data?.targetRevenue || 0;
+  const targetAchievement = summaryData?.data?.targetAchievement || 0;
+  const targetGap = summaryData?.data?.targetGap || 0;
   const netProfit = totalRevenue - totalExpenses;
   const profitMargin = totalRevenue > 0 ? Math.round((netProfit / totalRevenue) * 100) : 0;
   const expenseCount = expensesData?.count || expenses.length;
@@ -119,6 +131,31 @@ export default function ExpensesPage() {
     const num = raw === '' ? 0 : parseInt(raw);
     setAmountDisplay(raw === '' ? '' : new Intl.NumberFormat('id-ID').format(num));
     setFormData(prev => ({ ...prev, amount: num }));
+  };
+
+  const handleSaveTarget = async () => {
+    if (!cafeId) return;
+    const target = parseInt(targetInput.replace(/[^\d]/g, ''));
+    if (!target || target <= 0) { toast.error('Masukkan target yang valid'); return; }
+    setIsSavingTarget(true);
+    try {
+      const currentMonth = startDate.getMonth() + 1;
+      const currentYear = startDate.getFullYear();
+      await fetchClient('/api/finance/targets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cafe_id: cafeId, target_month: currentMonth, target_year: currentYear, monthly_target: target }),
+      });
+      toast.success('Target berhasil disimpan');
+      setIsEditingTarget(false);
+      mutateTargets();
+      mutateSummary();
+      mutate();
+    } catch (error: any) {
+      toast.error(error instanceof FetchError ? error.message : 'Gagal menyimpan target');
+    } finally {
+      setIsSavingTarget(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -214,10 +251,10 @@ export default function ExpensesPage() {
         {/* Filters */}
         <div className="rounded-xl border bg-card shadow-sm p-4">
           <div className="flex flex-col sm:flex-row gap-3">
-            <div className="flex gap-2 items-center">
+            <div className="flex gap-1.5 items-center">
               <Popover>
                 <PopoverTrigger asChild>
-                  <Button variant="outline" className="w-[130px] justify-start h-9 rounded-lg text-sm">
+                  <Button variant="outline" className="w-[140px] justify-start h-9 rounded-lg text-sm font-normal">
                     <CalendarIcon className="w-4 h-4 mr-2 text-muted-foreground" />
                     {format(startDate, 'dd/MM/yyyy')}
                   </Button>
@@ -226,10 +263,10 @@ export default function ExpensesPage() {
                   <Calendar mode="single" selected={startDate} onSelect={(date) => date && setStartDate(date)} />
                 </PopoverContent>
               </Popover>
-              <span className="text-muted-foreground text-sm">-</span>
+              <span className="text-muted-foreground text-sm mx-1">—</span>
               <Popover>
                 <PopoverTrigger asChild>
-                  <Button variant="outline" className="w-[130px] justify-start h-9 rounded-lg text-sm">
+                  <Button variant="outline" className="w-[140px] justify-start h-9 rounded-lg text-sm font-normal">
                     <CalendarIcon className="w-4 h-4 mr-2 text-muted-foreground" />
                     {format(endDate, 'dd/MM/yyyy')}
                   </Button>
@@ -238,9 +275,20 @@ export default function ExpensesPage() {
                   <Calendar mode="single" selected={endDate} onSelect={(date) => date && setEndDate(date)} />
                 </PopoverContent>
               </Popover>
+              <Button
+                variant="ghost" size="icon" className="h-9 w-9 rounded-lg"
+                onClick={() => {
+                  setStartDate(new Date(new Date().getFullYear(), new Date().getMonth(), 1))
+                  setEndDate(new Date())
+                  setSelectedCategory('')
+                }}
+                title="Reset filter"
+              >
+                <RotateCcw className="w-4 h-4" />
+              </Button>
             </div>
 
-            <div className="flex gap-2 ml-auto">
+            <div className="flex gap-2 sm:ml-auto">
               <Select value={selectedCategory || 'all'} onValueChange={(v) => setSelectedCategory(v === 'all' ? '' : v)}>
                 <SelectTrigger className="w-[160px] h-9 rounded-lg">
                   <SelectValue placeholder="Semua Kategori" />
@@ -302,6 +350,90 @@ export default function ExpensesPage() {
               </span>
             </div>
           </div>
+        </div>
+
+        {/* Target Revenue */}
+        <div className="rounded-xl border bg-card shadow-sm p-4 md:p-5">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground/70">Target Pendapatan</h3>
+              <p className="text-xs text-muted-foreground mt-0.5">{format(startDate, 'MMMM yyyy', { locale: id })}</p>
+            </div>
+            {isAdmin && !isEditingTarget && (
+              <button
+                onClick={() => {
+                  setTargetInput(targetsData?.data?.[0]?.monthly_target ? new Intl.NumberFormat('id-ID').format(targetsData.data[0].monthly_target) : '')
+                  setIsEditingTarget(true)
+                }}
+                className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+              >
+                {targetRevenue > 0 ? 'Ubah Target' : 'Atur Target'}
+              </button>
+            )}
+          </div>
+
+          {isEditingTarget ? (
+            <div className="flex items-center gap-3">
+              <div className="flex-1">
+                <Label className="text-xs text-muted-foreground mb-1 block">Target Bulanan</Label>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground">Rp</span>
+                  <Input
+                    className="h-10 rounded-lg font-mono text-base"
+                    value={targetInput}
+                    onChange={(e) => {
+                      const raw = e.target.value.replace(/[^\d]/g, '');
+                      setTargetInput(raw === '' ? '' : new Intl.NumberFormat('id-ID').format(parseInt(raw)));
+                    }}
+                    placeholder="0"
+                    autoFocus
+                  />
+                </div>
+              </div>
+              <button onClick={handleSaveTarget} disabled={isSavingTarget} className="px-4 py-2 mt-5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 disabled:opacity-50">
+                {isSavingTarget ? '...' : 'Simpan'}
+              </button>
+              <button onClick={() => setIsEditingTarget(false)} className="px-3 py-2 mt-5 rounded-lg text-sm text-muted-foreground hover:text-foreground">Batal</button>
+            </div>
+          ) : targetRevenue > 0 ? (
+            <div className="space-y-3">
+              <div className="flex items-end justify-between">
+                <div>
+                  <p className="text-xs text-muted-foreground mb-0.5">Pencapaian</p>
+                  <p className="text-lg font-bold tabular-nums">{targetAchievement}%</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-xs text-muted-foreground mb-0.5">Target</p>
+                  <p className="text-sm font-semibold tabular-nums">{formatRupiah(targetRevenue)}</p>
+                </div>
+              </div>
+              <div className="h-2.5 bg-muted rounded-full overflow-hidden">
+                <div
+                  className={cn("h-full rounded-full transition-all duration-700", targetAchievement >= 100 ? 'bg-emerald-500' : targetAchievement >= 70 ? 'bg-amber-500' : 'bg-red-500')}
+                  style={{ width: `${Math.min(targetAchievement, 100)}%` }}
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {targetAchievement >= 100
+                  ? 'Target tercapai! 🎉'
+                  : `Kurang ${formatRupiah(Math.abs(targetGap))} lagi untuk mencapai target`}
+              </p>
+            </div>
+          ) : (
+            <div className="py-4 text-center">
+              <p className="text-sm text-muted-foreground">
+                {isAdmin ? 'Belum ada target untuk bulan ini.' : 'Belum ada target untuk bulan ini.'}
+              </p>
+              {isAdmin && (
+                <button
+                  onClick={() => { setTargetInput(''); setIsEditingTarget(true); }}
+                  className="mt-2 text-sm text-primary hover:underline"
+                >
+                  Atur target sekarang
+                </button>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Category Breakdown */}
