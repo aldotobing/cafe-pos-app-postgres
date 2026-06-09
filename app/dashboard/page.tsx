@@ -3,6 +3,7 @@
 import { AppShell } from "../../components/app-shell"
 import { useEffect, useMemo, useState } from "react"
 import { formatRupiah } from "../../lib/format"
+import { useCountUp, useCountUpFormatted } from "@/hooks/use-count-up"
 import { useMenu, useTransactions } from "@/hooks/use-cafe-data"
 import { TrendingUp, CreditCard, Package, DollarSign } from "lucide-react"
 import { FinancialSummaryCard } from "@/components/dashboard/FinancialSummaryCard"
@@ -42,10 +43,10 @@ export default function DashboardPage() {
   const { user, userData, loading: authLoading } = useAuth();
   const searchParams = useSearchParams();
   const urlCafeId = searchParams.get('cafe_id');
-  const cafeId = (userData?.role === 'superadmin' && urlCafeId) ? Number(urlCafeId) : userData?.cafe_id;
-  const { menu, isLoading: menuLoading } = useMenu(cafeId);
+  const cafeId = authLoading ? null : ((userData?.role === 'superadmin' && urlCafeId) ? Number(urlCafeId) : userData?.cafe_id ?? null);
+  const { menu, isLoading: menuLoading } = useMenu(cafeId ?? undefined);
   // Use limit=1000 to fetch all transactions for dashboard stats
-  const { transactions, isLoading: transactionsLoading } = useTransactions(cafeId, 1000);
+  const { transactions, isLoading: transactionsLoading } = useTransactions(cafeId ?? undefined, 1000);
   const router = useRouter();
 
   // Transactions are already filtered by cafe_id in the hook
@@ -121,8 +122,8 @@ export default function DashboardPage() {
         return dateB.getTime() - dateA.getTime();
       })
       .slice(0, 5)
-      .map(t => ({ 
-        ...t, 
+      .map(t => ({
+        ...t,
         paymentMethod: t.paymentMethod || 'cash',
         totalAmount: t.totalAmount || 0,
         items: t.items.map(it => ({
@@ -132,6 +133,10 @@ export default function DashboardPage() {
         }))
       }));
   }, [cafeTransactions])
+
+  const animatedRevenue = useCountUpFormatted(totalHariIni, formatRupiah, 800)
+  const animatedTxCount = useCountUp(jumlahTransaksi, 800, 0)
+  const animatedMenuCount = useCountUp(menu.length, 600, 0)
 
   useEffect(() => {
     if (!authLoading && (!user || !userData)) {
@@ -157,7 +162,7 @@ export default function DashboardPage() {
     }
   }, [user, userData, authLoading, router]);
 
-  if (authLoading || menuLoading || transactionsLoading) {
+  if (authLoading || menuLoading || transactionsLoading || !cafeId) {
     return <DashboardSkeleton />;
   }
 
@@ -175,7 +180,7 @@ export default function DashboardPage() {
           <motion.div variants={itemVariants} className="h-full">
             <StatCard
               title="Penjualan Hari Ini"
-              value={formatRupiah(totalHariIni)}
+              value={animatedRevenue}
               description="Total pendapatan hari ini"
               icon={DollarSign}
               iconClassName="text-emerald-500 bg-emerald-500/10"
@@ -184,7 +189,7 @@ export default function DashboardPage() {
           <motion.div variants={itemVariants} className="h-full">
             <StatCard
               title="Transaksi Hari Ini"
-              value={jumlahTransaksi}
+              value={animatedTxCount}
               description="Jumlah bon tercetak"
               icon={CreditCard}
               iconClassName="text-blue-400 bg-blue-400/10"
@@ -202,7 +207,7 @@ export default function DashboardPage() {
           <motion.div variants={itemVariants} className="h-full">
             <StatCard
               title="Total Produk"
-              value={menu.length}
+              value={animatedMenuCount}
               description="Menu aktif saat ini"
               icon={Package}
               iconClassName="text-purple-400 bg-purple-400/10"
