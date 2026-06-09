@@ -4,6 +4,7 @@ import { createContext, useContext, useState, useEffect, ReactNode } from 'react
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
 import { fetchClient, FetchError } from '@/lib/fetch-client';
+import { toast } from 'sonner';
 
 interface AuthContextType {
   user: any | null;
@@ -40,7 +41,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
-        checkSession();
+        checkSession().then(async (result) => {
+          if (result?.expired && !loading) {
+            toast.error('Sesi telah berakhir karena tidak aktif. Silakan masuk kembali.', {
+              id: 'session-expired',
+              duration: 5000,
+            });
+            await new Promise(r => setTimeout(r, 600));
+            router.push('/login');
+          }
+        });
       }
     };
 
@@ -59,7 +69,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const data = await response.json();
         setUser(data.user);
         setUserData(data.userData);
-        return data;
+        return { ...data, expired: false };
       }
       if (response.status === 401) {
         const refreshed = await tryRefresh();
@@ -71,15 +81,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             const data = await retryResponse.json();
             setUser(data.user);
             setUserData(data.userData);
-            return data;
+            return { ...data, expired: false };
           }
         }
+        setUser(null);
+        setUserData(null);
+        return { expired: true };
       }
       setUser(null);
       setUserData(null);
-      return null;
+      return { expired: true };
     } catch {
-      return null;
+      return { expired: false };
     } finally {
       setLoading(false);
     }

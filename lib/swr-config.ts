@@ -13,16 +13,16 @@ export const swrConfig: SWRConfiguration = {
   onError: (error, key) => {
     const msg = error instanceof FetchError ? error.message : (error?.message || '');
 
-    if (msg && !msg.includes('401')) {
-      if (error instanceof FetchError && error.isNetworkError) {
-        toast.error(msg, {
-          id: 'swr-network-error',
-          duration: 8000,
-          action: { label: 'Coba Lagi', onClick: () => window.location.reload() },
-        });
-      } else if (msg) {
-        toast.error(msg);
-      }
+    if (!msg || msg.includes('401') || msg === 'Unauthorized') return;
+
+    if (error instanceof FetchError && error.isNetworkError) {
+      toast.error(msg, {
+        id: 'swr-network-error',
+        duration: 8000,
+        action: { label: 'Coba Lagi', onClick: () => window.location.reload() },
+      });
+    } else if (msg) {
+      toast.error(msg);
     }
   },
   onErrorRetry: (error, key, config, revalidate, { retryCount }) => {
