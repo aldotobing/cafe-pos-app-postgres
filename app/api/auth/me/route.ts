@@ -1,41 +1,35 @@
-import { createClient } from '@supabase/supabase-js'
+import { createServerClient } from '@supabase/ssr'
+import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-server'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!
-
 export async function GET(request: Request) {
   try {
-    // Get token dari cookie atau Authorization header
-    const cookieHeader = request.headers.get("Cookie") || "";
-    const token = cookieHeader.split('; ').find(row => row.startsWith('sb-access-token='))?.split('=')[1] ||
-                  request.headers.get('Authorization')?.split(' ')[1];
-    
-    if (!token) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const cookieStore = await cookies()
 
-    const supabase = createClient(supabaseUrl, supabaseKey, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
-      global: {
-        headers: { Authorization: `Bearer ${token}` }
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
+      {
+        cookies: {
+          getAll() { return cookieStore.getAll() },
+          setAll(cookiesToSet) {
+            try {
+              cookiesToSet.forEach(({ name, value, options }) =>
+                cookieStore.set(name, value, options))
+            } catch {}
+          },
+        },
       }
-    })
+    )
 
     const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-
-    // Get user dari token
     const { data: { user }, error } = await supabase.auth.getUser()
-    
+
     if (error || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    // Fetch complete user profile using admin client (bypass RLS)
     const { data: profile, error: profileError } = await supabaseAdmin
       .from('user_profiles')
       .select('*, cafes(id, name)')
@@ -43,16 +37,12 @@ export async function GET(request: Request) {
       .single()
 
     if (profile?.is_active === false) {
-      const isProduction = process.env.NODE_ENV === 'production'
-      const secureFlag = isProduction ? '; Secure' : ''
-      const cookieSuffix = `HttpOnly; Path=/; SameSite=Lax; Max-Age=0${secureFlag}`
-
       const response = NextResponse.json(
         { error: 'Akun Anda telah dinonaktifkan.', code: 'ACCOUNT_DISABLED' },
         { status: 403 }
       )
-      response.headers.append('Set-Cookie', `sb-access-token=; ${cookieSuffix}`)
-      response.headers.append('Set-Cookie', `sb-refresh-token=; ${cookieSuffix}`)
+      response.cookies.set('sb-access-token', '', { maxAge: 0, path: '/' })
+      response.cookies.set('sb-refresh-token', '', { maxAge: 0, path: '/' })
       return response
     }
 
@@ -68,9 +58,9 @@ export async function GET(request: Request) {
         email: user.email,
       } : null,
       expires_at: session?.expires_at ?? null,
-    });
+    })
   } catch (error) {
-    console.error('Me route error:', error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    console.error('Me route error:', error)
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }

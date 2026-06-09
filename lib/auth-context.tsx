@@ -1,19 +1,8 @@
 'use client';
 
-import { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
-import { createClient } from '@supabase/supabase-js';
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!;
-
-const supabase = createClient(supabaseUrl, supabaseKey, {
-  auth: {
-    autoRefreshToken: false,
-    persistSession: false,
-    detectSessionInUrl: false,
-  },
-});
+import { createClient } from '@/utils/supabase/client';
 
 interface AuthContextType {
   user: any | null;
@@ -44,55 +33,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [signingOut, setSigningOut] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
-  const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     checkSession();
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        checkSession();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => {
-      if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, []);
-
-  const scheduleRefresh = (expiresAt: number | null) => {
-    if (refreshTimerRef.current) {
-      clearTimeout(refreshTimerRef.current);
-      refreshTimerRef.current = null;
-    }
-    if (!expiresAt) return;
-
-    const now = Date.now() / 1000;
-    const refreshAt = expiresAt - 300; // 5 minutes before expiry
-    const delay = Math.max(0, (refreshAt - now) * 1000);
-
-    if (delay <= 0) {
-      refreshSession();
-      return;
-    }
-
-    refreshTimerRef.current = setTimeout(() => refreshSession(), delay);
-  };
-
-  const refreshSession = async () => {
-    try {
-      const res = await fetch('/api/auth/refresh', {
-        method: 'POST',
-        credentials: 'include',
-      });
-      if (res.ok) {
-        const data = await res.json();
-        if (data.user) {
-          setUser((prev: any) => prev?.id === data.user.id ? { ...prev, ...data.user } : prev);
-        }
-        scheduleRefresh(data.expires_at);
-      } else {
-        setUser(null);
-        setUserData(null);
-        router.push('/login');
-      }
-    } catch {
-      refreshTimerRef.current = setTimeout(() => refreshSession(), 2 * 60 * 1000);
-    }
-  };
 
   const checkSession = async () => {
     try {
@@ -103,17 +58,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const data = await response.json();
         setUser(data.user);
         setUserData(data.userData);
-        scheduleRefresh(data.expires_at);
         return data;
-      } else {
-        setUser(null);
-        setUserData(null);
-        return null;
       }
-    } catch (err) {
+      if (response.status === 401) {
+        const refreshed = await tryRefresh();
+        if (refreshed) {
+          const retryResponse = await fetch('/api/auth/me', {
+            credentials: 'include',
+          });
+          if (retryResponse.ok) {
+            const data = await retryResponse.json();
+            setUser(data.user);
+            setUserData(data.userData);
+            return data;
+          }
+        }
+      }
+      setUser(null);
+      setUserData(null);
+      return null;
+    } catch {
       return null;
     } finally {
       setLoading(false);
+    }
+  };
+
+  const tryRefresh = async (): Promise<boolean> => {
+    try {
+      const supabase = createClient();
+      const { data } = await supabase.auth.getSession();
+      return !!data.session;
+    } catch {
+      return false;
     }
   };
 
@@ -123,7 +100,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password }),
-      credentials: 'include', // Important: receive cookies
+      credentials: 'include',
     });
     if (!res.ok) {
       const data = await res.json();
@@ -138,10 +115,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     setUser(data.user);
     setUserData(data.userData);
-    scheduleRefresh(data.session?.expires_at ?? null);
     return data.userData;
   };
-
 
   const signUp = async (email: string, password: string, fullName: string) => {
     setError(null);
@@ -151,7 +126,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password, fullName }),
-        credentials: 'include', // Important: receive cookies
+        credentials: 'include',
       });
     } catch (networkErr) {
       throw new Error('Tidak dapat terhubung ke server. Periksa koneksi internet Anda.');
@@ -182,19 +157,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOutUser = async (): Promise<{ success: boolean; error?: string }> => {
     setSigningOut(true);
-    if (refreshTimerRef.current) {
-      clearTimeout(refreshTimerRef.current);
-      refreshTimerRef.current = null;
-    }
     try {
-      // 1. Sign out from Supabase client (clears browser-stored session)
-      try {
-        await supabase.auth.signOut();
-      } catch (e) {
-        // Ignore — client may not have a session if auth is cookie-only
-      }
-
-      // 2. Clear all Supabase-managed localStorage keys (sb-*)
+      // Clear client-side storage
       try {
         if (typeof window !== 'undefined') {
           const keysToRemove: string[] = [];
@@ -210,28 +174,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           localStorage.removeItem('cafe-settings');
           localStorage.removeItem('cafe-cache');
         }
-      } catch (e) {
+      } catch {
         // Ignore
       }
 
-      // 3. Clear sessionStorage
       try {
         if (typeof window !== 'undefined') {
           sessionStorage.clear();
         }
-      } catch (e) {
+      } catch {
         // Ignore
       }
 
-      // 4. Call logout API to clear server-side cookies
+      // Call logout API to clear server-side cookies
       await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
 
-      // 5. Clear auth state
       setUser(null);
       setUserData(null);
       setError(null);
 
-      // 6. Redirect to login
       router.push('/login');
       return { success: true };
     } catch (err) {
