@@ -230,26 +230,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
         window.dispatchEvent(new CustomEvent("transactionCompleted"));
       }
 
-      if (currentCafeId) {
-        fetch("/api/trigger-notification", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({
-            cafeId: currentCafeId,
-            title: "KasirKu",
-            body: `Transaksi Baru! Pesanan senilai ${new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(total)} baru masuk.`,
-            url: "/transactions",
-          }),
-        })
-          .then((res) => {
-            if (!res.ok) {
-              console.error(`[Push] trigger-notification failed: ${res.status}`);
-            }
-          })
-          .catch((e) => console.error("[Push] Error triggering push:", e));
-      }
-
       return createdTx;
     } catch (e) {
       console.error(e);

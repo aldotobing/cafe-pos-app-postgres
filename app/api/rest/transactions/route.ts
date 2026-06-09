@@ -1,6 +1,7 @@
 import { getAuthenticatedUser } from "@/lib/auth-server";
 import { supabaseAdmin } from "@/lib/supabase-server";
 import { NextResponse } from "next/server";
+import { processPendingNotifications } from "@/lib/notifications-service";
 
 export async function GET(request: Request) {
   const user = await getAuthenticatedUser(request);
@@ -240,6 +241,8 @@ export async function POST(request: Request) {
         console.error('Stock mutation errors:', stockErrors.map((r) => r!.error));
       }
     }
+
+    processPendingNotifications().catch(err => console.error('[Push] process error:', err))
 
     return NextResponse.json({
       data: { ...transaction, transaction_items: transactionItems },

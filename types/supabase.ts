@@ -7,8 +7,75 @@ export type Json =
   | Json[]
 
 export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "14.5"
+  }
   public: {
     Tables: {
+      cafe_settings: {
+        Row: {
+          address: string | null
+          cafe_id: number
+          created_at: string | null
+          currency: string | null
+          deleted_at: string | null
+          enable_push_notifications: boolean | null
+          id: number
+          logo_url: string | null
+          name: string
+          phone: string | null
+          service_percent: number | null
+          tagline: string | null
+          tax_percent: number | null
+          updated_at: string | null
+          version: number | null
+        }
+        Insert: {
+          address?: string | null
+          cafe_id: number
+          created_at?: string | null
+          currency?: string | null
+          deleted_at?: string | null
+          enable_push_notifications?: boolean | null
+          id?: number
+          logo_url?: string | null
+          name?: string
+          phone?: string | null
+          service_percent?: number | null
+          tagline?: string | null
+          tax_percent?: number | null
+          updated_at?: string | null
+          version?: number | null
+        }
+        Update: {
+          address?: string | null
+          cafe_id?: number
+          created_at?: string | null
+          currency?: string | null
+          deleted_at?: string | null
+          enable_push_notifications?: boolean | null
+          id?: number
+          logo_url?: string | null
+          name?: string
+          phone?: string | null
+          service_percent?: number | null
+          tagline?: string | null
+          tax_percent?: number | null
+          updated_at?: string | null
+          version?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cafe_settings_cafe_id_fkey"
+            columns: ["cafe_id"]
+            isOneToOne: false
+            referencedRelation: "cafes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cafes: {
         Row: {
           address: string | null
@@ -43,77 +110,7 @@ export type Database = {
           updated_at?: string | null
           version?: number | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "cafes_owner_user_id_fkey"
-            columns: ["owner_user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      cafe_settings: {
-        Row: {
-          address: string | null
-          cafe_id: number
-          created_at: string | null
-          currency: string | null
-          deleted_at: string | null
-          enable_push_notifications: boolean | null
-          id: number
-          logo_url: string | null
-          name: string | null
-          phone: string | null
-          service_percent: number | null
-          tagline: string | null
-          tax_percent: number | null
-          updated_at: string | null
-          version: number | null
-        }
-        Insert: {
-          address?: string | null
-          cafe_id: number
-          created_at?: string | null
-          currency?: string | null
-          deleted_at?: string | null
-          enable_push_notifications?: boolean | null
-          id?: number
-          logo_url?: string | null
-          name?: string | null
-          phone?: string | null
-          service_percent?: number | null
-          tagline?: string | null
-          tax_percent?: number | null
-          updated_at?: string | null
-          version?: number | null
-        }
-        Update: {
-          address?: string | null
-          cafe_id?: number
-          created_at?: string | null
-          currency?: string | null
-          deleted_at?: string | null
-          enable_push_notifications?: boolean | null
-          id?: number
-          logo_url?: string | null
-          name?: string | null
-          phone?: string | null
-          service_percent?: number | null
-          tagline?: string | null
-          tax_percent?: number | null
-          updated_at?: string | null
-          version?: number | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "cafe_settings_cafe_id_fkey"
-            columns: ["cafe_id"]
-            isOneToOne: false
-            referencedRelation: "cafes"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       categories: {
         Row: {
@@ -161,6 +158,122 @@ export type Database = {
             columns: ["cafe_id"]
             isOneToOne: false
             referencedRelation: "cafes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      expense_categories: {
+        Row: {
+          cafe_id: number
+          color: string | null
+          created_at: string | null
+          deleted_at: string | null
+          description: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          sort_order: number | null
+          updated_at: string | null
+          version: number | null
+        }
+        Insert: {
+          cafe_id: number
+          color?: string | null
+          created_at?: string | null
+          deleted_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          sort_order?: number | null
+          updated_at?: string | null
+          version?: number | null
+        }
+        Update: {
+          cafe_id?: number
+          color?: string | null
+          created_at?: string | null
+          deleted_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          sort_order?: number | null
+          updated_at?: string | null
+          version?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "expense_categories_cafe_id_fkey"
+            columns: ["cafe_id"]
+            isOneToOne: false
+            referencedRelation: "cafes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      expenses: {
+        Row: {
+          amount: number
+          cafe_id: number
+          category_id: string | null
+          created_at: string | null
+          created_by: string | null
+          deleted_at: string | null
+          description: string | null
+          expense_date: string
+          id: string
+          payment_method: string | null
+          receipt_number: string | null
+          receipt_url: string | null
+          updated_at: string | null
+          version: number | null
+        }
+        Insert: {
+          amount: number
+          cafe_id: number
+          category_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          deleted_at?: string | null
+          description?: string | null
+          expense_date?: string
+          id?: string
+          payment_method?: string | null
+          receipt_number?: string | null
+          receipt_url?: string | null
+          updated_at?: string | null
+          version?: number | null
+        }
+        Update: {
+          amount?: number
+          cafe_id?: number
+          category_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          deleted_at?: string | null
+          description?: string | null
+          expense_date?: string
+          id?: string
+          payment_method?: string | null
+          receipt_number?: string | null
+          receipt_url?: string | null
+          updated_at?: string | null
+          version?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "expenses_cafe_id_fkey"
+            columns: ["cafe_id"]
+            isOneToOne: false
+            referencedRelation: "cafes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expenses_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "expense_categories"
             referencedColumns: ["id"]
           },
         ]
@@ -249,6 +362,53 @@ export type Database = {
           },
         ]
       }
+      notifications: {
+        Row: {
+          body: string
+          cafe_id: number
+          created_at: string | null
+          data: Json | null
+          deleted_at: string | null
+          id: string
+          is_pushed: boolean | null
+          is_read: boolean | null
+          title: string
+          type: Database["public"]["Enums"]["notification_type"]
+        }
+        Insert: {
+          body: string
+          cafe_id: number
+          created_at?: string | null
+          data?: Json | null
+          deleted_at?: string | null
+          id?: string
+          is_pushed?: boolean | null
+          is_read?: boolean | null
+          title: string
+          type: Database["public"]["Enums"]["notification_type"]
+        }
+        Update: {
+          body?: string
+          cafe_id?: number
+          created_at?: string | null
+          data?: Json | null
+          deleted_at?: string | null
+          id?: string
+          is_pushed?: boolean | null
+          is_read?: boolean | null
+          title?: string
+          type?: Database["public"]["Enums"]["notification_type"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_cafe_id_fkey"
+            columns: ["cafe_id"]
+            isOneToOne: false
+            referencedRelation: "cafes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       product_variants: {
         Row: {
           barcode: string | null
@@ -312,6 +472,72 @@ export type Database = {
             referencedRelation: "menu"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "product_variants_menu_id_fkey"
+            columns: ["menu_id"]
+            isOneToOne: false
+            referencedRelation: "v_products_with_variants"
+            referencedColumns: ["menu_id"]
+          },
+        ]
+      }
+      promotions: {
+        Row: {
+          applies_to: string | null
+          cafe_id: number
+          created_at: string | null
+          deleted_at: string | null
+          id: string
+          is_active: boolean | null
+          max_discount: number | null
+          min_subtotal: number | null
+          name: string
+          target_category_ids: string[] | null
+          target_item_ids: string[] | null
+          type: string
+          updated_at: string | null
+          value: number
+        }
+        Insert: {
+          applies_to?: string | null
+          cafe_id: number
+          created_at?: string | null
+          deleted_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          max_discount?: number | null
+          min_subtotal?: number | null
+          name: string
+          target_category_ids?: string[] | null
+          target_item_ids?: string[] | null
+          type?: string
+          updated_at?: string | null
+          value?: number
+        }
+        Update: {
+          applies_to?: string | null
+          cafe_id?: number
+          created_at?: string | null
+          deleted_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          max_discount?: number | null
+          min_subtotal?: number | null
+          name?: string
+          target_category_ids?: string[] | null
+          target_item_ids?: string[] | null
+          type?: string
+          updated_at?: string | null
+          value?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "promotions_cafe_id_fkey"
+            columns: ["cafe_id"]
+            isOneToOne: false
+            referencedRelation: "cafes"
+            referencedColumns: ["id"]
+          },
         ]
       }
       push_subscriptions: {
@@ -359,11 +585,63 @@ export type Database = {
             referencedRelation: "cafes"
             referencedColumns: ["id"]
           },
+        ]
+      }
+      revenue_targets: {
+        Row: {
+          cafe_id: number
+          created_at: string | null
+          created_by: string | null
+          daily_target: number | null
+          deleted_at: string | null
+          id: string
+          is_active: boolean | null
+          monthly_target: number | null
+          notes: string | null
+          target_date: string | null
+          target_month: number | null
+          target_year: number | null
+          updated_at: string | null
+          version: number | null
+        }
+        Insert: {
+          cafe_id: number
+          created_at?: string | null
+          created_by?: string | null
+          daily_target?: number | null
+          deleted_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          monthly_target?: number | null
+          notes?: string | null
+          target_date?: string | null
+          target_month?: number | null
+          target_year?: number | null
+          updated_at?: string | null
+          version?: number | null
+        }
+        Update: {
+          cafe_id?: number
+          created_at?: string | null
+          created_by?: string | null
+          daily_target?: number | null
+          deleted_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          monthly_target?: number | null
+          notes?: string | null
+          target_date?: string | null
+          target_month?: number | null
+          target_year?: number | null
+          updated_at?: string | null
+          version?: number | null
+        }
+        Relationships: [
           {
-            foreignKeyName: "push_subscriptions_user_id_fkey"
-            columns: ["user_id"]
+            foreignKeyName: "revenue_targets_cafe_id_fkey"
+            columns: ["cafe_id"]
             isOneToOne: false
-            referencedRelation: "users"
+            referencedRelation: "cafes"
             referencedColumns: ["id"]
           },
         ]
@@ -420,13 +698,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "stock_mutations_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "stock_mutations_menu_id_fkey"
             columns: ["menu_id"]
             isOneToOne: false
@@ -434,11 +705,25 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "stock_mutations_menu_id_fkey"
+            columns: ["menu_id"]
+            isOneToOne: false
+            referencedRelation: "v_products_with_variants"
+            referencedColumns: ["menu_id"]
+          },
+          {
             foreignKeyName: "stock_mutations_variant_id_fkey"
             columns: ["variant_id"]
             isOneToOne: false
             referencedRelation: "product_variants"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_mutations_variant_id_fkey"
+            columns: ["variant_id"]
+            isOneToOne: false
+            referencedRelation: "v_variant_details"
+            referencedColumns: ["variant_id"]
           },
         ]
       }
@@ -497,6 +782,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "transaction_items_menu_id_fkey"
+            columns: ["menu_id"]
+            isOneToOne: false
+            referencedRelation: "v_products_with_variants"
+            referencedColumns: ["menu_id"]
+          },
+          {
             foreignKeyName: "transaction_items_transaction_id_fkey"
             columns: ["transaction_id"]
             isOneToOne: false
@@ -510,6 +802,13 @@ export type Database = {
             referencedRelation: "product_variants"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "transaction_items_variant_id_fkey"
+            columns: ["variant_id"]
+            isOneToOne: false
+            referencedRelation: "v_variant_details"
+            referencedColumns: ["variant_id"]
+          },
         ]
       }
       transactions: {
@@ -520,6 +819,9 @@ export type Database = {
           created_at: string | null
           created_by: string | null
           deleted_at: string | null
+          discount_amount: number | null
+          discount_type: string | null
+          discount_value: number | null
           id: string
           order_note: string | null
           payment_amount: number
@@ -539,6 +841,9 @@ export type Database = {
           created_at?: string | null
           created_by?: string | null
           deleted_at?: string | null
+          discount_amount?: number | null
+          discount_type?: string | null
+          discount_value?: number | null
           id?: string
           order_note?: string | null
           payment_amount: number
@@ -558,6 +863,9 @@ export type Database = {
           created_at?: string | null
           created_by?: string | null
           deleted_at?: string | null
+          discount_amount?: number | null
+          discount_type?: string | null
+          discount_value?: number | null
           id?: string
           order_note?: string | null
           payment_amount?: number
@@ -576,13 +884,6 @@ export type Database = {
             columns: ["cafe_id"]
             isOneToOne: false
             referencedRelation: "cafes"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "transactions_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -616,7 +917,7 @@ export type Database = {
           is_active?: boolean | null
           is_approved?: boolean | null
           last_login?: string | null
-          role: Database["public"]["Enums"]["user_role"]
+          role?: Database["public"]["Enums"]["user_role"]
           trial_end_date?: string | null
           trial_ended_notified?: boolean | null
           trial_start_date?: string | null
@@ -648,20 +949,6 @@ export type Database = {
             columns: ["cafe_id"]
             isOneToOne: false
             referencedRelation: "cafes"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "user_profiles_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "user_profiles_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: true
-            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -696,6 +983,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "product_variants"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "variant_attribute_mappings_variant_id_fkey"
+            columns: ["variant_id"]
+            isOneToOne: false
+            referencedRelation: "v_variant_details"
+            referencedColumns: ["variant_id"]
           },
         ]
       }
@@ -814,11 +1108,14 @@ export type Database = {
           attributes: Json | null
           barcode: string | null
           effective_price: number | null
+          is_active: boolean | null
           menu_id: string | null
+          min_stock: number | null
           product_base_price: number | null
           product_name: string | null
           sku: string | null
           stock_quantity: number | null
+          track_stock: boolean | null
           variant_id: string | null
           variant_name: string | null
           variant_price: number | null
@@ -831,82 +1128,99 @@ export type Database = {
             referencedRelation: "menu"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "product_variants_menu_id_fkey"
+            columns: ["menu_id"]
+            isOneToOne: false
+            referencedRelation: "v_products_with_variants"
+            referencedColumns: ["menu_id"]
+          },
         ]
       }
     }
     Functions: {
-      generate_transaction_number: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
+      generate_transaction_number: { Args: never; Returns: string }
       get_cafe_settings: {
-        Args: {
-          p_cafe_id: number
-        }
+        Args: { p_cafe_id: number }
         Returns: {
-          name: string
-          tax_percent: number
-          service_percent: number
           currency: string
+          name: string
+          service_percent: number
+          tax_percent: number
         }[]
       }
-      get_current_user_cafe: {
-        Args: Record<PropertyKey, never>
-        Returns: number
-      }
+      get_current_user_cafe: { Args: never; Returns: number }
       get_current_user_role: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: Database["public"]["Enums"]["user_role"]
       }
+      get_dashboard_stats: {
+        Args: { p_cafe_id: number; p_date?: string }
+        Returns: {
+          low_stock_count: number
+          out_of_stock_count: number
+          today_avg_transaction: number
+          today_revenue: number
+          today_transactions: number
+        }[]
+      }
+      get_expense_summary: {
+        Args: { p_cafe_id: number; p_end_date: string; p_start_date: string }
+        Returns: {
+          category_id: string
+          category_name: string
+          total_amount: number
+          transaction_count: number
+        }[]
+      }
+      get_monthly_target: {
+        Args: { p_cafe_id: number; p_month: number; p_year: number }
+        Returns: number
+      }
+      get_profit_report: {
+        Args: { p_cafe_id: number; p_end_date: string; p_start_date: string }
+        Returns: {
+          gross_profit: number
+          profit_margin: number
+          total_cogs: number
+          total_revenue: number
+        }[]
+      }
+      get_total_expenses: {
+        Args: { p_cafe_id: number; p_end_date: string; p_start_date: string }
+        Returns: number
+      }
       get_user_cafe_ids: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           cafe_id: number
         }[]
       }
-      handle_stock_mutation: {
-        Args: Record<PropertyKey, never>
-        Returns: unknown
-      }
+      get_user_role: { Args: never; Returns: string }
       is_cafe_owner: {
-        Args: {
-          p_cafe_id: number
-          p_user_id: string
-        }
+        Args: { p_cafe_id: number; p_user_id: string }
         Returns: boolean
       }
       recalculate_transaction_total: {
-        Args: {
-          p_transaction_id: string
-        }
+        Args: { p_transaction_id: string }
         Returns: undefined
       }
       soft_delete: {
-        Args: {
-          table_name: string
-          row_id: string
-        }
+        Args: { row_id: string; table_name: string }
         Returns: boolean
       }
       soft_restore: {
-        Args: {
-          table_name: string
-          row_id: string
-        }
+        Args: { row_id: string; table_name: string }
         Returns: boolean
       }
-      trigger_set_updated_at_and_version: {
-        Args: Record<PropertyKey, never>
-        Returns: unknown
-      }
-      user_belongs_to_cafe: {
-        Args: {
-          cafe_id: number
-        }
-        Returns: boolean
-      }
+      user_belongs_to_cafe: { Args: { cafe_id: number }; Returns: boolean }
     }
     Enums: {
+      notification_type:
+        | "low_stock"
+        | "out_of_stock"
+        | "trial_expiring"
+        | "new_transaction"
       payment_method: "Tunai" | "QRIS" | "Debit" | "Transfer"
       stock_mutation_type: "in" | "out" | "adjustment" | "opname"
       user_role: "superadmin" | "admin" | "cashier"
@@ -917,27 +1231,33 @@ export type Database = {
   }
 }
 
-type PublicSchema = Database[Extract<keyof Database, "public">]
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
+
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
 
 export type Tables<
-  PublicTableNameOrOptions extends
-    | keyof (PublicSchema["Tables"] & PublicSchema["Views"])
-    | { schema: keyof Database },
-  TableName extends PublicTableNameOrOptions extends { schema: keyof Database }
-    ? keyof (Database[PublicTableNameOrOptions["schema"]]["Tables"] &
-        Database[PublicTableNameOrOptions["schema"]]["Views"])
+  DefaultSchemaTableNameOrOptions extends
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
     : never = never,
-> = PublicTableNameOrOptions extends { schema: keyof Database }
-  ? (Database[PublicTableNameOrOptions["schema"]]["Tables"] &
-      Database[PublicTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
       Row: infer R
     }
     ? R
     : never
-  : PublicTableNameOrOptions extends keyof (PublicSchema["Tables"] &
-        PublicSchema["Views"])
-    ? (PublicSchema["Tables"] &
-        PublicSchema["Views"])[PublicTableNameOrOptions] extends {
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
         Row: infer R
       }
       ? R
@@ -945,20 +1265,24 @@ export type Tables<
     : never
 
 export type TablesInsert<
-  PublicTableNameOrOptions extends
-    | keyof PublicSchema["Tables"]
-    | { schema: keyof Database },
-  TableName extends PublicTableNameOrOptions extends { schema: keyof Database }
-    ? keyof Database[PublicTableNameOrOptions["schema"]]["Tables"]
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
     : never = never,
-> = PublicTableNameOrOptions extends { schema: keyof Database }
-  ? Database[PublicTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
       Insert: infer I
     }
     ? I
     : never
-  : PublicTableNameOrOptions extends keyof PublicSchema["Tables"]
-    ? PublicSchema["Tables"][PublicTableNameOrOptions] extends {
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
         Insert: infer I
       }
       ? I
@@ -966,20 +1290,24 @@ export type TablesInsert<
     : never
 
 export type TablesUpdate<
-  PublicTableNameOrOptions extends
-    | keyof PublicSchema["Tables"]
-    | { schema: keyof Database },
-  TableName extends PublicTableNameOrOptions extends { schema: keyof Database }
-    ? keyof Database[PublicTableNameOrOptions["schema"]]["Tables"]
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
     : never = never,
-> = PublicTableNameOrOptions extends { schema: keyof Database }
-  ? Database[PublicTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
       Update: infer U
     }
     ? U
     : never
-  : PublicTableNameOrOptions extends keyof PublicSchema["Tables"]
-    ? PublicSchema["Tables"][PublicTableNameOrOptions] extends {
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
         Update: infer U
       }
       ? U
@@ -987,29 +1315,46 @@ export type TablesUpdate<
     : never
 
 export type Enums<
-  PublicEnumNameOrOptions extends
-    | keyof PublicSchema["Enums"]
-    | { schema: keyof Database },
-  EnumName extends PublicEnumNameOrOptions extends { schema: keyof Database }
-    ? keyof Database[PublicEnumNameOrOptions["schema"]]["Enums"]
+  DefaultSchemaEnumNameOrOptions extends
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
+  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
     : never = never,
-> = PublicEnumNameOrOptions extends { schema: keyof Database }
-  ? Database[PublicEnumNameOrOptions["schema"]]["Enums"][EnumName]
-  : PublicEnumNameOrOptions extends keyof PublicSchema["Enums"]
-    ? PublicSchema["Enums"][PublicEnumNameOrOptions]
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
     : never
 
 export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
-    | keyof PublicSchema["CompositeTypes"]
-    | { schema: keyof Database },
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof DatabaseWithoutInternals },
   CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
-    schema: keyof Database
+    schema: keyof DatabaseWithoutInternals
   }
-    ? keyof Database[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
     : never = never,
-> = PublicCompositeTypeNameOrOptions extends { schema: keyof Database }
-  ? Database[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
-  : PublicCompositeTypeNameOrOptions extends keyof PublicSchema["CompositeTypes"]
-    ? PublicSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
     : never
+
+export const Constants = {
+  public: {
+    Enums: {
+      notification_type: ["low_stock", "out_of_stock", "trial_expiring", "new_transaction"],
+      payment_method: ["Tunai", "QRIS", "Debit", "Transfer"],
+      stock_mutation_type: ["in", "out", "adjustment", "opname"],
+      user_role: ["superadmin", "admin", "cashier"],
+    },
+  },
+} as const

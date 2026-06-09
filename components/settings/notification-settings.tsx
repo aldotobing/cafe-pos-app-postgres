@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Bell, BellOff, Info, FlaskConical, Loader2 } from "lucide-react"
+import { Bell, BellOff, Info, Loader2 } from "lucide-react"
 import { motion } from "framer-motion"
 import { toast } from "sonner"
 import { PushNotificationService } from "@/lib/push-notification-service"
@@ -112,12 +112,8 @@ export function NotificationSettings({ localSettings, setLocalSettings, setSetti
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
             <h2 className="text-[15px] font-semibold leading-tight">Notifikasi Push</h2>
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 text-[10px] font-medium border border-amber-200 dark:bg-amber-900/25 dark:text-amber-400 dark:border-amber-700/30">
-              <FlaskConical className="h-3 w-3" />
-              Eksperimental
-            </span>
           </div>
-          <p className="text-xs text-muted-foreground mt-0.5">Terima notifikasi untuk transaksi baru</p>
+          <p className="text-xs text-muted-foreground mt-0.5">Terima notifikasi transaksi baru, stok menipis, & masa uji coba</p>
         </div>
         <button
           onClick={handlePushToggle}
@@ -145,7 +141,7 @@ export function NotificationSettings({ localSettings, setLocalSettings, setSetti
         <div className="flex gap-3 items-start p-3 rounded-lg bg-primary/5">
           <Info className="h-4 w-4 text-primary shrink-0 mt-0.5" />
           <p className="text-[11px] text-muted-foreground leading-relaxed">
-            Fitur ini masih dalam tahap pengembangan (eksperimental). Jika diaktifkan, perangkat ini akan menerima notifikasi setiap ada transaksi baru yang masuk. Hanya akun dengan peran <strong>Admin</strong> yang akan menerima notifikasi ini.
+            Jika diaktifkan, perangkat ini akan menerima push notification untuk transaksi baru, stok menipis/habis, dan pengingat masa uji coba. Hanya akun dengan peran <strong>Admin</strong> yang akan menerima notifikasi ini.
           </p>
         </div>
       </div>

@@ -2,6 +2,7 @@ import { getAuthenticatedUser } from "@/lib/auth-server";
 import { supabaseAdmin } from "@/lib/supabase-server";
 import { NextResponse } from "next/server";
 import { randomUUID } from "crypto";
+import { processPendingNotifications } from "@/lib/notifications-service";
 
 // POST /api/stock/restock
 export async function POST(request: Request) {
@@ -59,6 +60,8 @@ export async function POST(request: Request) {
         console.error('[Restock API] Failed to record mutation:', mutationErr);
         return NextResponse.json({ error: 'Gagal mencatat mutasi' }, { status: 500 });
       }
+
+      processPendingNotifications().catch(err => console.error('[Push] process error:', err))
 
       return NextResponse.json({
         success: true,
@@ -131,6 +134,8 @@ export async function POST(request: Request) {
       console.error('[Restock API] Failed to record mutation:', mutationErr);
       return NextResponse.json({ error: 'Gagal mencatat mutasi' }, { status: 500 });
     }
+
+    processPendingNotifications().catch(err => console.error('[Push] process error:', err))
 
     return NextResponse.json({
       success: true,

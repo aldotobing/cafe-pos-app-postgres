@@ -2,6 +2,7 @@ import { getAuthenticatedUser } from "@/lib/auth-server";
 import { supabaseAdmin } from "@/lib/supabase-server";
 import { NextResponse } from "next/server";
 import { randomUUID } from "crypto";
+import { processPendingNotifications } from "@/lib/notifications-service";
 
 // Increase max duration to 60 seconds to handle large stock opname operations
 export const maxDuration = 60;
@@ -151,6 +152,8 @@ export async function POST(request: Request) {
       }
     }
 
+
+    processPendingNotifications().catch(err => console.error('[Push] process error:', err))
 
     return NextResponse.json({
       success: true,

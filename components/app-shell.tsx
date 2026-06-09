@@ -10,10 +10,10 @@ import { useAuth } from "../lib/auth-context"
 import { Toaster } from "sonner"
 import { Clock } from "./clock"
 import { UserDropdown } from "./user-dropdown"
-import { useEffect, useMemo, useRef } from "react"
+import { useEffect, useRef } from "react"
 import { StatusIndicator, useStatusIndicator } from "./status-indicator"
 import { OptimizedThumbnail } from "./ui/optimized-image"
-import { NotificationBell, type Notification } from "./notifications/notification-bell"
+import { NotificationBell } from "./notifications/notification-bell"
 
 type LinkItem = {
   href: string;
@@ -88,84 +88,6 @@ export const AppShell = ({ children }: { children: React.ReactNode }) => {
 
   // Status indicator hook
   const { status } = useStatusIndicator();
-
-  // Build notifications from stock alerts + trial status
-  const notifications = useMemo(() => {
-    const items: Notification[] = []
-    const today = new Date()
-
-    menu.forEach(m => {
-      if (!m.trackStock) return
-      const name = m.name || 'Item'
-
-      if (m.hasVariants && m.productVariants?.length) {
-        m.productVariants.forEach((v: any) => {
-          if (v.deleted_at) return
-          const vName = v.variant_name || v.variantName || name
-          const stock = v.stock_quantity ?? 0
-          const min = v.min_stock ?? m.minStock ?? 5
-          if (stock === 0) {
-            items.push({
-              id: `out-${m.id}-${v.id}`,
-              type: 'out-of-stock',
-              title: `${vName} habis`,
-              description: `Stok habis, segera restok.`,
-              href: '/stock',
-              timestamp: 'Sekarang'
-            })
-          } else if (stock <= min) {
-            items.push({
-              id: `low-${m.id}-${v.id}`,
-              type: 'low-stock',
-              title: `${vName} hampir habis`,
-              description: `Sisa ${stock} dari minimal ${min}.`,
-              href: '/stock',
-              timestamp: 'Sekarang'
-            })
-          }
-        })
-      } else {
-        const stock = m.stockQuantity ?? 0
-        const min = m.minStock ?? 5
-        if (stock === 0) {
-          items.push({
-            id: `out-${m.id}`,
-            type: 'out-of-stock',
-            title: `${name} habis`,
-            description: `Stok habis, segera restok.`,
-            href: '/stock',
-            timestamp: 'Sekarang'
-          })
-        } else if (stock <= min) {
-          items.push({
-            id: `low-${m.id}`,
-            type: 'low-stock',
-            title: `${name} hampir habis`,
-            description: `Sisa ${stock} dari minimal ${min}.`,
-            href: '/stock',
-            timestamp: 'Sekarang'
-          })
-        }
-      }
-    })
-
-    if (userData?.trial_end_date && !isSuperadmin) {
-      const trialEnd = new Date(userData.trial_end_date)
-      const daysLeft = Math.ceil((trialEnd.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
-      if (daysLeft <= 7 && daysLeft > 0) {
-        items.push({
-          id: 'trial-expiring',
-          type: 'trial-expiring',
-          title: 'Masa uji coba akan berakhir',
-          description: `${daysLeft} hari tersisa. Upgrade untuk melanjutkan.`,
-          href: '/settings',
-          timestamp: today.toLocaleDateString('id-ID')
-        })
-      }
-    }
-
-    return items
-  }, [menu, userData, isSuperadmin])
 
   // Calculate low stock count for badge
   // Check both item level and variant level stock
@@ -275,7 +197,7 @@ export const AppShell = ({ children }: { children: React.ReactNode }) => {
               <div className="hidden sm:block">
                 <StatusIndicator status={status} pulse size="md" />
               </div>
-              <NotificationBell notifications={notifications} />
+              <NotificationBell cafeId={cafeId} />
               <div className="hidden lg:block ml-1">
                 <Clock />
               </div>

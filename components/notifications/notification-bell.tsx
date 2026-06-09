@@ -1,26 +1,97 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { Bell, Package, AlertTriangle, Clock, X } from 'lucide-react'
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { Bell, Package, AlertTriangle, Clock, ShoppingCart, X } from 'lucide-react'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { cn } from '@/lib/utils'
 import Link from 'next/link'
 
-export interface Notification {
+type NotifType = 'low_stock' | 'out_of_stock' | 'trial_expiring' | 'new_transaction'
+
+interface Notification {
   id: string
-  type: 'low-stock' | 'out-of-stock' | 'trial-expiring'
+  cafe_id: number
+  type: NotifType
   title: string
-  description: string
-  href?: string
-  timestamp: string
+  body: string
+  data: any
+  is_read: boolean
+  created_at: string
 }
 
-export function NotificationBell({ notifications = [] }: { notifications: Notification[] }) {
+const typeConfig: Record<NotifType, { icon: typeof Bell; color: string; link: (d: any) => string }> = {
+  new_transaction: {
+    icon: ShoppingCart,
+    color: 'text-blue-500 bg-blue-500/10',
+    link: () => `/transactions`
+  },
+  low_stock: {
+    icon: Package,
+    color: 'text-amber-500 bg-amber-500/10',
+    link: () => '/stock'
+  },
+  out_of_stock: {
+    icon: AlertTriangle,
+    color: 'text-red-500 bg-red-500/10',
+    link: () => '/stock'
+  },
+  trial_expiring: {
+    icon: Clock,
+    color: 'text-orange-500 bg-orange-500/10',
+    link: () => '/settings'
+  }
+}
+
+export function NotificationBell({ cafeId }: { cafeId?: number | null }) {
   const [open, setOpen] = useState(false)
-  const unread = notifications.length
+  const [notifications, setNotifications] = useState<Notification[]>([])
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  const fetchNotifications = useCallback(async () => {
+    if (!cafeId) return
+    try {
+      const res = await fetch('/api/notifications', { credentials: 'include' })
+      if (res.ok) {
+        const data = await res.json()
+        setNotifications(data.notifications || [])
+      }
+    } catch {}
+  }, [cafeId])
+
+  useEffect(() => {
+    fetchNotifications()
+
+    pollRef.current = setInterval(fetchNotifications, 15000)
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current)
+    }
+  }, [fetchNotifications])
+
+  // Also poll on visibility change
+  useEffect(() => {
+    const handler = () => {
+      if (document.visibilityState === 'visible') fetchNotifications()
+    }
+    document.addEventListener('visibilitychange', handler)
+    return () => document.removeEventListener('visibilitychange', handler)
+  }, [fetchNotifications])
+
+  const unread = notifications.filter(n => !n.is_read).length
+
+  const markAllRead = async () => {
+    if (!cafeId || unread === 0) return
+    setNotifications(prev => prev.map(n => ({ ...n, is_read: true })))
+    fetch('/api/notifications', { method: 'PATCH', credentials: 'include' }).catch(() => {})
+  }
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={(v) => {
+      setOpen(v)
+      if (v) {
+        fetchNotifications()
+        if (unread > 0) markAllRead()
+      }
+    }}>
       <PopoverTrigger asChild>
         <button
           className={cn(
@@ -44,7 +115,6 @@ export function NotificationBell({ notifications = [] }: { notifications: Notifi
         sideOffset={8}
         collisionPadding={12}
       >
-        {/* Mobile backdrop overlay */}
         {open && <MobileBackdrop onClose={() => setOpen(false)} />}
 
         <div className="flex items-center justify-between px-4 py-3 border-b">
@@ -66,7 +136,6 @@ export function NotificationBell({ notifications = [] }: { notifications: Notifi
         <div
           className="max-h-[60vh] sm:max-h-80 overflow-y-auto overscroll-contain"
           onWheel={(e) => e.stopPropagation()}
-          onTouchMove={(e) => e.stopPropagation()}
         >
           {notifications.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 px-4 text-muted-foreground">
@@ -84,11 +153,39 @@ export function NotificationBell({ notifications = [] }: { notifications: Notifi
   )
 }
 
+function NotificationItem({ notification, onClick }: { notification: Notification; onClick: () => void }) {
+  const config = typeConfig[notification.type] || typeConfig.low_stock
+  const Icon = config.icon
+  const href = config.link(notification.data)
+
+  const content = (
+    <div className="flex items-start gap-3 px-4 py-3.5 hover:bg-muted/50 transition-colors cursor-pointer active:bg-muted/70">
+      <div className={cn('w-9 h-9 sm:w-8 sm:h-8 rounded-md flex items-center justify-center shrink-0', config.color)}>
+        <Icon className="h-4 w-4" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className={cn('text-sm leading-tight', !notification.is_read && 'font-medium')}>
+          {notification.title}
+        </p>
+        <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{notification.body}</p>
+        <p className="text-[10px] text-muted-foreground/60 mt-1">
+          {new Date(notification.created_at).toLocaleString('id-ID')}
+        </p>
+      </div>
+    </div>
+  )
+
+  return (
+    <Link href={href} onClick={onClick} className="block">
+      {content}
+    </Link>
+  )
+}
+
 function MobileBackdrop({ onClose }: { onClose: () => void }) {
   useEffect(() => {
     const prev = document.body.style.overflow
     document.body.style.overflow = 'hidden'
-    document.body.style.touchAction = 'none'
 
     const handler = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose()
@@ -97,7 +194,6 @@ function MobileBackdrop({ onClose }: { onClose: () => void }) {
 
     return () => {
       document.body.style.overflow = prev
-      document.body.style.touchAction = ''
       document.removeEventListener('keydown', handler)
     }
   }, [onClose])
@@ -109,37 +205,4 @@ function MobileBackdrop({ onClose }: { onClose: () => void }) {
       aria-hidden
     />
   )
-}
-
-function NotificationItem({ notification, onClick }: { notification: Notification; onClick: () => void }) {
-  const Icon = notification.type === 'trial-expiring' ? Clock
-    : notification.type === 'out-of-stock' ? AlertTriangle
-    : Package
-
-  const iconColor = notification.type === 'trial-expiring' ? 'text-amber-500 bg-amber-500/10'
-    : notification.type === 'out-of-stock' ? 'text-red-500 bg-red-500/10'
-    : 'text-amber-500 bg-amber-500/10'
-
-  const content = (
-    <div className="flex items-start gap-3 px-4 py-3.5 hover:bg-muted/50 transition-colors cursor-pointer active:bg-muted/70">
-      <div className={cn('w-9 h-9 sm:w-8 sm:h-8 rounded-md flex items-center justify-center shrink-0', iconColor)}>
-        <Icon className="h-4 w-4" />
-      </div>
-      <div className="min-w-0 flex-1">
-        <p className="text-sm font-medium leading-tight">{notification.title}</p>
-        <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{notification.description}</p>
-        <p className="text-[10px] text-muted-foreground/60 mt-1">{notification.timestamp}</p>
-      </div>
-    </div>
-  )
-
-  if (notification.href) {
-    return (
-      <Link href={notification.href} onClick={onClick} className="block">
-        {content}
-      </Link>
-    )
-  }
-
-  return content
 }
