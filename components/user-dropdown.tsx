@@ -3,7 +3,8 @@
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
-import { User, LogOut, Settings, ChevronDown, Loader2, TriangleAlert } from 'lucide-react';
+import { User, LogOut, Settings, ChevronDown, Loader2, TriangleAlert, Sun, Moon } from 'lucide-react';
+import { useTheme } from 'next-themes';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface UserDropdownProps {
@@ -22,6 +23,11 @@ export function UserDropdown({ fullName, email, role, avatarUrl, onLogout, signi
   const [showLogoutConfirm, setShowLogoutConfirm] = React.useState(false);
   const [showReloadConfirm, setShowReloadConfirm] = React.useState(false);
   const dropdownRef = React.useRef<HTMLDivElement>(null);
+  const { theme, setTheme } = useTheme();
+
+  const toggleTheme = () => {
+    setTheme(theme === 'dark' ? 'light' : 'dark');
+  };
 
   const handleLogout = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -124,6 +130,17 @@ export function UserDropdown({ fullName, email, role, avatarUrl, onLogout, signi
               <Settings size={16} />
               <span>Pengaturan</span>
             </Link>
+
+            <button
+              className="w-full flex items-center gap-2 px-4 py-2 text-sm text-foreground hover:bg-accent transition-colors"
+              onClick={() => {
+                toggleTheme();
+                setIsOpen(false);
+              }}
+            >
+              {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
+              <span>{theme === 'dark' ? 'Mode Terang' : 'Mode Gelap'}</span>
+            </button>
 
             <div className="h-px bg-border mx-3 my-1" />
 
