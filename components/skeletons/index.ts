@@ -5,3 +5,4 @@ export { StockSkeleton } from './stock-skeleton';
 export { CategoriesSkeleton } from './categories-skeleton';
 export { ProfitSkeleton } from './profit-skeleton';
 export { POSSkeleton } from './pos-skeleton';
+export { ExpenseSkeleton } from './expense-skeleton';

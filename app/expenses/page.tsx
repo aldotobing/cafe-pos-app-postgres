@@ -1,29 +1,17 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { AppShell } from '@/components/app-shell';
 import { formatRupiah } from '@/lib/format';
 import { Expense, ExpenseCategory, ExpenseFormData } from '@/types/finance';
 import { apiFetcher } from '@/lib/swr-config';
+import { fetchClient, FetchError } from '@/lib/fetch-client';
+import { ExpenseSkeleton } from '@/components/skeletons';
 import {
-  Button,
-  Input,
-  Label,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-  Calendar,
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
+  Button, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Calendar, Popover, PopoverContent, PopoverTrigger,
+  Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
 } from '@/components/ui';
 import { format, parseISO } from 'date-fns';
 import { id } from 'date-fns/locale';
@@ -35,6 +23,47 @@ import useSWR from 'swr';
 
 const paymentMethods = ['Tunai', 'Transfer', 'QRIS', 'Debit'];
 
+function CategoryBreakdown({ expenses, categories, total }: { expenses: Expense[]; categories: ExpenseCategory[]; total: number }) {
+  const breakdown = useMemo(() => {
+    const map: Record<string, { name: string; color: string; amount: number }> = {}
+    expenses.forEach(e => {
+      const id = e.category_id || 'uncategorized'
+      if (!map[id]) {
+        const cat = categories.find(c => c.id === id)
+        map[id] = { name: cat?.name || 'Lainnya', color: cat?.color || '#6B7280', amount: 0 }
+      }
+      map[id].amount += e.amount
+    })
+    return Object.values(map).sort((a, b) => b.amount - a.amount)
+  }, [expenses, categories])
+
+  if (breakdown.length === 0) return null
+
+  return (
+    <div className="rounded-xl border bg-card shadow-sm p-4 md:p-5">
+      <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground/70 mb-4">Pengeluaran per Kategori</h3>
+      <div className="space-y-2.5">
+        {breakdown.map((item) => {
+          const pct = total > 0 ? Math.round((item.amount / total) * 100) : 0
+          return (
+            <div key={item.name} className="flex items-center gap-3">
+              <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
+              <span className="text-xs w-24 shrink-0 truncate">{item.name}</span>
+              <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
+                <div
+                  className="h-full rounded-full transition-all duration-500"
+                  style={{ width: `${Math.max(pct, 2)}%`, backgroundColor: item.color }}
+                />
+              </div>
+              <span className="text-xs font-medium tabular-nums w-20 text-right shrink-0">{formatRupiah(item.amount)}</span>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 export default function ExpensesPage() {
   const { userData } = useAuth();
   const cafeId = userData?.cafe_id;
@@ -42,34 +71,29 @@ export default function ExpensesPage() {
   const [startDate, setStartDate] = useState<Date>(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
   const [endDate, setEndDate] = useState<Date>(new Date());
   const [selectedCategory, setSelectedCategory] = useState<string>('');
-
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
   const [formData, setFormData] = useState<ExpenseFormData>({
-    category_id: '',
-    amount: 0,
-    description: '',
-    expense_date: format(new Date(), 'yyyy-MM-dd'),
-    receipt_number: '',
-    payment_method: 'Tunai'
+    category_id: '', amount: 0, description: '', expense_date: format(new Date(), 'yyyy-MM-dd'),
+    receipt_number: '', payment_method: 'Tunai'
   });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [expenseToDelete, setExpenseToDelete] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [amountDisplay, setAmountDisplay] = useState('');
 
   const { data: categoriesData, error: categoriesError } = useSWR<{ data: ExpenseCategory[] }>(
-    cafeId ? `/api/finance/categories?cafe_id=${cafeId}` : null,
-    apiFetcher,
-    { revalidateOnFocus: false }
+    cafeId ? `/api/finance/categories?cafe_id=${cafeId}` : null, apiFetcher, { revalidateOnFocus: false }
   );
 
   const { data: expensesData, error: expensesError, mutate, isValidating } = useSWR<{ data: Expense[], total: number, count: number }>(
     cafeId ? `/api/finance/expenses?cafe_id=${cafeId}&start_date=${format(startDate, 'yyyy-MM-dd')}&end_date=${format(endDate, 'yyyy-MM-dd')}${selectedCategory ? `&category_id=${selectedCategory}` : ''}` : null,
-    apiFetcher,
-    { revalidateOnFocus: false }
+    apiFetcher, { revalidateOnFocus: false }
   );
 
   const { data: summaryData } = useSWR<{ data: { totalRevenue: number } }>(
     cafeId ? `/api/finance/summary?cafe_id=${cafeId}&start_date=${format(startDate, 'yyyy-MM-dd')}&end_date=${format(endDate, 'yyyy-MM-dd')}` : null,
-    apiFetcher,
-    { revalidateOnFocus: false }
+    apiFetcher, { revalidateOnFocus: false }
   );
 
   const categories: ExpenseCategory[] = Array.isArray(categoriesData?.data) ? categoriesData.data : [];
@@ -78,98 +102,73 @@ export default function ExpensesPage() {
   const totalRevenue = summaryData?.data?.totalRevenue || 0;
   const netProfit = totalRevenue - totalExpenses;
   const profitMargin = totalRevenue > 0 ? Math.round((netProfit / totalRevenue) * 100) : 0;
+  const expenseCount = expensesData?.count || expenses.length;
 
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [expenseToDelete, setExpenseToDelete] = useState<string | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [amountDisplay, setAmountDisplay] = useState('');
-
-  const formatAmountInput = (value: string) => {
-    const cleanValue = value.replace(/[^\d]/g, '');
-    if (cleanValue === '') return '';
-    const number = parseInt(cleanValue);
-    return new Intl.NumberFormat('id-ID').format(number);
-  };
-
-  const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const inputValue = e.target.value;
-    const formattedValue = formatAmountInput(inputValue);
-    setAmountDisplay(formattedValue);
-    const cleanValue = inputValue.replace(/[^\d]/g, '');
-    const numericValue = cleanValue === '' ? 0 : parseInt(cleanValue);
-    setFormData({ ...formData, amount: numericValue });
-  };
+  const isLoading = !categoriesData && !categoriesError && !expensesData && !expensesError;
 
   useEffect(() => {
     if (editingExpense?.amount) {
       setAmountDisplay(new Intl.NumberFormat('id-ID').format(editingExpense.amount));
-    } else {
+    } else if (!editingExpense) {
       setAmountDisplay('');
     }
   }, [editingExpense, isDialogOpen]);
+
+  const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value.replace(/[^\d]/g, '');
+    const num = raw === '' ? 0 : parseInt(raw);
+    setAmountDisplay(raw === '' ? '' : new Intl.NumberFormat('id-ID').format(num));
+    setFormData(prev => ({ ...prev, amount: num }));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!cafeId) return;
     setIsSubmitting(true);
     try {
-      const url = editingExpense
-        ? `/api/finance/expenses/${editingExpense.id}`
-        : '/api/finance/expenses';
+      const url = editingExpense ? `/api/finance/expenses/${editingExpense.id}` : '/api/finance/expenses';
       const method = editingExpense ? 'PUT' : 'POST';
-      const response = await fetch(url, {
+      await fetchClient(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...formData, cafe_id: cafeId })
       });
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to save expense');
-      }
       toast.success(editingExpense ? 'Pengeluaran berhasil diperbarui' : 'Pengeluaran berhasil ditambahkan');
       setIsDialogOpen(false);
       resetForm();
       mutate();
     } catch (error: any) {
-      toast.error(error.message || 'Terjadi kesalahan');
+      const msg = error instanceof FetchError ? error.message : (error.message || 'Terjadi kesalahan');
+      toast.error(msg);
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleDelete = (id: string) => {
-    setExpenseToDelete(id);
-  };
+  const handleDelete = (id: string) => setExpenseToDelete(id);
 
   const confirmDelete = async () => {
     if (!expenseToDelete) return;
     setIsDeleting(true);
     try {
-      const response = await fetch(`/api/finance/expenses/${expenseToDelete}`, { method: 'DELETE' });
-      if (!response.ok) throw new Error('Failed to delete expense');
+      await fetchClient(`/api/finance/expenses/${expenseToDelete}`, { method: 'DELETE' });
       toast.success('Pengeluaran berhasil dihapus');
       mutate();
       setExpenseToDelete(null);
-    } catch {
-      toast.error('Gagal menghapus pengeluaran');
+    } catch (error: any) {
+      const msg = error instanceof FetchError ? error.message : 'Gagal menghapus pengeluaran';
+      toast.error(msg);
     } finally {
       setIsDeleting(false);
     }
   };
 
-  const cancelDelete = () => {
-    setExpenseToDelete(null);
-  };
-
   const handleEdit = (expense: Expense) => {
     setEditingExpense(expense);
     setFormData({
-      category_id: expense.category_id || '',
-      amount: expense.amount,
-      description: expense.description || '',
-      expense_date: expense.expense_date,
-      receipt_number: expense.receipt_number || '',
-      payment_method: expense.payment_method
+      category_id: expense.category_id || '', amount: expense.amount,
+      description: expense.description || '', expense_date: expense.expense_date,
+      receipt_number: expense.receipt_number || '', payment_method: expense.payment_method
     });
     setIsDialogOpen(true);
   };
@@ -177,52 +176,48 @@ export default function ExpensesPage() {
   const resetForm = () => {
     setEditingExpense(null);
     setFormData({
-      category_id: '',
-      amount: 0,
-      description: '',
-      expense_date: format(new Date(), 'yyyy-MM-dd'),
-      receipt_number: '',
-      payment_method: 'Tunai'
+      category_id: '', amount: 0, description: '',
+      expense_date: format(new Date(), 'yyyy-MM-dd'), receipt_number: '', payment_method: 'Tunai'
     });
   };
 
-  const getCategoryColor = (categoryId: string) => {
-    const category = categories?.find(c => c.id === categoryId);
-    return category?.color || '#6B7280';
-  };
+  const getCategoryColor = (categoryId: string) => categories?.find(c => c.id === categoryId)?.color || '#6B7280';
+  const getCategoryName = (categoryId: string) => categories?.find(c => c.id === categoryId)?.name || 'Uncategorized';
 
-  const getCategoryName = (categoryId: string) => {
-    const category = categories?.find(c => c.id === categoryId);
-    return category?.name || 'Uncategorized';
-  };
-
-  const expenseCount = expensesData?.count || expenses.length;
+  if (isLoading) return <ExpenseSkeleton />;
 
   return (
     <AppShell>
-      <div className="space-y-6 pb-16">
-
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6 mb-8">
-          <div className="space-y-1">
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Pengeluaran</h1>
+      <div className="space-y-5 md:space-y-6">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div>
+            <h1 className="text-xl font-semibold tracking-tight">Pengeluaran</h1>
             <p className="text-sm text-muted-foreground">Kelola pengeluaran operasional bisnis</p>
           </div>
           <button
             onClick={() => { resetForm(); setIsDialogOpen(true); }}
-            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 transition-all text-sm font-medium shadow-md shadow-primary/10 active:scale-95"
+            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 transition-all text-sm font-medium active:scale-95"
           >
             <Plus className="h-4 w-4" />
             <span>Tambah Pengeluaran</span>
           </button>
         </div>
 
+        {/* Error */}
+        {(categoriesError || expensesError) && (
+          <div className="rounded-xl border border-destructive/20 bg-destructive/10 p-4">
+            <p className="text-sm text-destructive">Gagal memuat data. Periksa koneksi Anda.</p>
+          </div>
+        )}
+
         {/* Filters */}
-        <div className="mb-6 rounded-xl sm:rounded-2xl border bg-card shadow-sm p-4 sm:p-5">
-          <div className="flex flex-col md:flex-row md:justify-between gap-3">
+        <div className="rounded-xl border bg-card shadow-sm p-4">
+          <div className="flex flex-col sm:flex-row gap-3">
             <div className="flex gap-2 items-center">
               <Popover>
                 <PopoverTrigger asChild>
-                  <Button variant="outline" className="flex-1 sm:w-[140px] justify-start h-9 rounded-lg">
+                  <Button variant="outline" className="w-[130px] justify-start h-9 rounded-lg text-sm">
                     <CalendarIcon className="w-4 h-4 mr-2 text-muted-foreground" />
                     {format(startDate, 'dd/MM/yyyy')}
                   </Button>
@@ -231,10 +226,10 @@ export default function ExpensesPage() {
                   <Calendar mode="single" selected={startDate} onSelect={(date) => date && setStartDate(date)} />
                 </PopoverContent>
               </Popover>
-              <span className="text-muted-foreground hidden sm:inline">-</span>
+              <span className="text-muted-foreground text-sm">-</span>
               <Popover>
                 <PopoverTrigger asChild>
-                  <Button variant="outline" className="flex-1 sm:w-[140px] justify-start h-9 rounded-lg">
+                  <Button variant="outline" className="w-[130px] justify-start h-9 rounded-lg text-sm">
                     <CalendarIcon className="w-4 h-4 mr-2 text-muted-foreground" />
                     {format(endDate, 'dd/MM/yyyy')}
                   </Button>
@@ -245,94 +240,92 @@ export default function ExpensesPage() {
               </Popover>
             </div>
 
-            <div className="flex gap-2">
-              <Select value={selectedCategory || 'all'} onValueChange={(value: string) => setSelectedCategory(value === 'all' ? '' : value)}>
-                <SelectTrigger className="flex-1 md:w-[180px] h-9 rounded-lg">
+            <div className="flex gap-2 ml-auto">
+              <Select value={selectedCategory || 'all'} onValueChange={(v) => setSelectedCategory(v === 'all' ? '' : v)}>
+                <SelectTrigger className="w-[160px] h-9 rounded-lg">
                   <SelectValue placeholder="Semua Kategori" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Semua Kategori</SelectItem>
                   {categories?.map(cat => (
-                    <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
+                    <SelectItem key={cat.id} value={cat.id}>
+                      <div className="flex items-center gap-2">
+                        <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: cat.color }} />
+                        {cat.name}
+                      </div>
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
               {selectedCategory && (
-                <Button variant="ghost" size="sm" className="h-9 px-2 rounded-lg" onClick={() => setSelectedCategory('')}>
+                <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg" onClick={() => setSelectedCategory('')}>
                   <X className="w-4 h-4" />
                 </Button>
               )}
-              <Button variant="outline" size="icon" className="h-9 w-9 flex-shrink-0 rounded-lg" onClick={() => mutate()} disabled={isValidating}>
+              <Button variant="outline" size="icon" className="h-9 w-9 rounded-lg" onClick={() => mutate()} disabled={isValidating}>
                 <RefreshCw className={cn("w-4 h-4", isValidating && "animate-spin")} />
               </Button>
             </div>
           </div>
         </div>
 
-        {/* Error Display */}
-        {(categoriesError || expensesError) && (
-          <div className="bg-destructive/10 border border-destructive/20 rounded-xl p-4 mb-6">
-            <p className="text-sm text-destructive">Gagal memuat data. Periksa koneksi Anda.</p>
-          </div>
-        )}
-
         {/* Summary Card */}
-        <div className="mb-6 rounded-xl sm:rounded-2xl p-4 sm:p-5 bg-card border shadow-sm">
+        <div className="rounded-xl border bg-card shadow-sm p-4 md:p-5">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground/70">Ringkasan Keuangan</h3>
             <span className="text-xs text-muted-foreground">
               {format(startDate, 'dd MMM')} - {format(endDate, 'dd MMM')}
             </span>
           </div>
-          <div className="grid grid-cols-2 md:flex md:items-center md:gap-3 gap-3">
-            <div className="min-w-0">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+            <div>
               <p className="text-xs text-muted-foreground font-medium mb-0.5">Pendapatan</p>
-              <p className="font-semibold text-foreground text-sm truncate">{formatRupiah(totalRevenue)}</p>
+              <p className="font-semibold text-sm md:text-base tabular-nums">{formatRupiah(totalRevenue)}</p>
             </div>
-            <div className="hidden md:block w-px h-8 bg-border/60" />
-            <div className="min-w-0">
+            <div>
               <p className="text-xs text-muted-foreground font-medium mb-0.5">Pengeluaran</p>
-              <p className="font-semibold text-foreground text-sm truncate">{formatRupiah(totalExpenses)}</p>
+              <p className="font-semibold text-sm md:text-base tabular-nums">{formatRupiah(totalExpenses)}</p>
             </div>
-            <div className="hidden md:block w-px h-8 bg-border/60" />
-            <div className="col-span-2 md:col-span-1 min-w-0">
+            <div>
               <p className="text-xs text-muted-foreground font-medium mb-0.5">Laba/Rugi</p>
-              <div className="flex items-center gap-2">
-                <p className={cn("font-bold text-sm truncate", netProfit >= 0 ? 'text-emerald-600' : 'text-red-600')}>
-                  {formatRupiah(netProfit)}
-                </p>
-                <span className={cn(
-                  "text-xs font-semibold px-1.5 py-0.5 rounded shrink-0",
-                  netProfit >= 0 ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300' : 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300'
-                )}>
-                  {netProfit >= 0 ? '+' : ''}{Math.abs(profitMargin)}%
-                </span>
-              </div>
+              <p className={cn("font-bold text-sm md:text-base tabular-nums", netProfit >= 0 ? 'text-emerald-600' : 'text-red-600')}>
+                {formatRupiah(netProfit)}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground font-medium mb-0.5">Margin</p>
+              <span className={cn(
+                "inline-flex text-xs font-semibold px-2 py-0.5 rounded",
+                netProfit >= 0 ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300' : 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300'
+              )}>
+                {netProfit >= 0 ? '+' : ''}{Math.abs(profitMargin)}%
+              </span>
             </div>
           </div>
         </div>
 
-        {/* Expenses List */}
-        <div className="space-y-4">
+        {/* Category Breakdown */}
+        <CategoryBreakdown expenses={expenses} categories={categories} total={totalExpenses} />
 
-          {/* Page Info Bar */}
-          <div className="text-[11px] text-muted-foreground/70 flex items-center justify-between px-1">
-            <span>{expenseCount} pengeluaran . {formatRupiah(totalExpenses)}</span>
+        {/* Expenses List */}
+        <div className="space-y-1">
+          <div className="text-xs text-muted-foreground/70 px-1 mb-2">
+            {expenseCount} pengeluaran · {formatRupiah(totalExpenses)}
           </div>
 
           {/* Desktop Table */}
-          <div className="hidden sm:block overflow-hidden rounded-xl sm:rounded-2xl border bg-card shadow-sm relative">
+          <div className="hidden sm:block overflow-hidden rounded-xl border bg-card shadow-sm relative">
             {isValidating && (
               <div className="absolute inset-0 bg-background/60 backdrop-blur-[1px] z-10 flex items-center justify-center">
                 <div className="flex items-center gap-2 bg-background border rounded-lg px-4 py-2 shadow-lg">
-                  <RefreshCw className="w-5 h-5 animate-spin text-primary" />
-                  <span className="text-sm font-medium">Memuat data...</span>
+                  <RefreshCw className="w-4 h-4 animate-spin text-primary" />
+                  <span className="text-sm font-medium">Memuat...</span>
                 </div>
               </div>
             )}
             {expenses.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
-                <Wallet className="h-16 w-16 text-muted-foreground/30 mb-4 mx-auto" />
+                <Wallet className="h-14 w-14 text-muted-foreground/20 mb-3" />
                 <h3 className="text-sm font-semibold mb-1">Belum ada pengeluaran</h3>
                 <p className="text-xs text-muted-foreground">Tambah pengeluaran pertama Anda</p>
               </div>
@@ -344,45 +337,31 @@ export default function ExpensesPage() {
                     <th className="text-left py-3 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider">Kategori</th>
                     <th className="text-left py-3 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider">Deskripsi</th>
                     <th className="text-right py-3 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider">Jumlah</th>
-                    <th className="text-left py-3 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider">Dibuat Oleh</th>
+                    <th className="text-left py-3 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider hidden lg:table-cell">Dibuat Oleh</th>
                     <th className="text-center py-3 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider w-24">Aksi</th>
                   </tr>
                 </thead>
                 <tbody>
                   {expenses.map((expense: Expense) => (
                     <tr key={expense.id} className="border-b border-border/50 hover:bg-muted/30 transition-colors">
-                      <td className="py-3.5 px-4 whitespace-nowrap">
+                      <td className="py-3 px-4 whitespace-nowrap">
                         <span className="font-medium">{format(parseISO(expense.expense_date), 'dd MMM yyyy', { locale: id })}</span>
                       </td>
-                      <td className="py-3.5 px-4">
-                        <div className="flex items-center gap-2.5">
-                          <div className="w-2.5 h-2.5 rounded-full ring-2 ring-white" style={{ backgroundColor: getCategoryColor(expense.category_id || '') }} />
+                      <td className="py-3 px-4">
+                        <div className="flex items-center gap-2">
+                          <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: getCategoryColor(expense.category_id || '') }} />
                           <span className="text-xs">{getCategoryName(expense.category_id || '')}</span>
                         </div>
                       </td>
-                      <td className="py-3.5 px-4 text-muted-foreground max-w-[120px] truncate">
-                        {expense.description || '-'}
-                      </td>
-                      <td className="py-3.5 px-4 text-right font-semibold tabular-nums">
-                        {formatRupiah(expense.amount)}
-                      </td>
-                      <td className="py-3.5 px-4 text-muted-foreground text-xs whitespace-nowrap">
-                        {expense.created_by_name || '-'}
-                      </td>
-                      <td className="py-3.5 px-4">
-                        <div className="flex items-center justify-center gap-0.5">
-                          <button
-                            onClick={() => handleEdit(expense)}
-                            className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-muted hover:text-foreground transition-all text-muted-foreground active:scale-90"
-                            title="Edit"
-                          >
+                      <td className="py-3 px-4 text-muted-foreground max-w-[140px] truncate">{expense.description || '-'}</td>
+                      <td className="py-3 px-4 text-right font-semibold tabular-nums">{formatRupiah(expense.amount)}</td>
+                      <td className="py-3 px-4 text-muted-foreground text-xs hidden lg:table-cell">{expense.created_by_name || '-'}</td>
+                      <td className="py-3 px-4">
+                        <div className="flex items-center justify-center gap-1">
+                          <button onClick={() => handleEdit(expense)} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-muted transition-all text-muted-foreground active:scale-90" title="Edit">
                             <Edit2 className="h-4 w-4" />
                           </button>
-                          <button
-                            onClick={() => handleDelete(expense.id)}
-                            className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-red-50 hover:text-red-600 transition-all text-muted-foreground active:scale-90"
-                            title="Hapus"
-                          >
+                          <button onClick={() => handleDelete(expense.id)} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-red-50 hover:text-red-600 transition-all text-muted-foreground active:scale-90" title="Hapus">
                             <Trash2 className="h-4 w-4" />
                           </button>
                         </div>
@@ -402,9 +381,9 @@ export default function ExpensesPage() {
                 <span className="text-sm font-medium ml-2 text-muted-foreground">Memuat data...</span>
               </div>
             )}
-            {expenses.length === 0 && !isValidating ? (
+            {!isValidating && expenses.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-16 px-4 text-center rounded-xl border bg-card">
-                <Wallet className="h-12 w-12 text-muted-foreground/30 mb-3 mx-auto" />
+                <Wallet className="h-12 w-12 text-muted-foreground/20 mb-3" />
                 <h3 className="text-sm font-semibold mb-1">Belum ada pengeluaran</h3>
                 <p className="text-xs text-muted-foreground">Tambah pengeluaran pertama Anda</p>
               </div>
@@ -416,11 +395,11 @@ export default function ExpensesPage() {
                     initial={{ opacity: 0, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -8 }}
-                    transition={{ duration: 0.2, ease: 'easeOut' }}
+                    transition={{ duration: 0.15 }}
                     className="rounded-xl border bg-card shadow-sm overflow-hidden"
                   >
                     <div className="flex items-center justify-between p-3 border-b border-border/30 bg-muted/20">
-                      <div className="flex items-center gap-2.5">
+                      <div className="flex items-center gap-2">
                         <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: getCategoryColor(expense.category_id || '') }} />
                         <span className="text-xs font-medium">{getCategoryName(expense.category_id || '')}</span>
                       </div>
@@ -428,27 +407,17 @@ export default function ExpensesPage() {
                     </div>
                     <div className="p-3 space-y-2">
                       <div className="flex items-center justify-between">
-                        <span className="text-xs text-muted-foreground">
-                          {format(parseISO(expense.expense_date), 'dd MMM yyyy', { locale: id })}
-                        </span>
+                        <span className="text-xs text-muted-foreground">{format(parseISO(expense.expense_date), 'dd MMM yyyy', { locale: id })}</span>
                         <span className="text-xs text-muted-foreground">{expense.payment_method}</span>
                       </div>
-                      {expense.description && (
-                        <p className="text-xs text-muted-foreground line-clamp-2">{expense.description}</p>
-                      )}
+                      {expense.description && <p className="text-xs text-muted-foreground line-clamp-2">{expense.description}</p>}
                       <div className="flex items-center justify-between pt-1 border-t border-border/30">
                         <span className="text-xs text-muted-foreground">{expense.created_by_name || '-'}</span>
-                        <div className="flex items-center gap-0.5">
-                          <button
-                            onClick={() => handleEdit(expense)}
-                            className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-muted hover:text-foreground transition-all text-muted-foreground active:scale-90"
-                          >
+                        <div className="flex items-center gap-1">
+                          <button onClick={() => handleEdit(expense)} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-muted transition-all text-muted-foreground active:scale-90">
                             <Edit2 className="h-4 w-4" />
                           </button>
-                          <button
-                            onClick={() => handleDelete(expense.id)}
-                            className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-red-50 hover:text-red-600 transition-all text-muted-foreground active:scale-90"
-                          >
+                          <button onClick={() => handleDelete(expense.id)} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-red-50 hover:text-red-600 transition-all text-muted-foreground active:scale-90">
                             <Trash2 className="h-4 w-4" />
                           </button>
                         </div>
@@ -466,44 +435,35 @@ export default function ExpensesPage() {
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="sm:max-w-[480px] max-w-[95vw] p-0 gap-0 overflow-hidden rounded-xl">
           <DialogHeader className="px-5 pt-5 pb-4 border-b border-border">
-            <DialogTitle className="text-lg font-semibold">
-              {editingExpense ? 'Edit Pengeluaran' : 'Tambah Pengeluaran'}
-            </DialogTitle>
+            <DialogTitle className="text-lg font-semibold">{editingExpense ? 'Edit Pengeluaran' : 'Tambah Pengeluaran'}</DialogTitle>
             <DialogDescription className="text-sm text-muted-foreground">
               {editingExpense ? 'Perbarui detail pengeluaran operasional' : 'Catat pengeluaran operasional baru'}
             </DialogDescription>
           </DialogHeader>
-
           <form onSubmit={handleSubmit}>
             <div className="px-5 py-4 space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <Label htmlFor="category" className="text-sm font-medium">Kategori <span className="text-destructive">*</span></Label>
-                  <Select value={formData.category_id} onValueChange={(value: string) => setFormData({ ...formData, category_id: value })}>
-                    <SelectTrigger className="h-10 rounded-lg">
-                      <SelectValue placeholder="Pilih kategori" />
-                    </SelectTrigger>
+                  <Label htmlFor="category" className="text-sm">Kategori <span className="text-destructive">*</span></Label>
+                  <Select value={formData.category_id} onValueChange={(v) => setFormData(prev => ({ ...prev, category_id: v }))}>
+                    <SelectTrigger className="h-10 rounded-lg"><SelectValue placeholder="Pilih kategori" /></SelectTrigger>
                     <SelectContent>
                       {categories?.map(cat => (
                         <SelectItem key={cat.id} value={cat.id}>
-                          <div className="flex items-center gap-2">
-                            <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: cat.color }} />
-                            {cat.name}
-                          </div>
+                          <div className="flex items-center gap-2"><div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: cat.color }} />{cat.name}</div>
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="amount" className="text-sm font-medium">Jumlah (Rp) <span className="text-destructive">*</span></Label>
-                  <Input id="amount" type="text" className="h-10 rounded-lg font-mono" value={amountDisplay} onChange={handleAmountChange} placeholder="0" required />
+                  <Label className="text-sm">Jumlah (Rp) <span className="text-destructive">*</span></Label>
+                  <Input className="h-10 rounded-lg font-mono" value={amountDisplay} onChange={handleAmountChange} placeholder="0" required />
                 </div>
               </div>
-
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <Label className="text-sm font-medium">Tanggal <span className="text-destructive">*</span></Label>
+                  <Label className="text-sm">Tanggal <span className="text-destructive">*</span></Label>
                   <Popover>
                     <PopoverTrigger asChild>
                       <Button variant="outline" className="w-full justify-start h-10 rounded-lg font-normal">
@@ -512,115 +472,59 @@ export default function ExpensesPage() {
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0 rounded-xl" align="start">
-                      <Calendar mode="single" selected={parseISO(formData.expense_date)} onSelect={(date) => date && setFormData({ ...formData, expense_date: format(date, 'yyyy-MM-dd') })} />
+                      <Calendar mode="single" selected={parseISO(formData.expense_date)} onSelect={(date) => date && setFormData(prev => ({ ...prev, expense_date: format(date, 'yyyy-MM-dd') }))} />
                     </PopoverContent>
                   </Popover>
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-sm font-medium">Metode Pembayaran</Label>
-                  <Select value={formData.payment_method} onValueChange={(value: any) => setFormData({ ...formData, payment_method: value })}>
-                    <SelectTrigger className="h-10 rounded-lg"><SelectValue placeholder="Pilih metode" /></SelectTrigger>
-                    <SelectContent>
-                      {paymentMethods.map(method => <SelectItem key={method} value={method}>{method}</SelectItem>)}
-                    </SelectContent>
+                  <Label className="text-sm">Metode Pembayaran</Label>
+                  <Select value={formData.payment_method} onValueChange={(v: any) => setFormData(prev => ({ ...prev, payment_method: v }))}>
+                    <SelectTrigger className="h-10 rounded-lg"><SelectValue /></SelectTrigger>
+                    <SelectContent>{paymentMethods.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}</SelectContent>
                   </Select>
                 </div>
               </div>
-
               <div className="space-y-1.5">
-                <Label htmlFor="description" className="text-sm font-medium">Deskripsi</Label>
-                <Input id="description" className="h-10 rounded-lg" value={formData.description} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, description: e.target.value })} placeholder="Keterangan pengeluaran" />
+                <Label className="text-sm">Deskripsi</Label>
+                <Input className="h-10 rounded-lg" value={formData.description} onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))} placeholder="Keterangan pengeluaran" />
               </div>
-
               <div className="space-y-1.5">
-                <Label htmlFor="receipt_number" className="text-sm font-medium">Nomor Nota</Label>
-                <Input id="receipt_number" className="h-10 rounded-lg font-mono" value={formData.receipt_number} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, receipt_number: e.target.value })} placeholder="Nomor nota/referensi" />
+                <Label className="text-sm">Nomor Nota</Label>
+                <Input className="h-10 rounded-lg font-mono" value={formData.receipt_number} onChange={(e) => setFormData(prev => ({ ...prev, receipt_number: e.target.value }))} placeholder="Nomor nota/referensi" />
               </div>
             </div>
-
-            <div className="flex items-center justify-end gap-2 px-5 py-3 border-t border-border bg-muted/30">
-              <button
-                type="button"
-                onClick={() => setIsDialogOpen(false)}
-                className="px-4 py-2 rounded-lg border bg-background hover:bg-muted transition text-sm"
-              >
-                Batal
-              </button>
-              <button
-                type="submit"
-                className="px-5 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition text-sm font-medium flex items-center gap-2 disabled:opacity-50"
-                disabled={isSubmitting}
-              >
-                {isSubmitting ? (
-                  <>
-                    <RefreshCw className="w-4 h-4 animate-spin" />
-                    <span>{editingExpense ? 'Menyimpan...' : 'Menambah...'}</span>
-                  </>
-                ) : (
-                  <span>{editingExpense ? 'Simpan Perubahan' : 'Tambah Pengeluaran'}</span>
-                )}
+            <div className="flex items-center justify-end gap-3 px-5 py-3 border-t border-border bg-muted/30">
+              <button type="button" onClick={() => setIsDialogOpen(false)} className="px-4 py-2 rounded-lg border bg-background hover:bg-muted transition text-sm">Batal</button>
+              <button type="submit" disabled={isSubmitting} className="px-5 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition text-sm font-medium flex items-center gap-2 disabled:opacity-50">
+                {isSubmitting ? <RefreshCw className="w-4 h-4 animate-spin" /> : null}
+                {isSubmitting ? 'Menyimpan...' : editingExpense ? 'Simpan Perubahan' : 'Tambah Pengeluaran'}
               </button>
             </div>
           </form>
         </DialogContent>
       </Dialog>
 
-      {/* Delete Confirmation Dialog */}
+      {/* Delete Confirmation */}
       <AnimatePresence>
         {expenseToDelete && (
           <>
-            <motion.div
-              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={cancelDelete}
-            />
-            <motion.div
-              className="fixed inset-0 z-50 flex items-center justify-center p-4"
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              transition={{ duration: 0.2 }}
-            >
+            <motion.div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setExpenseToDelete(null)} />
+            <motion.div className="fixed inset-0 z-50 flex items-center justify-center p-4" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}>
               <div className="w-full max-w-md bg-card border rounded-xl shadow-2xl overflow-hidden">
                 <div className="p-6">
                   <div className="flex items-start gap-4">
-                    <div className="p-2.5 rounded-full bg-red-500/10 flex-shrink-0">
-                      <Trash2 className="h-5 w-5 text-red-600" />
-                    </div>
-                    <div className="flex-1">
+                    <div className="p-2.5 rounded-full bg-red-500/10 flex-shrink-0"><Trash2 className="h-5 w-5 text-red-600" /></div>
+                    <div>
                       <h3 className="font-semibold text-lg mb-1">Hapus Pengeluaran?</h3>
-                      <p className="text-sm text-muted-foreground">
-                        Apakah Anda yakin ingin menghapus pengeluaran ini? Tindakan ini tidak dapat dibatalkan.
-                      </p>
+                      <p className="text-sm text-muted-foreground">Tindakan ini tidak dapat dibatalkan.</p>
                     </div>
                   </div>
                 </div>
-                <div className="flex gap-2 p-4 border-t bg-muted/20">
-                  <button
-                    onClick={cancelDelete}
-                    disabled={isDeleting}
-                    className="flex-1 px-4 py-2 rounded-lg border bg-background hover:bg-muted transition text-sm disabled:opacity-50"
-                  >
-                    Batal
-                  </button>
-                  <button
-                    onClick={confirmDelete}
-                    disabled={isDeleting}
-                    className="flex-1 px-4 py-2 rounded-lg bg-destructive text-destructive-foreground hover:bg-destructive/90 transition text-sm font-medium disabled:opacity-50 flex items-center justify-center gap-2"
-                  >
-                    {isDeleting ? (
-                      <>
-                        <RefreshCw className="h-4 w-4 animate-spin" />
-                        <span>Menghapus...</span>
-                      </>
-                    ) : (
-                      <>
-                        <Trash2 className="h-4 w-4" />
-                        <span>Hapus</span>
-                      </>
-                    )}
+                <div className="flex gap-3 p-4 border-t bg-muted/20">
+                  <button onClick={() => setExpenseToDelete(null)} disabled={isDeleting} className="flex-1 px-4 py-2 rounded-lg border bg-background hover:bg-muted transition text-sm disabled:opacity-50">Batal</button>
+                  <button onClick={confirmDelete} disabled={isDeleting} className="flex-1 px-4 py-2 rounded-lg bg-destructive text-destructive-foreground hover:bg-destructive/90 transition text-sm font-medium disabled:opacity-50 flex items-center justify-center gap-2">
+                    {isDeleting ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                    {isDeleting ? 'Menghapus...' : 'Hapus'}
                   </button>
                 </div>
               </div>
@@ -629,5 +533,5 @@ export default function ExpensesPage() {
         )}
       </AnimatePresence>
     </AppShell>
-  );
+  )
 }
