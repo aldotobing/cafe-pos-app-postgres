@@ -1,7 +1,7 @@
 import { getAuthenticatedUser } from "@/lib/auth-server";
 import { supabaseAdmin } from "@/lib/supabase-server";
 import { NextResponse } from "next/server";
-import { processPendingNotifications } from "@/lib/notifications-service";
+import { processPendingNotifications, checkTargetAchievement } from "@/lib/notifications-service";
 
 export async function GET(request: Request) {
   const user = await getAuthenticatedUser(request);
@@ -242,7 +242,12 @@ export async function POST(request: Request) {
       }
     }
 
-    processPendingNotifications().catch(err => console.error('[Push] process error:', err))
+    try {
+      await checkTargetAchievement(cafeId!)
+      await processPendingNotifications()
+    } catch (err) {
+      console.error('[Target] notification error:', err)
+    }
 
     return NextResponse.json({
       data: { ...transaction, transaction_items: transactionItems },

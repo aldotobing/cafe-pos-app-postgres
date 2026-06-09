@@ -2,6 +2,7 @@ import { getAuthenticatedUser } from '@/lib/auth-server';
 import { supabaseAdmin } from '@/lib/supabase-server';
 import { RevenueTargetFormData } from '@/types/finance';
 import { NextResponse } from 'next/server';
+import { checkTargetAchievement, processPendingNotifications } from '@/lib/notifications-service';
 
 // GET /api/finance/targets - Get revenue targets
 export async function GET(request: Request) {
@@ -122,6 +123,13 @@ export async function POST(request: Request) {
     if (result.error) {
       console.error('Error saving revenue target:', result.error);
       return NextResponse.json({ error: 'Failed to save target' }, { status: 500 });
+    }
+
+    try {
+      await checkTargetAchievement(cafe_id)
+      await processPendingNotifications()
+    } catch (err) {
+      console.error('[Target] notification error:', err)
     }
 
     return NextResponse.json({
