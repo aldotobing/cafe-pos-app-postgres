@@ -237,9 +237,17 @@ export default function ExpensesPage() {
 
   return (
     <AppShell>
-      <div className="space-y-5 md:space-y-6">
+      <motion.div
+        className="space-y-4 md:space-y-5"
+        initial="hidden"
+        animate="visible"
+        variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.06 } } }}
+      >
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <motion.div
+          variants={{ hidden: { opacity: 0, y: -8 }, visible: { opacity: 1, y: 0 } }}
+          className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"
+        >
           <div>
             <h1 className="text-xl font-semibold tracking-tight">Pengeluaran</h1>
             <p className="text-sm text-muted-foreground">Kelola pengeluaran operasional bisnis</p>
@@ -251,7 +259,7 @@ export default function ExpensesPage() {
             <Plus className="h-4 w-4" />
             <span>Tambah Pengeluaran</span>
           </button>
-        </div>
+        </motion.div>
 
         {/* Error */}
         {(categoriesError || expensesError) && (
@@ -261,76 +269,95 @@ export default function ExpensesPage() {
         )}
 
         {/* Filters */}
-        <div className="rounded-xl border bg-card shadow-sm p-4">
-          <div className="flex flex-col sm:flex-row gap-3">
-            <div className="flex gap-1.5 items-center">
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" className="w-[140px] justify-start h-9 rounded-lg text-sm font-normal">
-                    <CalendarIcon className="w-4 h-4 mr-2 text-muted-foreground" />
-                    {format(startDate, 'dd/MM/yyyy')}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0 rounded-xl" align="start">
-                  <Calendar mode="single" selected={startDate} onSelect={(date) => date && setStartDate(date)} />
-                </PopoverContent>
-              </Popover>
-              <span className="text-muted-foreground text-sm mx-1">—</span>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" className="w-[140px] justify-start h-9 rounded-lg text-sm font-normal">
-                    <CalendarIcon className="w-4 h-4 mr-2 text-muted-foreground" />
-                    {format(endDate, 'dd/MM/yyyy')}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0 rounded-xl" align="start">
-                  <Calendar mode="single" selected={endDate} onSelect={(date) => date && setEndDate(date)} />
-                </PopoverContent>
-              </Popover>
-              <Button
-                variant="ghost" size="icon" className="h-9 w-9 rounded-lg"
-                onClick={() => {
-                  setStartDate(new Date(new Date().getFullYear(), new Date().getMonth(), 1))
-                  setEndDate(new Date())
-                  setSelectedCategory('')
-                }}
-                title="Reset filter"
-              >
-                <RotateCcw className="w-4 h-4" />
-              </Button>
+        <motion.div
+          variants={{ hidden: { opacity: 0, y: 4 }, visible: { opacity: 1, y: 0 } }}
+          className="rounded-xl border bg-card shadow-sm p-4"
+        >
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Periode */}
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[10px] font-bold uppercase text-muted-foreground px-1">Periode</label>
+              <div className="flex gap-2 items-center">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className="flex-1 justify-start h-9 rounded-lg text-sm font-normal">
+                      <CalendarIcon className="w-4 h-4 mr-1.5 text-muted-foreground shrink-0" />
+                      {format(startDate, 'dd/MM/yyyy')}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0 rounded-xl" align="start">
+                    <Calendar mode="single" selected={startDate} onSelect={(date) => date && setStartDate(date)} />
+                  </PopoverContent>
+                </Popover>
+                <span className="text-muted-foreground text-sm">—</span>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className="flex-1 justify-start h-9 rounded-lg text-sm font-normal">
+                      <CalendarIcon className="w-4 h-4 mr-1.5 text-muted-foreground shrink-0" />
+                      {format(endDate, 'dd/MM/yyyy')}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0 rounded-xl" align="start">
+                    <Calendar mode="single" selected={endDate} onSelect={(date) => date && setEndDate(date)} />
+                  </PopoverContent>
+                </Popover>
+              </div>
             </div>
 
-            <div className="flex gap-2 sm:ml-auto">
-              <Select value={selectedCategory || 'all'} onValueChange={(v) => setSelectedCategory(v === 'all' ? '' : v)}>
-                <SelectTrigger className="w-[160px] h-9 rounded-lg">
-                  <SelectValue placeholder="Semua Kategori" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Semua Kategori</SelectItem>
-                  {categories?.map(cat => (
-                    <SelectItem key={cat.id} value={cat.id}>
-                      <div className="flex items-center gap-2">
-                        <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: cat.color }} />
-                        {cat.name}
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {selectedCategory && (
-                <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg" onClick={() => setSelectedCategory('')}>
-                  <X className="w-4 h-4" />
+            {/* Kategori */}
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[10px] font-bold uppercase text-muted-foreground px-1">Kategori</label>
+              <div className="flex gap-2">
+                <Select value={selectedCategory || 'all'} onValueChange={(v) => setSelectedCategory(v === 'all' ? '' : v)}>
+                  <SelectTrigger className="flex-1 h-9 rounded-lg">
+                    <SelectValue placeholder="Semua Kategori" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Semua Kategori</SelectItem>
+                    {categories?.map(cat => (
+                      <SelectItem key={cat.id} value={cat.id}>
+                        <div className="flex items-center gap-2">
+                          <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: cat.color }} />
+                          {cat.name}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {selectedCategory && (
+                  <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg shrink-0" onClick={() => setSelectedCategory('')}>
+                    <X className="w-4 h-4" />
+                  </Button>
+                )}
+                <Button variant="outline" size="icon" className="h-9 w-9 rounded-lg shrink-0" onClick={() => mutate()} disabled={isValidating}>
+                  <RefreshCw className={cn("w-4 h-4", isValidating && "animate-spin")} />
                 </Button>
-              )}
-              <Button variant="outline" size="icon" className="h-9 w-9 rounded-lg" onClick={() => mutate()} disabled={isValidating}>
-                <RefreshCw className={cn("w-4 h-4", isValidating && "animate-spin")} />
-              </Button>
+              </div>
             </div>
           </div>
-        </div>
+
+          {/* Reset */}
+          <div className="flex items-center gap-2 pt-3 mt-3 border-t border-dashed">
+            <Button
+              variant="ghost"
+              className="flex-1 sm:flex-none px-4 h-9 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground"
+              onClick={() => {
+                setStartDate(new Date(new Date().getFullYear(), new Date().getMonth(), 1))
+                setEndDate(new Date())
+                setSelectedCategory('')
+              }}
+            >
+              <RotateCcw className="w-3.5 h-3.5 mr-1.5" />
+              Reset Filter
+            </Button>
+          </div>
+        </motion.div>
 
         {/* Summary Card */}
-        <div className="rounded-xl border bg-card shadow-sm p-4 md:p-5">
+        <motion.div
+          variants={{ hidden: { opacity: 0, y: 4 }, visible: { opacity: 1, y: 0 } }}
+          className="rounded-xl border bg-card shadow-sm p-4 md:p-5"
+        >
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground/70">Ringkasan Keuangan</h3>
             <span className="text-xs text-muted-foreground">
@@ -362,10 +389,13 @@ export default function ExpensesPage() {
               </span>
             </div>
           </div>
-        </div>
+        </motion.div>
 
         {/* Target Revenue */}
-        <div className="rounded-xl border bg-card shadow-sm p-4 md:p-5">
+        <motion.div
+          variants={{ hidden: { opacity: 0, y: 4 }, visible: { opacity: 1, y: 0 } }}
+          className="rounded-xl border bg-card shadow-sm p-4 md:p-5"
+        >
           <div className="flex items-center justify-between mb-3">
             <div>
               <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground/70">Target Pendapatan</h3>
@@ -414,7 +444,7 @@ export default function ExpensesPage() {
               {isAdmin ? 'Atur target untuk mulai melacak pencapaian.' : 'Belum ada target untuk bulan ini.'}
             </div>
           )}
-        </div>
+        </motion.div>
 
         {/* Target Dialog */}
         <Dialog open={isEditingTarget} onOpenChange={setIsEditingTarget}>
@@ -459,9 +489,12 @@ export default function ExpensesPage() {
         </Dialog>
 
         {/* Category Breakdown */}
-        <CategoryBreakdown expenses={expenses} categories={categories} total={totalExpenses} />
+        <motion.div variants={{ hidden: { opacity: 0, y: 4 }, visible: { opacity: 1, y: 0 } }}>
+          <CategoryBreakdown expenses={expenses} categories={categories} total={totalExpenses} />
+        </motion.div>
 
         {/* Expenses List */}
+        <motion.div variants={{ hidden: { opacity: 0, y: 4 }, visible: { opacity: 1, y: 0 } }}>
         <div className="space-y-1">
           <div className="text-xs text-muted-foreground/70 px-1 mb-2">
             {expenseCount} pengeluaran · {formatRupiah(totalExpenses)}
@@ -583,7 +616,7 @@ export default function ExpensesPage() {
             )}
           </div>
         </div>
-      </div>
+        </motion.div>
 
       {/* Add/Edit Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -683,9 +716,10 @@ export default function ExpensesPage() {
                 </div>
               </div>
             </motion.div>
-          </>
+              </>
         )}
       </AnimatePresence>
+      </motion.div>
     </AppShell>
   )
 }
