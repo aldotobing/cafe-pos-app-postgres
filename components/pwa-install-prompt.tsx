@@ -5,98 +5,92 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
 
 const STORAGE_KEY = 'pwa-install-dismissed-at';
-const DISMISS_DURATION = 30 * 24 * 60 * 60 * 1000; // 30 days
+const DISMISS_DURATION = 30 * 24 * 60 * 60 * 1000;
 
 const PWAInstallPrompt = () => {
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [isVisible, setIsVisible] = useState(false);
   const showTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const hasHandledRef = useRef(false);
+  const deferredPromptRef = useRef<any>(null);
 
   useEffect(() => {
     const checkDismissed = () => {
       const dismissedAt = localStorage.getItem(STORAGE_KEY);
       if (dismissedAt) {
-        const elapsed = Date.now() - parseInt(dismissedAt, 10);
-        return elapsed < DISMISS_DURATION;
+        return Date.now() - parseInt(dismissedAt, 10) < DISMISS_DURATION;
       }
       return false;
     };
 
-    // Don't show if recently dismissed
-    if (checkDismissed()) {
-      return;
-    }
+    if (checkDismissed()) return;
 
-    // Check if already installed
     if (window.matchMedia('(display-mode: standalone)').matches ||
         // @ts-ignore
         navigator.standalone) {
       return;
     }
 
-    const handleBeforeInstallPrompt = (e: Event) => {
-      // Prevent multiple handlers from triggering
-      if (hasHandledRef.current) return;
-      hasHandledRef.current = true;
+    const handleAppInstalled = () => {
+      localStorage.setItem(STORAGE_KEY, Date.now().toString());
+      setDeferredPrompt(null);
+      deferredPromptRef.current = null;
+      setIsVisible(false);
+    };
 
+    const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();
       setDeferredPrompt(e);
-      
-      // Clear any existing timeout
-      if (showTimeoutRef.current) {
-        clearTimeout(showTimeoutRef.current);
-      }
+      deferredPromptRef.current = e;
 
-      // Wait 3 seconds before showing
+      if (showTimeoutRef.current) clearTimeout(showTimeoutRef.current);
+
       showTimeoutRef.current = setTimeout(() => {
-        // Check again if dismissed before showing
-        if (checkDismissed()) {
-          return;
-        }
+        if (checkDismissed()) return;
         setIsVisible(true);
       }, 3000);
     };
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    window.addEventListener('appinstalled', handleAppInstalled);
 
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-      // Cleanup timeout on unmount
-      if (showTimeoutRef.current) {
-        clearTimeout(showTimeoutRef.current);
-      }
+      window.removeEventListener('appinstalled', handleAppInstalled);
+      if (showTimeoutRef.current) clearTimeout(showTimeoutRef.current);
     };
   }, []);
 
   const handleInstallClick = () => {
-    if (deferredPrompt) {
-      deferredPrompt.prompt();
-      deferredPrompt.userChoice.then((choiceResult: any) => {
+    const prompt = deferredPrompt || deferredPromptRef.current;
+    if (!prompt) return;
+
+    try {
+      prompt.prompt();
+      prompt.userChoice.then((choiceResult: any) => {
         setDeferredPrompt(null);
+        deferredPromptRef.current = null;
         setIsVisible(false);
-        hasHandledRef.current = false; // Reset for potential reinstall
         if (choiceResult.outcome === 'accepted') {
           localStorage.setItem(STORAGE_KEY, Date.now().toString());
         }
-      });
+      }).catch(() => {});
+    } catch (err) {
+      setDeferredPrompt(null);
+      deferredPromptRef.current = null;
+      setIsVisible(false);
     }
   };
 
   const handleDismiss = () => {
-    // Clear pending timeout
     if (showTimeoutRef.current) {
       clearTimeout(showTimeoutRef.current);
       showTimeoutRef.current = null;
     }
-    
-    // Store dismissal timestamp
     localStorage.setItem(STORAGE_KEY, Date.now().toString());
     setIsVisible(false);
-    hasHandledRef.current = false; // Allow future events to trigger
   };
 
-  if (!isVisible || !deferredPrompt) return null;
+  if (!isVisible || (!deferredPrompt && !deferredPromptRef.current)) return null;
 
   return (
     <AnimatePresence>
