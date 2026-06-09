@@ -77,6 +77,7 @@ export default function ExpensesPage() {
   const [isEditingTarget, setIsEditingTarget] = useState(false);
   const [targetInput, setTargetInput] = useState('');
   const [isSavingTarget, setIsSavingTarget] = useState(false);
+  const [shouldCopyTarget, setShouldCopyTarget] = useState(false);
   const [formData, setFormData] = useState<ExpenseFormData>({
     category_id: '', amount: 0, description: '', expense_date: format(new Date(), 'yyyy-MM-dd'),
     receipt_number: '', payment_method: 'Tunai'
@@ -146,8 +147,19 @@ export default function ExpensesPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ cafe_id: cafeId, target_month: currentMonth, target_year: currentYear, monthly_target: target }),
       });
-      toast.success('Target berhasil disimpan');
+
+      if (shouldCopyTarget) {
+        const nextMonth = new Date(startDate.getFullYear(), startDate.getMonth() + 1, 1)
+        await fetchClient('/api/finance/targets', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ cafe_id: cafeId, target_month: nextMonth.getMonth() + 1, target_year: nextMonth.getFullYear(), monthly_target: target }),
+        })
+        toast.success(`Target disalin ke ${format(nextMonth, 'MMMM yyyy', { locale: id })}`)
+      }
+
       setIsEditingTarget(false);
+      setShouldCopyTarget(false);
       mutateTargets();
       mutateSummary();
       mutate();
@@ -359,43 +371,21 @@ export default function ExpensesPage() {
               <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground/70">Target Pendapatan</h3>
               <p className="text-xs text-muted-foreground mt-0.5">{format(startDate, 'MMMM yyyy', { locale: id })}</p>
             </div>
-            {isAdmin && !isEditingTarget && (
+            {isAdmin && (
               <button
                 onClick={() => {
                   setTargetInput(targetsData?.data?.[0]?.monthly_target ? new Intl.NumberFormat('id-ID').format(targetsData.data[0].monthly_target) : '')
                   setIsEditingTarget(true)
                 }}
-                className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
               >
-                {targetRevenue > 0 ? 'Ubah Target' : 'Atur Target'}
+                <Plus className="h-3 w-3" />
+                {targetRevenue > 0 ? 'Ubah' : 'Atur Target'}
               </button>
             )}
           </div>
 
-          {isEditingTarget ? (
-            <div className="flex items-center gap-3">
-              <div className="flex-1">
-                <Label className="text-xs text-muted-foreground mb-1 block">Target Bulanan</Label>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-muted-foreground">Rp</span>
-                  <Input
-                    className="h-10 rounded-lg font-mono text-base"
-                    value={targetInput}
-                    onChange={(e) => {
-                      const raw = e.target.value.replace(/[^\d]/g, '');
-                      setTargetInput(raw === '' ? '' : new Intl.NumberFormat('id-ID').format(parseInt(raw)));
-                    }}
-                    placeholder="0"
-                    autoFocus
-                  />
-                </div>
-              </div>
-              <button onClick={handleSaveTarget} disabled={isSavingTarget} className="px-4 py-2 mt-5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 disabled:opacity-50">
-                {isSavingTarget ? '...' : 'Simpan'}
-              </button>
-              <button onClick={() => setIsEditingTarget(false)} className="px-3 py-2 mt-5 rounded-lg text-sm text-muted-foreground hover:text-foreground">Batal</button>
-            </div>
-          ) : targetRevenue > 0 ? (
+          {targetRevenue > 0 ? (
             <div className="space-y-3">
               <div className="flex items-end justify-between">
                 <div>
@@ -416,25 +406,57 @@ export default function ExpensesPage() {
               <p className="text-xs text-muted-foreground">
                 {targetAchievement >= 100
                   ? 'Target tercapai! 🎉'
-                  : `Kurang ${formatRupiah(Math.abs(targetGap))} lagi untuk mencapai target`}
+                  : `Kurang ${formatRupiah(Math.abs(targetGap))} lagi`}
               </p>
             </div>
           ) : (
-            <div className="py-4 text-center">
-              <p className="text-sm text-muted-foreground">
-                {isAdmin ? 'Belum ada target untuk bulan ini.' : 'Belum ada target untuk bulan ini.'}
-              </p>
-              {isAdmin && (
-                <button
-                  onClick={() => { setTargetInput(''); setIsEditingTarget(true); }}
-                  className="mt-2 text-sm text-primary hover:underline"
-                >
-                  Atur target sekarang
-                </button>
-              )}
+            <div className="py-4 text-center text-sm text-muted-foreground">
+              {isAdmin ? 'Atur target untuk mulai melacak pencapaian.' : 'Belum ada target untuk bulan ini.'}
             </div>
           )}
         </div>
+
+        {/* Target Dialog */}
+        <Dialog open={isEditingTarget} onOpenChange={setIsEditingTarget}>
+          <DialogContent className="sm:max-w-[400px] p-0 gap-0 overflow-hidden rounded-xl">
+            <DialogHeader className="px-5 pt-5 pb-4 border-b border-border">
+              <DialogTitle className="text-lg font-semibold">Target Pendapatan</DialogTitle>
+              <DialogDescription className="text-sm text-muted-foreground">
+                {format(startDate, 'MMMM yyyy', { locale: id })}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="px-5 py-4 space-y-4">
+              <div className="space-y-1.5">
+                <Label className="text-sm">Target Bulanan (Rp)</Label>
+                <Input
+                  className="h-10 rounded-lg font-mono text-base"
+                  value={targetInput}
+                  onChange={(e) => {
+                    const raw = e.target.value.replace(/[^\d]/g, '');
+                    setTargetInput(raw === '' ? '' : new Intl.NumberFormat('id-ID').format(parseInt(raw)));
+                  }}
+                  placeholder="0"
+                  autoFocus
+                />
+              </div>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={shouldCopyTarget}
+                  onChange={(e) => setShouldCopyTarget(e.target.checked)}
+                  className="rounded border-border h-4 w-4"
+                />
+                <span className="text-xs">Salin juga ke {format(new Date(startDate.getFullYear(), startDate.getMonth() + 1, 1), 'MMMM yyyy', { locale: id })}</span>
+              </label>
+            </div>
+            <div className="flex items-center justify-end gap-3 px-5 py-3 border-t border-border bg-muted/30">
+              <button onClick={() => setIsEditingTarget(false)} className="px-4 py-2 rounded-lg border bg-background hover:bg-muted transition text-sm">Batal</button>
+              <button onClick={handleSaveTarget} disabled={isSavingTarget} className="px-5 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition text-sm font-medium disabled:opacity-50">
+                {isSavingTarget ? 'Menyimpan...' : 'Simpan'}
+              </button>
+            </div>
+          </DialogContent>
+        </Dialog>
 
         {/* Category Breakdown */}
         <CategoryBreakdown expenses={expenses} categories={categories} total={totalExpenses} />
