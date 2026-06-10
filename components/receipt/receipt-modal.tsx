@@ -1,11 +1,13 @@
 "use client"
 
+import { useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
+import { motion, AnimatePresence } from "framer-motion"
 import { useCafeSettings } from "@/hooks/use-cafe-data"
 import { formatRupiah, formatTanggal } from "@/lib/format"
 import { useAuth } from "@/lib/auth-context"
 import type { Transaction, TransactionItem } from "@/types"
-import { X, ArrowUpRight, BadgePercent } from "lucide-react"
+import { X, CheckCircle2, Printer } from "lucide-react"
 
 interface ReceiptModalProps {
   transaction: Transaction | null
@@ -13,12 +15,38 @@ interface ReceiptModalProps {
   onClose: () => void
 }
 
+const backdropVariants = {
+  hidden: { opacity: 0 },
+  visible: { opacity: 1 },
+}
+
+const modalVariants = {
+  hidden: { opacity: 0, scale: 0.92, y: 24 },
+  visible: {
+    opacity: 1,
+    scale: 1,
+    y: 0,
+    transition: { type: "spring", damping: 24, stiffness: 260, mass: 0.9 },
+  },
+  exit: { opacity: 0, scale: 0.95, y: 12, transition: { duration: 0.18 } },
+}
+
 export function ReceiptModal({ transaction, isOpen, onClose }: ReceiptModalProps) {
   const { userData } = useAuth()
   const cafeId = userData?.cafe_id
   const { settings } = useCafeSettings(cafeId)
-
   const router = useRouter()
+  const closeRef = useRef(onClose)
+  closeRef.current = onClose
+
+  useEffect(() => {
+    if (!isOpen) return
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") closeRef.current()
+    }
+    document.addEventListener("keydown", handler)
+    return () => document.removeEventListener("keydown", handler)
+  }, [isOpen])
 
   const handleViewFullReceipt = () => {
     if (!transaction) return
@@ -30,29 +58,61 @@ export function ReceiptModal({ transaction, isOpen, onClose }: ReceiptModalProps
     ? transaction.cashier_name.split(" ")[0]
     : "Kasir"
 
-  if (!isOpen || !transaction) return null
-
   const tx = transaction
   const items: TransactionItem[] = tx.items || (tx as any).transaction_items || []
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="bg-card rounded-2xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-auto border border-border">
-        {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b bg-muted/30 rounded-t-2xl">
-          <h2 className="font-semibold text-base text-foreground">Struk Transaksi</h2>
-          <button
+    <AnimatePresence>
+      {isOpen && tx && (
+        <motion.div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          variants={backdropVariants}
+          initial="hidden"
+          animate="visible"
+          exit="hidden"
+        >
+          <div
+            className="absolute inset-0 bg-black/60 backdrop-blur-[2px]"
             onClick={onClose}
-            className="p-2 hover:bg-accent rounded-lg transition"
+          />
+          <motion.div
+            className="relative bg-card rounded-2xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-hidden border border-border/60 flex flex-col"
+            variants={modalVariants}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
           >
-            <X className="h-5 w-5 text-muted-foreground" />
-          </button>
-        </div>
+            {/* Header */}
+            <div className="shrink-0 flex items-center justify-between px-5 py-4 border-b border-border/40 bg-gradient-to-b from-emerald-50/60 to-transparent dark:from-emerald-950/20 dark:to-transparent">
+              <div className="flex items-center gap-2.5">
+                <motion.div
+                  initial={{ scale: 0, rotate: -45 }}
+                  animate={{ scale: 1, rotate: 0 }}
+                  transition={{ type: "spring", damping: 14, stiffness: 220, delay: 0.1 }}
+                >
+                  <CheckCircle2 className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+                </motion.div>
+                <div>
+                  <h2 className="font-semibold text-base text-foreground leading-tight">
+                    Transaksi Berhasil
+                  </h2>
+                  <p className="text-xs text-muted-foreground">
+                    {tx.transactionNumber || tx.transaction_number || tx.id?.slice(0, 10)}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={onClose}
+                className="p-2 -mr-1 hover:bg-muted/70 rounded-xl transition-colors text-muted-foreground hover:text-foreground"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
 
-        {/* Receipt Content */}
-        <div className="p-6 bg-muted/20">
-          <div className="receipt-wrapper">
-            <div className="receipt" style={{ width: "48mm", margin: "0 auto", padding: "2mm", background: "white", color: "black", fontSize: "10px", lineHeight: "1.3", borderRadius: "8px", boxShadow: "0 2px 8px rgba(0,0,0,0.1)" }}>
+            {/* Receipt Content */}
+            <div className="flex-1 overflow-y-auto p-5 bg-muted/15">
+              <div className="receipt-wrapper">
+                <div className="receipt" style={{ width: "48mm", margin: "0 auto", padding: "2mm", background: "white", color: "black", fontSize: "10px", lineHeight: "1.3", borderRadius: "8px", boxShadow: "0 2px 8px rgba(0,0,0,0.1)" }}>
               {/* Header: Logo + Cafe info */}
               <div className="text-center mb-0.5">
                 {settings?.logoUrl && (
@@ -190,25 +250,25 @@ export function ReceiptModal({ transaction, isOpen, onClose }: ReceiptModalProps
           </div>
         </div>
 
-        {/* Footer Actions */}
-        <div className="flex gap-3 p-4 border-t bg-muted/30 rounded-b-2xl">
-          <button
-            onClick={handleViewFullReceipt}
-            className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-primary text-primary-foreground px-4 py-2.5 text-sm font-semibold hover:brightness-110 transition shadow-sm"
-          >
-            <ArrowUpRight className="h-4 w-4" />
-            Cetak Struk
-          </button>
-          <button
-            onClick={onClose}
-            className="flex-1 rounded-xl bg-background text-foreground border border-border px-4 py-2.5 text-sm font-medium hover:bg-accent transition shadow-sm"
-          >
-            Tutup
-          </button>
-        </div>
-      </div>
+            {/* Footer Actions */}
+            <div className="shrink-0 flex gap-2.5 px-5 py-4 border-t border-border/40 bg-muted/10">
+              <button
+                onClick={handleViewFullReceipt}
+                className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-primary text-primary-foreground px-4 py-2.5 text-sm font-semibold hover:brightness-110 active:scale-[0.97] transition-all shadow-sm"
+              >
+                <Printer className="h-4 w-4" />
+                Cetak Struk
+              </button>
+              <button
+                onClick={onClose}
+                className="flex-1 rounded-xl bg-background text-foreground border border-border/60 px-4 py-2.5 text-sm font-medium hover:bg-accent active:scale-[0.97] transition-all shadow-sm"
+              >
+                Selesai
+              </button>
+            </div>
+          </motion.div>
 
-      <style jsx global>{`
+        <style jsx global>{`
         @media print {
           body * {
             visibility: hidden;
@@ -241,6 +301,8 @@ export function ReceiptModal({ transaction, isOpen, onClose }: ReceiptModalProps
           }
         }
       `}</style>
-    </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   )
 }
