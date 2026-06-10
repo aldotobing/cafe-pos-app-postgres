@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { Bell, Package, AlertTriangle, Clock, ShoppingCart, X } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { cn } from '@/lib/utils'
 import Link from 'next/link'
@@ -48,8 +49,11 @@ const typeConfig: Record<NotifType, { icon: typeof Bell; color: string; link: (d
 }
 
 export function NotificationBell({ cafeId }: { cafeId?: number | null }) {
+  const INITIAL_LIMIT = 5
   const [open, setOpen] = useState(false)
   const [notifications, setNotifications] = useState<Notification[]>([])
+  const [shaking, setShaking] = useState(false)
+  const [visibleCount, setVisibleCount] = useState(INITIAL_LIMIT)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const fetchNotifications = useCallback(async () => {
@@ -58,7 +62,16 @@ export function NotificationBell({ cafeId }: { cafeId?: number | null }) {
       const res = await fetch('/api/notifications', { credentials: 'include' })
       if (res.ok) {
         const data = await res.json()
-        setNotifications(data.notifications || [])
+        setNotifications(prev => {
+          const wasNew = !data.notifications || data.notifications.length === 0
+            ? false
+            : prev.length > 0 && data.notifications.length > prev.length
+          if (wasNew) {
+            setShaking(true)
+            setTimeout(() => setShaking(false), 600)
+          }
+          return data.notifications || []
+        })
       }
     } catch {}
   }, [cafeId])
@@ -72,7 +85,6 @@ export function NotificationBell({ cafeId }: { cafeId?: number | null }) {
     }
   }, [fetchNotifications])
 
-  // Also poll on visibility change
   useEffect(() => {
     const handler = () => {
       if (document.visibilityState === 'visible') fetchNotifications()
@@ -95,27 +107,40 @@ export function NotificationBell({ cafeId }: { cafeId?: number | null }) {
       if (v) {
         fetchNotifications()
         if (unread > 0) markAllRead()
+      } else {
+        setVisibleCount(INITIAL_LIMIT)
       }
     }}>
       <PopoverTrigger asChild>
         <button
           className={cn(
-            'relative inline-flex h-9 w-9 items-center justify-center rounded-md transition-colors',
+            'relative inline-flex h-9 w-9 items-center justify-center rounded-md',
             'hover:bg-accent hover:text-accent-foreground',
-            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
+            'data-[state=open]:bg-accent data-[state=open]:text-accent-foreground',
+            'active:scale-90',
+            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+            shaking && 'animate-shake'
           )}
           aria-label={`Notifikasi${unread > 0 ? ` (${unread})` : ''}`}
         >
           <Bell className="h-[18px] w-[18px]" />
-          {unread > 0 && (
-            <span className="absolute -top-0.5 -right-0.5 h-4 min-w-[1rem] rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center px-1 shadow-sm">
-              {unread > 9 ? '9+' : unread}
-            </span>
-          )}
+          <AnimatePresence>
+            {unread > 0 && (
+              <motion.span
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                exit={{ scale: 0 }}
+                transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                className="absolute -top-0.5 -right-0.5 h-4 min-w-[1rem] rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center px-1 shadow-sm"
+              >
+                {unread > 9 ? '9+' : unread}
+              </motion.span>
+            )}
+          </AnimatePresence>
         </button>
       </PopoverTrigger>
       <PopoverContent
-        className="w-[calc(100vw-2rem)] sm:w-80 p-0"
+        className="w-[calc(100vw-2rem)] sm:w-80 p-0 overflow-hidden"
         align="end"
         sideOffset={8}
         collisionPadding={12}
@@ -125,9 +150,18 @@ export function NotificationBell({ cafeId }: { cafeId?: number | null }) {
         <div className="flex items-center justify-between px-4 py-3 border-b">
           <span className="text-sm font-semibold">Notifikasi</span>
           <div className="flex items-center gap-2">
-            {unread > 0 && (
-              <span className="text-xs text-muted-foreground">{unread} baru</span>
-            )}
+            <AnimatePresence>
+              {unread > 0 && (
+                <motion.span
+                  initial={{ opacity: 0, x: 10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 10 }}
+                  className="text-xs text-muted-foreground"
+                >
+                  {unread} baru
+                </motion.span>
+              )}
+            </AnimatePresence>
             <button
               onClick={() => setOpen(false)}
               className="sm:hidden inline-flex h-6 w-6 items-center justify-center rounded hover:bg-muted transition-colors"
@@ -143,14 +177,39 @@ export function NotificationBell({ cafeId }: { cafeId?: number | null }) {
           onWheel={(e) => e.stopPropagation()}
         >
           {notifications.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 px-4 text-muted-foreground">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="flex flex-col items-center justify-center py-12 px-4 text-muted-foreground"
+            >
               <Bell className="h-10 w-10 mb-3 opacity-20" />
               <span className="text-sm">Tidak ada notifikasi</span>
-            </div>
+            </motion.div>
           ) : (
-            notifications.map((n) => (
-              <NotificationItem key={n.id} notification={n} onClick={() => setOpen(false)} />
-            ))
+            <>
+              <AnimatePresence initial={false}>
+                {notifications.slice(0, visibleCount).map((n, i) => (
+                  <motion.div
+                    key={n.id}
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: Math.min(i, INITIAL_LIMIT - 1) * 0.04, duration: 0.2 }}
+                  >
+                    <NotificationItem notification={n} onClick={() => setOpen(false)} />
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+              {visibleCount < notifications.length && (
+                <motion.button
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  onClick={() => setVisibleCount(prev => Math.min(prev + INITIAL_LIMIT, notifications.length))}
+                  className="w-full py-2.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors border-t"
+                >
+                  Lihat lainnya ({notifications.length - visibleCount})
+                </motion.button>
+              )}
+            </>
           )}
         </div>
       </PopoverContent>

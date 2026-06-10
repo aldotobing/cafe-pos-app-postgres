@@ -315,4 +315,17 @@ button, a, [role="button"], input[type="checkbox"], input[type="radio"], input[t
     color: var(--foreground);
     background-color: var(--card);
   }
+
+  /* Notification bell shake */
+  @keyframes shake {
+    0%, 100% { transform: rotate(0deg); }
+    20% { transform: rotate(-12deg); }
+    40% { transform: rotate(10deg); }
+    60% { transform: rotate(-8deg); }
+    80% { transform: rotate(5deg); }
+  }
+
+  .animate-shake {
+    animation: shake 0.5s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+  }
 }
