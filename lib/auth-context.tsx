@@ -1,9 +1,10 @@
 'use client';
 
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, ReactNode, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
 import { fetchClient, FetchError } from '@/lib/fetch-client';
+import { mutate } from 'swr';
 import { toast } from 'sonner';
 
 interface AuthContextType {
@@ -49,6 +50,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             });
             await new Promise(r => setTimeout(r, 600));
             router.push('/login');
+          } else if (result && !result.expired) {
+            mutate(() => true, undefined, { revalidate: true })
           }
         });
       }

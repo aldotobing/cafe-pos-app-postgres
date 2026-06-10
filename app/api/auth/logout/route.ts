@@ -5,7 +5,6 @@ import { NextResponse } from 'next/server'
 export async function POST(request: Request) {
   try {
     const cookieStore = await cookies()
-    const isProduction = process.env.NODE_ENV === 'production'
 
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -25,17 +24,9 @@ export async function POST(request: Request) {
 
     await supabase.auth.signOut()
 
-    // Clear old cookie names as well
-    const response = NextResponse.json({ success: true })
-    response.cookies.set('sb-access-token', '', { maxAge: 0, path: '/' })
-    response.cookies.set('sb-refresh-token', '', { maxAge: 0, path: '/' })
-
-    return response
+    return NextResponse.json({ success: true })
   } catch (error) {
     console.error('Logout error:', error)
-    const response = NextResponse.json({ success: true })
-    response.cookies.set('sb-access-token', '', { maxAge: 0, path: '/' })
-    response.cookies.set('sb-refresh-token', '', { maxAge: 0, path: '/' })
-    return response
+    return NextResponse.json({ success: true })
   }
 }

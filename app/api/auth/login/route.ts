@@ -59,13 +59,10 @@ export async function POST(request: Request) {
       .single()
 
     if (profile?.is_active === false) {
-      const response = NextResponse.json(
+      return NextResponse.json(
         { error: 'Akun Anda telah dinonaktifkan. Silakan hubungi admin.', code: 'ACCOUNT_DISABLED' },
         { status: 403 }
       )
-      response.cookies.set('sb-access-token', '', { maxAge: 0, path: '/' })
-      response.cookies.set('sb-refresh-token', '', { maxAge: 0, path: '/' })
-      return response
     }
 
     await supabaseAdmin
@@ -85,23 +82,6 @@ export async function POST(request: Request) {
         email: data.user.email,
       } : null,
     })
-
-    // Also set sb-access-token / sb-refresh-token for backward compat with existing /api/auth/me
-    if (data.session) {
-      const isProduction = process.env.NODE_ENV === 'production'
-      const secureFlag = isProduction ? '; Secure' : ''
-      const accessMaxAge = data.session.expires_in ?? 3600
-      const refreshMaxAge = 60 * 60 * 24 * 30
-
-      response.headers.append(
-        'Set-Cookie',
-        `sb-access-token=${data.session.access_token}; HttpOnly; Path=/; SameSite=Lax; Max-Age=${accessMaxAge}${secureFlag}`
-      )
-      response.headers.append(
-        'Set-Cookie',
-        `sb-refresh-token=${data.session.refresh_token}; HttpOnly; Path=/; SameSite=Lax; Max-Age=${refreshMaxAge}${secureFlag}`
-      )
-    }
 
     return response
 

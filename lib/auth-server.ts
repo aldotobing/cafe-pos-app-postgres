@@ -1,4 +1,5 @@
-import { createClient } from '@supabase/supabase-js'
+import { createServerClient } from '@supabase/ssr'
+import { cookies } from 'next/headers'
 import { supabaseAdmin } from '@/lib/supabase-server'
 
 export interface AuthenticatedUser {
@@ -11,73 +12,38 @@ export interface AuthenticatedUser {
   isApproved: boolean;
 }
 
-// Token-based cache: deduplicates GoTrue calls when multiple API routes fire simultaneously
-// from the same page (same JWT). TTL is short (5s) to avoid staleness.
-const tokenCache = new Map<string, { data: AuthenticatedUser; timestamp: number }>();
-const CACHE_TTL = 5_000;
+const userCache = new Map<string, { data: AuthenticatedUser; timestamp: number }>()
+const CACHE_TTL = 5_000
 
-function getCached(token: string): AuthenticatedUser | null {
-  const entry = tokenCache.get(token);
-  if (!entry) return null;
-  if (Date.now() - entry.timestamp > CACHE_TTL) {
-    tokenCache.delete(token);
-    return null;
-  }
-  return entry.data;
-}
-
-function setCached(token: string, data: AuthenticatedUser): void {
-  tokenCache.set(token, { data, timestamp: Date.now() });
-  // Prune expired entries when cache grows
-  if (tokenCache.size > 100) {
-    const now = Date.now();
-    for (const [key, entry] of tokenCache) {
-      if (now - entry.timestamp > CACHE_TTL) tokenCache.delete(key);
-    }
-  }
-}
-
-function extractToken(request: Request): string | null {
-  const cookieHeader = request.headers.get("Cookie") || "";
-  const token = cookieHeader.split('; ').find(row => row.startsWith('sb-access-token='))?.split('=')[1];
-  if (token) return token;
-
-  const authHeader = request.headers.get('Authorization');
-  if (authHeader?.startsWith('Bearer ')) {
-    return authHeader.split(' ')[1];
-  }
-  return null;
-}
-
-export async function getAuthenticatedUser(request: Request): Promise<AuthenticatedUser | null> {
+export async function getAuthenticatedUser(_request?: Request): Promise<AuthenticatedUser | null> {
   try {
-    const token = extractToken(request);
-    if (!token) return null;
+    const cookieStore = await cookies()
 
-    // Check cache first — avoids redundant GoTrue round trips when multiple
-    // API routes from the same page load fire simultaneously with the same JWT
-    const cached = getCached(token);
-    if (cached) return cached;
-
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!
-
-    const supabase = createClient(supabaseUrl, supabaseKey, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
-      global: {
-        headers: { Authorization: `Bearer ${token}` }
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
+      {
+        cookies: {
+          getAll() { return cookieStore.getAll() },
+          setAll(cookiesToSet) {
+            try {
+              cookiesToSet.forEach(({ name, value, options }) =>
+                cookieStore.set(name, value, options))
+            } catch {}
+          },
+        },
       }
-    })
+    )
 
-    // Verify token dan get user
     const { data: { user }, error } = await supabase.auth.getUser()
 
-    if (error || !user) return null;
+    if (error || !user) return null
 
-    // Get user profile untuk role dan cafe_id
+    const cached = userCache.get(user.id)
+    if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+      return cached.data
+    }
+
     const { data: profile } = await supabaseAdmin
       .from('user_profiles')
       .select('*')
@@ -94,8 +60,16 @@ export async function getAuthenticatedUser(request: Request): Promise<Authentica
       isApproved: profile?.is_approved ?? false,
     }
 
-    setCached(token, result);
-    return result;
+    userCache.set(user.id, { data: result, timestamp: Date.now() })
+
+    if (userCache.size > 100) {
+      const now = Date.now()
+      for (const [key, entry] of userCache) {
+        if (now - entry.timestamp > CACHE_TTL) userCache.delete(key)
+      }
+    }
+
+    return result
   } catch (error) {
     console.error('getAuthenticatedUser error:', error)
     return null

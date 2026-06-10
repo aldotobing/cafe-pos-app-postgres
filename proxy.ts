@@ -35,17 +35,6 @@ function isStaticFile(pathname: string): boolean {
   return STATIC_EXTENSIONS.some(ext => pathname.endsWith(ext))
 }
 
-function getAuthCookie(request: NextRequest): string | undefined {
-  const cookies = request.cookies
-  const authCookie = cookies.get('sb-access-token') ||
-                     cookies.get('sb-refresh-token')
-  const allCookies = cookies.getAll()
-  const supabaseAuthCookie = allCookies.find(c =>
-    c.name.startsWith('sb-') && (c.name.includes('auth-token') || c.name.includes('access-token'))
-  )
-  return authCookie?.value || supabaseAuthCookie?.value
-}
-
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
 
@@ -57,8 +46,6 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next()
   }
 
-  // Session refresh via @supabase/ssr — handles token refresh automatically
-  // even after long idle / PWA background
   let supabaseResponse = NextResponse.next({ request })
 
   const supabase = createServerClient(
@@ -82,11 +69,9 @@ export async function proxy(request: NextRequest) {
     }
   )
 
-  await supabase.auth.getSession()
+  const { data: { session } } = await supabase.auth.getSession()
 
-  const hasAuthCookie = !!getAuthCookie(request)
-
-  if (!hasAuthCookie) {
+  if (!session) {
     const loginUrl = new URL('/login', request.url)
     loginUrl.searchParams.set('redirect', pathname)
     const response = NextResponse.redirect(loginUrl)

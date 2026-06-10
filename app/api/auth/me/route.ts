@@ -23,27 +23,24 @@ export async function GET(request: Request) {
       }
     )
 
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+    const { data: { session } } = await supabase.auth.getSession()
     const { data: { user }, error } = await supabase.auth.getUser()
 
     if (error || !user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const { data: profile, error: profileError } = await supabaseAdmin
+    const { data: profile } = await supabaseAdmin
       .from('user_profiles')
       .select('*, cafes(id, name)')
       .eq('user_id', user.id)
       .single()
 
     if (profile?.is_active === false) {
-      const response = NextResponse.json(
+      return NextResponse.json(
         { error: 'Akun Anda telah dinonaktifkan.', code: 'ACCOUNT_DISABLED' },
         { status: 403 }
       )
-      response.cookies.set('sb-access-token', '', { maxAge: 0, path: '/' })
-      response.cookies.set('sb-refresh-token', '', { maxAge: 0, path: '/' })
-      return response
     }
 
     return NextResponse.json({
