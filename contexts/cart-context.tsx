@@ -204,16 +204,17 @@ export function CartProvider({ children }: { children: ReactNode }) {
       })),
     };
 
+    // Clear cart before request — prevents duplicate checkout on network dropout
+    const cartSnapshot = [...cart];
+    setCart([]);
+
     try {
-      // Dispatch sync start event
       if (typeof window !== "undefined") {
         window.dispatchEvent(new CustomEvent("syncStart"));
       }
 
       const createdTx = await transactionsApi.create(txData, currentCafeId);
-      setCart([]);
 
-      // Revalidate SWR cache immediately — transaction is already committed
       if (currentCafeId) {
         globalMutate(
           (key) => typeof key === 'string' && key.includes('/api/rest/transactions') && key.includes(`cafe_id=${currentCafeId}`),
@@ -225,7 +226,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
         });
       }
 
-      // Dispatch event to notify components to reload variants/menu
       if (typeof window !== "undefined") {
         window.dispatchEvent(new CustomEvent("transactionCompleted"));
       }
@@ -233,6 +233,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       return createdTx;
     } catch (e) {
       console.error(e);
+      setCart(cartSnapshot);
       toast.error("Gagal menyimpan transaksi");
       return null;
     }
