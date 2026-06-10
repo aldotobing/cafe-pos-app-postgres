@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { cn } from '@/lib/utils'
 import Link from 'next/link'
+import useSWR from 'swr'
 
 type NotifType = 'low_stock' | 'out_of_stock' | 'trial_expiring' | 'new_transaction' | 'target_achieved'
 
@@ -48,64 +49,56 @@ const typeConfig: Record<NotifType, { icon: typeof Bell; color: string; link: (d
   }
 }
 
+const fetcher = (url: string) => fetch(url, { credentials: 'include' }).then(r => r.json())
+
 export function NotificationBell({ cafeId }: { cafeId?: number | null }) {
   const INITIAL_LIMIT = 5
   const [open, setOpen] = useState(false)
-  const [notifications, setNotifications] = useState<Notification[]>([])
   const [shaking, setShaking] = useState(false)
   const [visibleCount, setVisibleCount] = useState(INITIAL_LIMIT)
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const [readIds, setReadIds] = useState<Set<string>>(new Set())
+  const prevLenRef = useRef(0)
 
-  const fetchNotifications = useCallback(async () => {
-    if (!cafeId) return
-    try {
-      const res = await fetch('/api/notifications', { credentials: 'include' })
-      if (res.ok) {
-        const data = await res.json()
-        setNotifications(prev => {
-          const wasNew = !data.notifications || data.notifications.length === 0
-            ? false
-            : prev.length > 0 && data.notifications.length > prev.length
-          if (wasNew) {
-            setShaking(true)
-            setTimeout(() => setShaking(false), 600)
-          }
-          return data.notifications || []
-        })
-      }
-    } catch {}
-  }, [cafeId])
+  const { data, mutate } = useSWR<{ notifications: Notification[] }>(
+    cafeId ? '/api/notifications' : null,
+    fetcher,
+    {
+      refreshInterval: 15000,
+      revalidateOnFocus: true,
+      keepPreviousData: true,
+      dedupingInterval: 10000,
+    }
+  )
+
+  const notifications: Notification[] = data?.notifications ?? []
 
   useEffect(() => {
-    fetchNotifications()
-
-    pollRef.current = setInterval(fetchNotifications, 15000)
-    return () => {
-      if (pollRef.current) clearInterval(pollRef.current)
+    if (notifications.length > prevLenRef.current && prevLenRef.current > 0) {
+      setShaking(true)
+      const t = setTimeout(() => setShaking(false), 600)
+      return () => clearTimeout(t)
     }
-  }, [fetchNotifications])
+    prevLenRef.current = notifications.length
+  }, [notifications.length])
 
-  useEffect(() => {
-    const handler = () => {
-      if (document.visibilityState === 'visible') fetchNotifications()
-    }
-    document.addEventListener('visibilitychange', handler)
-    return () => document.removeEventListener('visibilitychange', handler)
-  }, [fetchNotifications])
+  const unread = notifications.filter(n => !n.is_read && !readIds.has(n.id)).length
 
-  const unread = notifications.filter(n => !n.is_read).length
-
-  const markAllRead = async () => {
+  const markAllRead = useCallback(async () => {
     if (!cafeId || unread === 0) return
-    setNotifications(prev => prev.map(n => ({ ...n, is_read: true })))
+    const ids = new Set(notifications.filter(n => !n.is_read).map(n => n.id))
+    setReadIds(prev => {
+      const next = new Set(prev)
+      ids.forEach(id => next.add(id))
+      return next
+    })
     fetch('/api/notifications', { method: 'PATCH', credentials: 'include' }).catch(() => {})
-  }
+  }, [cafeId, unread, notifications])
 
   return (
     <Popover open={open} onOpenChange={(v) => {
       setOpen(v)
       if (v) {
-        fetchNotifications()
+        mutate()
         if (unread > 0) markAllRead()
       } else {
         setVisibleCount(INITIAL_LIMIT)
