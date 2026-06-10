@@ -133,7 +133,7 @@ export function NotificationBell({ cafeId }: { cafeId?: number | null }) {
         </button>
       </PopoverTrigger>
       <PopoverContent
-        className="w-[calc(100vw-2rem)] sm:w-80 p-0 overflow-hidden"
+        className="w-[calc(100vw-2rem)] sm:w-80 p-0 overflow-hidden rounded-xl bg-background border border-border/50 shadow-lg shadow-black/5 dark:shadow-black/20"
         align="end"
         sideOffset={8}
         collisionPadding={12}
@@ -216,8 +216,11 @@ function NotificationItem({ notification, onClick }: { notification: Notificatio
   const href = config.link(notification.data)
 
   const content = (
-    <div className="flex items-start gap-3 px-4 py-3.5 hover:bg-muted/50 transition-colors cursor-pointer active:bg-muted/70">
-      <div className={cn('w-9 h-9 sm:w-8 sm:h-8 rounded-md flex items-center justify-center shrink-0', config.color)}>
+    <div className={cn(
+      'flex items-start gap-3 px-4 py-3.5 hover:bg-muted/40 transition-colors cursor-pointer active:bg-muted/60',
+      !notification.is_read && 'bg-primary/3 hover:bg-primary/5'
+    )}>
+      <div className={cn('w-9 h-9 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center shrink-0', config.color)}>
         <Icon className="h-4 w-4" />
       </div>
       <div className="min-w-0 flex-1">
