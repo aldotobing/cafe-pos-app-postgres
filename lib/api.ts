@@ -251,7 +251,8 @@ export interface PaginatedTransactions {
     total: number;
     limit: number;
     offset: number;
-    totalAmount: number; // Total amount of ALL filtered transactions
+    totalAmount: number;
+    completedTotal: number; // Total of completed transactions only (for summary card)
   };
 }
 
@@ -299,7 +300,7 @@ export const transactionsApi = {
     }));
   },
 
-  getPaginated: async (cafeId?: number, limit = 10, offset = 0, filters?: { from?: string; to?: string; created_by?: string; payment_method?: string }): Promise<PaginatedTransactions> => {
+  getPaginated: async (cafeId?: number, limit = 10, offset = 0, filters?: { from?: string; to?: string; created_by?: string; payment_method?: string; status?: string }): Promise<PaginatedTransactions> => {
     let url = '/rest/transactions';
     const params = new URLSearchParams();
     if (cafeId) params.set('cafe_id', cafeId.toString());
@@ -322,6 +323,9 @@ export const transactionsApi = {
     }
     if (filters?.payment_method && filters.payment_method !== 'Semua') {
       params.set('payment_method', filters.payment_method);
+    }
+    if (filters?.status && filters.status !== 'all') {
+      params.set('status', filters.status);
     }
 
     if (params.toString()) url += `?${params.toString()}`;

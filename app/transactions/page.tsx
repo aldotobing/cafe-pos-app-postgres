@@ -8,7 +8,7 @@ import { useTransactionsPaginated, useCafeSettings } from "@/hooks/use-cafe-data
 import { transactionsApi } from '@/lib/api'
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Filter, Receipt, TrendingUp, Calendar as CalendarIcon, FileText, ChevronLeft, ChevronRight, ChevronFirst, ChevronLast, Loader2, BadgePercent } from 'lucide-react';
+import { Filter, Receipt, TrendingUp, Calendar as CalendarIcon, FileText, ChevronLeft, ChevronRight, ChevronFirst, ChevronLast, Loader2, BadgePercent, Ban } from 'lucide-react';
 import { generateTransactionReport } from '@/lib/reports/transaction-report';
 import { toast } from 'sonner';
 import { TransactionsSkeleton } from '@/components/skeletons';
@@ -32,6 +32,7 @@ export default function Page() {
   const [from, setFrom] = useState<string>(today)
   const [to, setTo] = useState<string>(today)
   const [userFilter, setUserFilter] = useState<string>("Semua")
+  const [statusFilter, setStatusFilter] = useState<'all' | 'completed' | 'voided'>('all')
   const [usersList, setUsersList] = useState<Array<{id: string, full_name: string}>>([])
   const [exporting, setExporting] = useState(false)
 
@@ -44,23 +45,32 @@ export default function Page() {
   const {
     transactions: paginatedTransactions,
     totalCount,
-    totalAmount, // Total amount of ALL filtered transactions from API
+    totalAmount,
+    completedTotal,
     currentPage,
     totalPages,
     hasNextPage,
     hasPrevPage,
     isLoading,
-    isValidating, // True when switching pages / re-fetching
+    isValidating,
+    mutate,
     goToNextPage,
     goToPrevPage,
     goToPage,
-  } = useTransactionsPaginated(cafeId, 10, { from, to, created_by: userFilter, payment_method: method });
+  } = useTransactionsPaginated(cafeId, 10, { from, to, created_by: userFilter, payment_method: method, status: statusFilter });
 
   // Combined loading state: initial load OR page switch
   const isFetching = isLoading || isValidating;
 
   const [selectedTransactionId, setSelectedTransactionId] = useState<string | null>(null)
   const [showDetailModal, setShowDetailModal] = useState(false)
+
+  // Revalidate on void
+  useEffect(() => {
+    const handler = () => mutate()
+    window.addEventListener('transactionVoided', handler)
+    return () => window.removeEventListener('transactionVoided', handler)
+  }, [mutate])
 
   // Fetch users list for filter dropdown
   useEffect(() => {
@@ -130,16 +140,13 @@ export default function Page() {
     }
   }, [user, userData, authLoading, router]);
 
-  // All filtering is now server-side; data is already sorted by API (created_at DESC)
+  // All filtering is server-side; status filter passed to API
   const filtered = paginatedTransactions
 
-  // Summary stats - count and totalAmount from API (ALL filtered transactions)
-  const summaryStats = useMemo(() => {
-    return {
-      count: totalCount, // Total count of ALL filtered transactions from API
-      total: totalAmount // Total amount of ALL filtered transactions from API
-    }
-  }, [totalCount, totalAmount])
+  const summaryStats = useMemo(() => ({
+    count: totalCount,
+    total: completedTotal, // Always completed-only
+  }), [totalCount, completedTotal])
 
   // Table display total (from current page only, filtered by method/user)
   const pageTotal = filtered.reduce((sum, t) => sum + (t.totalAmount || 0), 0)
@@ -284,9 +291,25 @@ export default function Page() {
         <div className="flex items-center gap-2 mb-4">
           <Filter className="h-4 w-4 text-primary" />
           <span className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-muted-foreground">Filter</span>
-          {(userFilter !== 'Semua' || method !== 'Semua' || from !== today || to !== today) && (
+          {(userFilter !== 'Semua' || method !== 'Semua' || from !== today || to !== today || statusFilter !== 'all') && (
             <span className="w-1.5 h-1.5 rounded-full bg-primary" />
           )}
+        </div>
+        <div className="flex gap-2 mb-4">
+          {(['all', 'completed', 'voided'] as const).map(s => (
+            <button
+              key={s}
+              onClick={() => setStatusFilter(s)}
+              className={cn(
+                'px-4 py-1.5 rounded-lg text-xs font-medium transition-all',
+                statusFilter === s
+                  ? 'bg-primary text-primary-foreground shadow-sm'
+                  : 'bg-muted/50 text-muted-foreground hover:bg-muted'
+              )}
+            >
+              {s === 'all' ? 'Semua' : s === 'completed' ? 'Selesai' : 'Void'}
+            </button>
+          ))}
         </div>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-x-4 gap-y-3">
           <div className="flex flex-col gap-1.5">
@@ -388,10 +411,18 @@ export default function Page() {
                 return (
                   <tr
                     key={t.id}
-                    className="border-b last:border-b-0 cursor-pointer hover:bg-muted/50 transition-colors"
+                    className={cn(
+                      "border-b last:border-b-0 cursor-pointer hover:bg-muted/50 transition-colors",
+                      t.status === 'voided' && 'bg-red-50/50 dark:bg-red-950/20'
+                    )}
                     onClick={() => { setSelectedTransactionId(t.id); setShowDetailModal(true) }}
                   >
-                    <td className="px-4 py-3 font-medium">{formatTanggal(t.createdAt)}</td>
+                    <td className="px-4 py-3 font-medium">
+                      <div className="flex items-center gap-1.5">
+                        <span>{formatTanggal(t.createdAt)}</span>
+                        {t.status === 'voided' && <Ban className="h-3.5 w-3.5 text-destructive shrink-0" />}
+                      </div>
+                    </td>
                     <td className="px-4 py-3 text-xs">{cashierName}</td>
                     <td className="px-4 py-3">
                       <span className={cn("inline-flex items-center px-2 py-0.5 rounded-full text-[11px]", paymentMethodStyles[t.paymentMethod] || 'bg-muted text-muted-foreground')}>
@@ -466,8 +497,11 @@ export default function Page() {
                   className="rounded-xl border bg-card shadow-sm overflow-hidden active:scale-[0.99] transition-transform cursor-pointer"
                   onClick={() => { setSelectedTransactionId(t.id); setShowDetailModal(true) }}
                 >
-                  <div className="flex items-center justify-between p-3 border-b border-border/30 bg-muted/20">
-                    <div className="text-xs text-muted-foreground">{formatTanggal(t.createdAt)}</div>
+                  <div className={cn("flex items-center justify-between p-3 border-b border-border/30", t.status === 'voided' ? 'bg-red-50/50 dark:bg-red-950/30' : 'bg-muted/20')}>
+                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <span>{formatTanggal(t.createdAt)}</span>
+                      {t.status === 'voided' && <Ban className="h-3.5 w-3.5 text-destructive" />}
+                    </div>
                     <div className="flex items-center gap-2">
                       {(t.discountType || t.discount_type) !== 'none' && (t.discountAmount || t.discount_amount) > 0 && (
                         <div className="text-[10px] text-emerald-600 font-medium flex items-center gap-0.5 bg-emerald-50 px-1.5 py-0.5 rounded-full">

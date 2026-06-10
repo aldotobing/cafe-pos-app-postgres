@@ -23,11 +23,12 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    // 1. Get Revenue (from transactions)
+    // 1. Get Revenue (from transactions, exclude voided)
     const { data: revenueData, error: revenueError } = await supabaseAdmin
       .from('transactions')
       .select('total_amount')
       .eq('cafe_id', parseInt(cafe_id))
+      .eq('status', 'completed')
       .gte('created_at', start_date)
       .lt('created_at', end_date + 'T23:59:59.999Z')
       .is('deleted_at', null);
@@ -38,7 +39,7 @@ export async function GET(request: Request) {
 
     const totalRevenue = revenueData?.reduce((sum: number, t: any) => sum + (t.total_amount || 0), 0) || 0;
 
-    // 2. Get COGS (from transaction items with menu.hpp_price)
+    // 2. Get COGS (from transaction items with menu.hpp_price, exclude voided)
     const { data: cogsData, error: cogsError } = await supabaseAdmin
       .from('transaction_items')
       .select(`
@@ -46,6 +47,7 @@ export async function GET(request: Request) {
         menu:menu_id(hpp_price)
       `)
       .eq('transactions.cafe_id', parseInt(cafe_id))
+      .eq('transactions.status', 'completed')
       .gte('transactions.created_at', start_date)
       .lt('transactions.created_at', end_date + 'T23:59:59.999Z')
       .is('deleted_at', null);

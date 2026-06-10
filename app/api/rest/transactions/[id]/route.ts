@@ -105,3 +105,107 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
     return NextResponse.json({ error: error.message || 'Internal server error' }, { status: 500 });
   }
 }
+
+export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const user = await getAuthenticatedUser(request);
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  if (user.role !== 'admin' && user.role !== 'superadmin') {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  try {
+    const { id } = await params;
+
+    const { data: tx, error: txErr } = await supabaseAdmin
+      .from('transactions')
+      .select('*, transaction_items(*)')
+      .eq('id', id)
+      .is('deleted_at', null)
+      .single();
+
+    if (txErr || !tx) {
+      return NextResponse.json({ error: "Transaction not found" }, { status: 404 });
+    }
+
+    if (tx.status === 'voided') {
+      return NextResponse.json({ error: "Transaction already voided" }, { status: 409 });
+    }
+
+    if (user.role !== 'superadmin' && tx.cafe_id !== user.cafeId) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    const { reason } = await request.json().catch(() => ({ reason: '' }));
+
+    const reversalMutations = await Promise.all(
+      (tx.transaction_items || []).map(async (item: any) => {
+        const menuId = item.menu_id;
+        if (!menuId) return null;
+
+        const { data: menuItem } = await supabaseAdmin
+          .from('menu')
+          .select('track_stock')
+          .eq('id', menuId)
+          .single();
+
+        let shouldTrack = !!menuItem?.track_stock;
+
+        if (item.variant_id) {
+          const { data: variant } = await supabaseAdmin
+            .from('product_variants')
+            .select('track_stock')
+            .eq('id', item.variant_id)
+            .single();
+          if (variant) {
+            shouldTrack = shouldTrack || variant.track_stock === true;
+          }
+        }
+
+        if (!shouldTrack) return null;
+
+        return supabaseAdmin
+          .from('stock_mutations')
+          .insert({
+            menu_id: menuId,
+            cafe_id: tx.cafe_id,
+            variant_id: item.variant_id || null,
+            type: 'in',
+            quantity: item.quantity,
+            reference_type: 'void',
+            reference_id: tx.id,
+            notes: `Void: ${tx.transaction_number} (${reason || 'No reason'})`,
+            created_by: user.id,
+          });
+      })
+    );
+
+    const reversalErrors = reversalMutations.filter(r => r && r.error);
+    if (reversalErrors.length > 0) {
+      console.error('Void stock reversal errors:', reversalErrors.map(r => r!.error));
+    }
+
+    const now = new Date().toISOString();
+    const { data: voided, error: voidErr } = await supabaseAdmin
+      .from('transactions')
+      .update({
+        status: 'voided',
+        voided_at: now,
+        void_reason: reason || null,
+        voided_by: user.id,
+      })
+      .eq('id', id)
+      .select('*, transaction_items(*)')
+      .single();
+
+    if (voidErr) {
+      console.error('Void error:', voidErr);
+      return NextResponse.json({ error: voidErr.message }, { status: 500 });
+    }
+
+    return NextResponse.json({ success: true, data: voided });
+  } catch (error: any) {
+    console.error('Void PATCH error:', error);
+    return NextResponse.json({ error: error.message || 'Internal server error' }, { status: 500 });
+  }
+}

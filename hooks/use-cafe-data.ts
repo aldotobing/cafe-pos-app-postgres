@@ -53,8 +53,20 @@ export function useCategories(cafeId?: number) {
 
 export function useTransactions(cafeId?: number, limit?: number, offset?: number) {
   const { data, error, mutate } = useSWR<Transaction[]>(
-    cafeId ? `/api/rest/transactions?cafe_id=${cafeId}${limit ? `&limit=${limit}` : ''}${offset ? `&offset=${offset}` : ''}` : null,
-    () => transactionsApi.get(cafeId, limit)
+    cafeId ? `/api/rest/transactions?cafe_id=${cafeId}&status=completed${limit ? `&limit=${limit}` : ''}${offset ? `&offset=${offset}` : ''}` : null,
+    (url: string) => fetch(url).then(r => r.json()).then((j: any) => {
+      const raw = j?.data || (Array.isArray(j) ? j : []);
+      return raw.map((tx: any) => ({
+        ...tx,
+        totalAmount: tx.total_amount || 0,
+        createdAt: tx.created_at,
+        items: (tx.transaction_items || []).map((item: any) => ({
+          menuId: item.menu_id || '',
+          name: item.menu_name || '',
+          qty: item.quantity || 0,
+        })),
+      }));
+    })
   );
 
   // Ensure transactions is always an array even if SWR data is malformed
@@ -88,16 +100,16 @@ export interface UsePaginatedTransactionsReturn {
 export function useTransactionsPaginated(
   cafeId?: number,
   limit = 10,
-  filters?: { from?: string; to?: string; created_by?: string; payment_method?: string }
+  filters?: { from?: string; to?: string; created_by?: string; payment_method?: string; status?: string }
 ): UsePaginatedTransactionsReturn {
   const [offset, setOffset] = useState(0);
 
   useEffect(() => {
     setOffset(0);
-  }, [filters?.from, filters?.to, filters?.created_by, filters?.payment_method]);
+  }, [filters?.from, filters?.to, filters?.created_by, filters?.payment_method, filters?.status]);
 
   const { data, error, mutate, isValidating } = useSWR<PaginatedTransactions>(
-    cafeId ? ['paginated-transactions', cafeId, limit, offset, filters?.from, filters?.to, filters?.created_by, filters?.payment_method] : null,
+    cafeId ? ['paginated-transactions', cafeId, limit, offset, filters?.from, filters?.to, filters?.created_by, filters?.payment_method, filters?.status] : null,
     () => transactionsApi.getPaginated(cafeId, limit, offset, filters),
     {
       // Keep previous data while loading new page for smoother UX
@@ -107,7 +119,8 @@ export function useTransactionsPaginated(
 
   const transactions = Array.isArray(data?.data) ? data.data : [];
   const totalCount = data?.meta?.total || 0;
-  const totalAmount = data?.meta?.totalAmount || 0; // From API: total of ALL filtered transactions
+  const totalAmount = data?.meta?.totalAmount || 0;
+  const completedTotal = data?.meta?.completedTotal || 0;
   const currentPage = Math.floor(offset / limit) + 1;
   const totalPages = Math.ceil(totalCount / limit);
   const hasNextPage = offset + limit < totalCount;
@@ -134,6 +147,7 @@ export function useTransactionsPaginated(
     transactions,
     totalCount,
     totalAmount,
+    completedTotal,
     currentPage,
     totalPages,
     hasNextPage,

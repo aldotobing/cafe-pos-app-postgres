@@ -35,12 +35,22 @@ export async function GET(request: Request) {
     const fromDate = createdAtGte || startDate;
     const toDate = createdAtLt || endDate;
 
+    // Status filter: default to all, accept 'completed' or 'voided'
+    const statusFilter = url.searchParams.get('status') || 'all';
+
     // Query 1: Get data with items (paginated or all if limit=-1)
     let dataQuery = supabaseAdmin
       .from('transactions')
       .select('*, transaction_items(*)', { count: 'exact' })
       .eq('cafe_id', cafeId)
       .is('deleted_at', null);
+
+    if (statusFilter === 'completed') {
+      dataQuery = dataQuery.eq('status', 'completed');
+    } else if (statusFilter === 'voided') {
+      dataQuery = dataQuery.eq('status', 'voided');
+    }
+    // 'all' means no status filter
 
     if (fromDate) {
       dataQuery = dataQuery.gte('created_at', fromDate);
@@ -77,6 +87,12 @@ export async function GET(request: Request) {
       .eq('cafe_id', cafeId)
       .is('deleted_at', null);
 
+    if (statusFilter === 'completed') {
+      summaryQuery = summaryQuery.eq('status', 'completed');
+    } else if (statusFilter === 'voided') {
+      summaryQuery = summaryQuery.eq('status', 'voided');
+    }
+
     if (fromDate) {
       summaryQuery = summaryQuery.gte('created_at', fromDate);
     }
@@ -92,17 +108,34 @@ export async function GET(request: Request) {
 
     const { data: summaryData, error: summaryError } = await summaryQuery;
 
-    const totalAmount = summaryError || !summaryData 
-      ? 0 
+    const totalAmount = summaryError || !summaryData
+      ? 0
       : summaryData.reduce((sum: number, t: any) => sum + (parseFloat(t.total_amount) || 0), 0);
+
+    // Always compute completed-only total for the summary card
+    let completedTotalQuery = supabaseAdmin
+      .from('transactions')
+      .select('total_amount')
+      .eq('cafe_id', cafeId)
+      .eq('status', 'completed')
+      .is('deleted_at', null);
+
+    if (fromDate) completedTotalQuery = completedTotalQuery.gte('created_at', fromDate);
+    if (toDate) completedTotalQuery = completedTotalQuery.lt('created_at', toDate);
+    if (createdBy && createdBy !== 'Semua') completedTotalQuery = completedTotalQuery.eq('created_by', createdBy);
+    if (paymentMethod && paymentMethod !== 'Semua') completedTotalQuery = completedTotalQuery.eq('payment_method', paymentMethod as any);
+
+    const { data: completedData } = await completedTotalQuery;
+    const completedTotal = (completedData || []).reduce((sum: number, t: any) => sum + (parseFloat(t.total_amount) || 0), 0);
 
     return NextResponse.json({
       data: transactions || [],
-      meta: { 
-        total: count, 
-        limit, 
+      meta: {
+        total: count,
+        limit,
         offset,
-        totalAmount  // Total amount of ALL filtered transactions
+        totalAmount,
+        completedTotal,
       }
     });
   } catch (error: any) {

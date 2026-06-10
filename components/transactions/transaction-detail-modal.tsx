@@ -2,15 +2,16 @@
 
 import { useEffect, useState } from "react"
 import { useCafeSettings } from "@/hooks/use-cafe-data"
-import useSWR from "swr"
+import useSWR, { mutate as globalMutate } from "swr"
 import { formatRupiah, formatTanggal } from "@/lib/format"
 import { useAuth } from "@/lib/auth-context"
 import { useRouter } from "next/navigation"
 import { swrConfig } from "@/lib/swr-config"
 import type { Transaction, TransactionItem } from "@/types"
-import { X, Printer, Calendar, User, CreditCard, Hash, Loader2, BadgePercent } from "lucide-react"
+import { X, Printer, Calendar, User, CreditCard, Hash, Loader2, BadgePercent, Ban } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import { cn } from "@/lib/utils"
+import { toast } from "sonner"
 
 interface TransactionDetailModalProps {
   transactionId: string
@@ -47,8 +48,12 @@ export function TransactionDetailModal({ transactionId, isOpen, onClose }: Trans
   const router = useRouter()
   const cafeId = userData?.cafe_id
   const { settings } = useCafeSettings(cafeId)
+  const [voiding, setVoiding] = useState(false)
+  const [showVoidConfirm, setShowVoidConfirm] = useState(false)
+  const [voidReason, setVoidReason] = useState('')
+  const isAdmin = userData?.role === 'admin' || userData?.role === 'superadmin'
 
-  const { data: tx, isLoading } = useSWR(
+  const { data: tx, isLoading, mutate } = useSWR(
     isOpen && cafeId ? `/api/rest/transactions/${transactionId}` : null,
     async (url: string) => {
       const res = await fetch(url)
@@ -69,6 +74,9 @@ export function TransactionDetailModal({ transactionId, isOpen, onClose }: Trans
           discountAmount: data.discount_amount || 0,
           createdAt: data.created_at || new Date().toISOString(),
           items: data.transaction_items || data.items || [],
+          status: data.status || 'completed',
+          voidedAt: data.voided_at,
+          voidReason: data.void_reason,
         }
       }
       return data
@@ -122,6 +130,36 @@ export function TransactionDetailModal({ transactionId, isOpen, onClose }: Trans
     router.push(`/receipt/${transactionId}`)
   }
 
+  const handleVoid = async () => {
+    if (!voidReason.trim()) {
+      toast.error('Berikan alasan void.')
+      return
+    }
+    setVoiding(true)
+    try {
+      const res = await fetch(`/api/rest/transactions/${transactionId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason: voidReason }),
+      })
+      if (!res.ok) {
+        const err = await res.json()
+        throw new Error(err.error || 'Gagal void transaksi')
+      }
+      mutate()
+      globalMutate(() => true, undefined, { revalidate: true })
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('transactionVoided'))
+      }
+      setShowVoidConfirm(false)
+      toast.success('Transaksi berhasil di-void. Stok dikembalikan.')
+    } catch (e: any) {
+      toast.error(e.message || 'Gagal void transaksi')
+    } finally {
+      setVoiding(false)
+    }
+  }
+
   return (
     <AnimatePresence>
       {isOpen && (
@@ -159,6 +197,14 @@ export function TransactionDetailModal({ transactionId, isOpen, onClose }: Trans
                 settings={settings as any}
                 onClose={onClose}
                 onViewReceipt={handleViewReceipt}
+                isVoided={tx?.status === 'voided'}
+                isAdmin={isAdmin}
+                voiding={voiding}
+                showVoidConfirm={showVoidConfirm}
+                voidReason={voidReason}
+                setVoidReason={setVoidReason}
+                setShowVoidConfirm={setShowVoidConfirm}
+                handleVoid={handleVoid}
               />
             </motion.div>
           </motion.div>
@@ -186,6 +232,14 @@ export function TransactionDetailModal({ transactionId, isOpen, onClose }: Trans
                 settings={settings as any}
                 onClose={onClose}
                 onViewReceipt={handleViewReceipt}
+                isVoided={tx?.status === 'voided'}
+                isAdmin={isAdmin}
+                voiding={voiding}
+                showVoidConfirm={showVoidConfirm}
+                voidReason={voidReason}
+                setVoidReason={setVoidReason}
+                setShowVoidConfirm={setShowVoidConfirm}
+                handleVoid={handleVoid}
               />
             </motion.div>
           </motion.div>
@@ -202,6 +256,14 @@ function ModalContent({
   settings,
   onClose,
   onViewReceipt,
+  isVoided,
+  isAdmin,
+  voiding,
+  showVoidConfirm,
+  voidReason,
+  setVoidReason,
+  setShowVoidConfirm,
+  handleVoid,
 }: {
   tx: any
   isLoading: boolean
@@ -209,6 +271,14 @@ function ModalContent({
   settings: any
   onClose: () => void
   onViewReceipt: () => void
+  isVoided: boolean
+  isAdmin: boolean
+  voiding: boolean
+  showVoidConfirm: boolean
+  voidReason: string
+  setVoidReason: (v: string) => void
+  setShowVoidConfirm: (v: boolean) => void
+  handleVoid: () => void
 }) {
   return (
     <>
@@ -220,11 +290,18 @@ function ModalContent({
       {/* Header */}
       <div className="flex items-center justify-between px-5 py-4 border-b bg-muted/20 shrink-0">
         <div className="flex flex-col gap-0.5">
-          <h2 className="font-bold text-lg tracking-tight">Detail Transaksi</h2>
+          <div className="flex items-center gap-2">
+            <h2 className={cn('font-bold text-lg tracking-tight', isVoided && 'line-through text-muted-foreground')}>Detail Transaksi</h2>
+            {isVoided && (
+              <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">
+                Void
+              </span>
+            )}
+          </div>
           {tx && (
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <Hash className="h-3 w-3" />
-              <span className="font-mono tracking-tight">{tx.transactionNumber || tx.id?.slice(0, 10)}</span>
+              <span className={cn('font-mono tracking-tight', isVoided && 'line-through')}>{tx.transactionNumber || tx.id?.slice(0, 10)}</span>
             </div>
           )}
         </div>
@@ -414,21 +491,69 @@ function ModalContent({
       </div>
 
       {/* Footer Actions */}
-      {tx && (
-        <div className="flex gap-3 px-5 py-4 border-t bg-muted/10 shrink-0">
-          <button
-            onClick={onViewReceipt}
-            className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-primary text-primary-foreground px-4 py-2.5 text-sm font-semibold hover:brightness-110 transition-all active:scale-[0.97] shadow-sm shadow-primary/20"
-          >
-            <Printer className="h-4 w-4" />
-            Cetak Struk
-          </button>
-          <button
-            onClick={onClose}
-            className="flex-1 rounded-xl bg-background text-foreground border px-4 py-2.5 text-sm font-medium hover:bg-muted transition-all active:scale-[0.97]"
-          >
-            Tutup
-          </button>
+      {tx && !showVoidConfirm && (
+        <div className="px-5 py-4 border-t bg-muted/10 shrink-0 space-y-2">
+          <div className="flex gap-2">
+            <button
+              onClick={onViewReceipt}
+              className="flex-[2] flex items-center justify-center gap-2 rounded-xl bg-primary text-primary-foreground px-4 py-3 text-sm font-semibold hover:brightness-110 transition-all active:scale-[0.97] shadow-sm shadow-primary/20"
+            >
+              <Printer className="h-4 w-4" />
+              Cetak Struk
+            </button>
+            <button
+              onClick={onClose}
+              className="flex-1 rounded-xl bg-background border px-4 py-3 text-sm font-medium hover:bg-muted transition-all active:scale-[0.97]"
+            >
+              Tutup
+            </button>
+          </div>
+          {isAdmin && !isVoided && (
+            <button
+              onClick={() => { setVoidReason(''); setShowVoidConfirm(true) }}
+              className="w-full flex items-center justify-center gap-2 rounded-xl bg-destructive/10 text-destructive border border-destructive/20 px-4 py-2.5 text-sm font-semibold hover:bg-destructive/20 transition-all active:scale-[0.97]"
+            >
+              <Ban className="h-4 w-4" />
+              Void Transaksi
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Void Confirmation */}
+      {tx && showVoidConfirm && (
+        <div className="px-5 py-4 border-t bg-destructive/5 shrink-0 space-y-3">
+          <div className="flex items-center gap-2 text-sm font-semibold text-destructive">
+            <Ban className="h-4 w-4" />
+            Konfirmasi Void
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Stok akan dikembalikan ke inventory. Transaksi ini akan dikecualikan dari laporan keuangan.
+          </p>
+          <input
+            type="text"
+            value={voidReason}
+            onChange={(e) => setVoidReason(e.target.value)}
+            placeholder="Alasan void (wajib)..."
+            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-destructive/30"
+            autoFocus
+          />
+          <div className="flex gap-2">
+            <button
+              onClick={handleVoid}
+              disabled={voiding || !voidReason.trim()}
+              className="flex-1 rounded-xl bg-destructive text-destructive-foreground px-4 py-2.5 text-sm font-semibold hover:brightness-110 transition-all active:scale-[0.97] disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {voiding ? 'Memproses...' : 'Ya, Void Transaksi'}
+            </button>
+            <button
+              onClick={() => setShowVoidConfirm(false)}
+              disabled={voiding}
+              className="flex-1 rounded-xl bg-background border px-4 py-2.5 text-sm font-medium hover:bg-muted transition-all active:scale-[0.97] disabled:opacity-50"
+            >
+              Batal
+            </button>
+          </div>
         </div>
       )}
     </>
