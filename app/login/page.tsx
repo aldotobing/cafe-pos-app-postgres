@@ -1,47 +1,127 @@
 'use client';
 
-import { useState, useRef, useEffect, ReactNode, Suspense } from 'react';
+import { useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/lib/auth-context';
 import { Zap, Mail, Lock, User, Eye, EyeOff, ArrowRight, Loader2 } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
 import { ErrorMessage, getErrorMessage } from '@/components/ui/error-message';
+
+// ─── Validation ────────────────────────────────────────────────────────────
+
+interface FieldErrors {
+  email?: string;
+  password?: string;
+  fullName?: string;
+  confirmPassword?: string;
+}
+
+function validateForm(
+  mode: 'login' | 'signup',
+  email: string,
+  password: string,
+  fullName: string,
+  confirmPassword: string,
+): FieldErrors {
+  const errors: FieldErrors = {};
+
+  if (!email.trim()) {
+    errors.email = 'Email wajib diisi';
+  } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    errors.email = 'Format email tidak valid';
+  }
+
+  if (!password) {
+    errors.password = 'Password wajib diisi';
+  } else if (password.length < 6) {
+    errors.password = 'Password minimal 6 karakter';
+  }
+
+  if (mode === 'signup') {
+    if (!fullName.trim()) {
+      errors.fullName = 'Nama lengkap wajib diisi';
+    }
+    if (!confirmPassword) {
+      errors.confirmPassword = 'Konfirmasi password wajib diisi';
+    } else if (password !== confirmPassword) {
+      errors.confirmPassword = 'Password tidak cocok';
+    }
+  }
+
+  return errors;
+}
+
+// ─── Input field builders ────────────────────────────────────────────────────
+
+function FieldError({ message }: { message?: string }) {
+  if (!message) return null;
+  return (
+    <motion.p
+      initial={{ opacity: 0, y: -2 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="text-xs text-destructive mt-1"
+    >
+      {message}
+    </motion.p>
+  );
+}
+
+function PasswordToggle({ show, onToggle }: { show: boolean; onToggle: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground transition-colors"
+      tabIndex={-1}
+    >
+      {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+    </button>
+  );
+}
+
+// ─── Main component ─────────────────────────────────────────────────────────
 
 function LoginForm() {
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState<string | ReactNode>('');
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [error, setError] = useState<string | React.ReactNode>('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
-  const [focusedField, setFocusedField] = useState<string | null>(null);
   const [demoLoading, setDemoLoading] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirectTo = searchParams.get('redirect') || '/';
   const { signUp, signIn } = useAuth();
-  const emailRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    emailRef.current?.focus();
-  }, []);
+  const toggleAuthMode = () => {
+    setError('');
+    setSuccess('');
+    setFieldErrors({});
+    setConfirmPassword('');
+    setAuthMode((prev) => (prev === 'login' ? 'signup' : 'login'));
+  };
+
+  // ── Demo login ────────────────────────────────────────────────────────
 
   const handleDemoLogin = async () => {
     setDemoLoading(true);
     setError('');
-
     try {
       const userData = await signIn('demo@kasirku.biz.id', 'akundemo');
-
       if (!userData.is_approved) {
         setError('Akun demo sedang tidak aktif. Silakan gunakan akun pribadi.');
         setDemoLoading(false);
         return;
       }
-
-
       router.push(redirectTo);
     } catch (err: any) {
       setError(getErrorMessage(err));
@@ -50,23 +130,34 @@ function LoginForm() {
     }
   };
 
+  // ── Sign in ───────────────────────────────────────────────────────────
+
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
+    const errors = validateForm('login', email, password, fullName, confirmPassword);
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      return;
+    }
+    setFieldErrors({});
     setLoading(true);
     setError('');
 
     try {
       const userData = await signIn(email, password);
-
       if (!userData.is_approved) {
         throw new Error('pending');
       }
-
-      // Redirect ke halaman asli atau default berdasarkan role
-      const targetPath = redirectTo !== '/' ? redirectTo :
-        userData.role === 'cashier' ? '/pos' :
-        userData.role === 'superadmin' ? '/superadmin/users' :
-        userData.role === 'admin' && !userData.cafe_id ? '/create-cafe' : '/';
+      const targetPath =
+        redirectTo !== '/'
+          ? redirectTo
+          : userData.role === 'cashier'
+            ? '/pos'
+            : userData.role === 'superadmin'
+              ? '/superadmin/users'
+              : userData.role === 'admin' && !userData.cafe_id
+                ? '/create-cafe'
+                : '/';
       router.push(targetPath);
     } catch (err: any) {
       if (err.message === 'pending') {
@@ -75,21 +166,31 @@ function LoginForm() {
             Akun Anda menunggu persetujuan. Silakan hubungi{' '}
             <a
               href={`mailto:aldo_tobing@hotmail.com?subject=Aktivasi Akun Kasirku&body=Halo Admin, saya ingin meminta aktivasi untuk akun saya dengan email: ${email}`}
-              className="text-[var(--gold)] hover:underline font-bold"
+              className="text-primary hover:underline font-bold"
             >
               administrator
-            </a>.
-          </span>
+            </a>
+            .
+          </span>,
         );
       } else {
         setError(getErrorMessage(err));
       }
+    } finally {
       setLoading(false);
     }
   };
 
+  // ── Sign up ───────────────────────────────────────────────────────────
+
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
+    const errors = validateForm('signup', email, password, fullName, confirmPassword);
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      return;
+    }
+    setFieldErrors({});
     setLoading(true);
     setError('');
     setSuccess('');
@@ -100,6 +201,7 @@ function LoginForm() {
       setEmail('');
       setPassword('');
       setFullName('');
+      setConfirmPassword('');
     } catch (err: any) {
       setError(getErrorMessage(err));
     } finally {
@@ -107,268 +209,291 @@ function LoginForm() {
     }
   };
 
+  // ── Render ────────────────────────────────────────────────────────────
+
   return (
-    <>
-      <style>{`
-        :root {
-          --ink:      #181815;
-          --ink-soft: #232320;
-          --cream:    #EDECE8;
-          --cream-soft: #C5C4C0;
-          --cream-dim:#8A8985;
-          --gold:     #D4AF37;
-          --gold-soft: #F4CF57;
-          --line:     rgba(255,255,255,0.08);
-        }
-      `}</style>
+    <div className="min-h-screen bg-background flex items-center justify-center p-4 sm:p-6 overflow-hidden selection:bg-primary/25">
+      {/* Ambient glow */}
+      <motion.div
+        className="fixed top-1/3 left-1/2 -translate-x-1/2 w-[400px] h-[400px] bg-primary/10 rounded-full blur-[100px] pointer-events-none"
+        animate={{ opacity: [0.15, 0.3, 0.15] }}
+        transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}
+      />
 
-      <div className="min-h-screen bg-[var(--ink)] flex items-center justify-center p-6 selection:bg-[var(--gold)] selection:text-[var(--ink)] overflow-hidden">
-        {/* Subtle background gradient */}
-        <div className="fixed inset-0 bg-gradient-to-br from-[var(--ink)] via-[var(--ink-soft)] to-[var(--ink)] pointer-events-none" />
-
-        {/* Ambient glow - more subtle */}
-        <motion.div
-          className="fixed top-1/3 left-1/2 -translate-x-1/2 w-[400px] h-[400px] bg-[var(--gold)]/3 rounded-full blur-[100px] pointer-events-none"
-          animate={{ opacity: [0.2, 0.4, 0.2] }}
-          transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
-        />
-
-        <motion.div
-          className="w-full max-w-[440px] relative z-10"
-          initial={{ opacity: 0, y: 24, scale: 0.98 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-        >
-          {/* Card */}
-          <div className="bg-[var(--ink-soft)]/80 border border-[var(--line)] p-8 sm:p-10 rounded-2xl shadow-xl relative overflow-hidden backdrop-blur-sm">
-            {/* Loading Overlay */}
-            <AnimatePresence>
-              {loading && (
-                <motion.div
-                  className="absolute inset-0 z-50 bg-[var(--ink-soft)]/90 backdrop-blur-sm flex flex-col items-center justify-center"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.2 }}
-                >
-                  <motion.div
-                    className="h-10 w-10 rounded-full border-2 border-[var(--gold)]/20 border-t-[var(--gold)]"
-                    animate={{ rotate: 360 }}
-                    transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                  />
-                  <p className="text-sm text-[var(--cream)] text-center mt-4">
-                    {authMode === 'login' ? 'Memproses...' : 'Membuat akun...'}
-                  </p>
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-            {/* Content - blurred when loading */}
-            <motion.div
-              className={loading ? 'pointer-events-none' : ''}
-              style={{ filter: loading ? 'blur(2px)' : 'none' }}
-            >
-              {/* Header */}
-              <div className="text-center mb-8">
-                <h1 className="text-3xl font-semibold text-[var(--cream)] mb-2 tracking-tight">
-                  {authMode === 'login' ? 'Selamat Datang' : 'Buat Akun'}
-                </h1>
-                <p className="text-[var(--cream-dim)] text-sm">
-                  {authMode === 'login' ? 'Masuk ke akun Anda' : 'Daftar untuk mulai menggunakan'}
-                </p>
-              </div>
-
-              {/* Demo Account Button */}
-              <motion.button
-                onClick={handleDemoLogin}
-                disabled={loading || demoLoading}
-                whileHover={{ scale: loading ? 1 : 1.01 }}
-                whileTap={{ scale: loading ? 1 : 0.99 }}
-                className="w-full mb-6 relative overflow-hidden rounded-xl border border-[var(--gold)]/20 bg-[var(--gold)]/5 hover:bg-[var(--gold)]/10 transition-all p-4 text-left group disabled:opacity-50"
-              >
-                <AnimatePresence mode="wait">
-                  {demoLoading ? (
-                    <motion.div
-                      key="loading"
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      className="relative flex items-center justify-center gap-3 py-2"
-                    >
-                      <Loader2 className="h-4 w-4 text-[var(--gold)] animate-spin" />
-                      <span className="text-[var(--gold)] text-sm font-medium">Memuat demo...</span>
-                    </motion.div>
-                  ) : (
-                    <motion.div
-                      key="default"
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      className="relative flex items-start gap-3"
-                    >
-                      <div className="p-2.5 rounded-xl bg-[var(--gold)]/12 shrink-0">
-                        <Zap className="h-4 w-4 text-[var(--gold)]" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="text-[var(--gold)] font-semibold text-sm">Coba Tanpa Daftar</span>
-                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-[var(--gold)]/12 text-[var(--gold)]/70 font-medium tracking-wide">DEMO</span>
-                        </div>
-                        <p className="text-[11px] text-[var(--cream-dim)] leading-relaxed">Langsung rasakan pengalaman kasir, kelola stok, dan lihat laporan</p>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </motion.button>
-
-              {/* Divider - only show in login mode */}
-              {authMode === 'login' && (
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="flex-1 h-px bg-[var(--line)]" />
-                  <span className="text-[10px] uppercase tracking-[0.12em] text-[var(--cream-dim)] font-medium">atau</span>
-                  <div className="flex-1 h-px bg-[var(--line)]" />
-                </div>
-              )}
-
-              {/* Error / Success */}
-              <ErrorMessage error={error} success={success} className="mb-5" variant="dark" />
-
-              {/* Form */}
-              <AnimatePresence mode="wait">
-                <motion.form
-                  key={authMode}
-                  initial={{ opacity: 0, y: authMode === 'login' ? -4 : 4 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: authMode === 'login' ? 4 : -4 }}
-                  transition={{ duration: 0.2 }}
-                  onSubmit={authMode === 'login' ? handleSignIn : handleSignup}
-                  className="space-y-5"
-                >
-                  <AnimatePresence>
-                    {authMode === 'signup' && (
-                      <motion.div
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: 'auto' }}
-                        exit={{ opacity: 0, height: 0 }}
-                        transition={{ duration: 0.2 }}
-                        className="overflow-hidden"
-                      >
-                        <div className="space-y-2">
-                          <label className="text-xs font-medium text-[var(--cream-dim)]">Nama Lengkap</label>
-                          <div className="relative">
-                            <User className={`absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 transition-colors ${focusedField === 'fullname' ? 'text-[var(--gold)]' : 'text-[var(--cream-dim)]'}`} />
-                            <input
-                              value={fullName}
-                              onChange={(e) => setFullName(e.target.value)}
-                              onFocus={() => setFocusedField('fullname')}
-                              onBlur={() => setFocusedField(null)}
-                              required
-                              type="text"
-                              placeholder="Nama lengkap Anda"
-                              className="w-full bg-black/20 border border-[var(--line)] text-[var(--cream)] placeholder:text-[var(--cream-dim)]/50 pl-11 pr-4 py-3 rounded-lg focus:border-[var(--gold)]/50 focus:ring-1 focus:ring-[var(--gold)]/20 focus:outline-none transition-all text-sm disabled:opacity-50"
-                              disabled={loading}
-                            />
-                          </div>
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-medium text-[var(--cream-dim)]">Email</label>
-                    <div className="relative">
-                      <Mail className={`absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 transition-colors ${focusedField === 'email' ? 'text-[var(--gold)]' : 'text-[var(--cream-dim)]'}`} />
-                      <input
-                        ref={emailRef}
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        onFocus={() => setFocusedField('email')}
-                        onBlur={() => setFocusedField(null)}
-                        required
-                        type="email"
-                        placeholder="nama@email.com"
-                        className="w-full bg-black/20 border border-[var(--line)] text-[var(--cream)] placeholder:text-[var(--cream-dim)]/50 pl-11 pr-4 py-3 rounded-lg focus:border-[var(--gold)]/50 focus:ring-1 focus:ring-[var(--gold)]/20 focus:outline-none transition-all text-sm disabled:opacity-50"
-                        disabled={loading}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-medium text-[var(--cream-dim)]">Password</label>
-                    <div className="relative">
-                      <Lock className={`absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 transition-colors ${focusedField === 'password' ? 'text-[var(--gold)]' : 'text-[var(--cream-dim)]'}`} />
-                      <input
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        onFocus={() => setFocusedField('password')}
-                        onBlur={() => setFocusedField(null)}
-                        required
-                        type={showPassword ? 'text' : 'password'}
-                        placeholder="••••••••"
-                        className="w-full bg-black/20 border border-[var(--line)] text-[var(--cream)] placeholder:text-[var(--cream-dim)]/50 pl-11 pr-12 py-3 rounded-lg focus:border-[var(--gold)]/50 focus:ring-1 focus:ring-[var(--gold)]/20 focus:outline-none transition-all text-sm disabled:opacity-50"
-                        disabled={loading}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3.5 top-1/2 -translate-y-1/2 p-1 text-[var(--cream-dim)] hover:text-[var(--cream)] transition-colors"
-                        tabIndex={-1}
-                      >
-                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                      </button>
-                    </div>
-                  </div>
-
-                  <motion.button
-                    disabled={loading}
-                    whileTap={{ scale: loading ? 1 : 0.98 }}
-                    type="submit"
-                    className="w-full py-3 mt-2 bg-[var(--gold)] text-black font-semibold rounded-lg hover:bg-[var(--gold-soft)] transition-all text-sm flex items-center justify-center gap-2 disabled:opacity-70"
-                  >
-                    <>
-                      <span>{authMode === 'login' ? 'Masuk' : 'Daftar'}</span>
-                      <ArrowRight className="h-4 w-4" />
-                    </>
-                  </motion.button>
-                </motion.form>
-              </AnimatePresence>
-
-              {/* Toggle */}
-              <p className="text-center text-sm text-[var(--cream-dim)] mt-6">
-                {authMode === 'login' ? "Belum punya akun? " : "Sudah punya akun? "}
-                <button
-                  onClick={() => {
-                    setError('');
-                    setSuccess('');
-                    setAuthMode(authMode === 'login' ? 'signup' : 'login');
-                  }}
-                  className="text-[var(--gold)] font-medium hover:text-[var(--gold-soft)] transition-colors ml-1"
-                >
-                  {authMode === 'login' ? 'Daftar' : 'Masuk'}
-                </button>
-              </p>
-            </motion.div>
+      <motion.div
+        className="w-full max-w-[420px] relative z-10"
+        initial={{ opacity: 0, y: 24, scale: 0.98 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+      >
+        {/* Card */}
+        <div className="bg-card/80 border border-border p-6 sm:p-8 rounded-2xl shadow-xl relative overflow-hidden backdrop-blur-sm">
+          {/* Header */}
+          <div className="text-center mb-7">
+            <h1 className="text-2xl sm:text-3xl font-semibold text-foreground mb-1.5 tracking-tight">
+              {authMode === 'login' ? 'Selamat Datang' : 'Buat Akun'}
+            </h1>
+            <p className="text-muted-foreground text-sm">
+              {authMode === 'login' ? 'Masuk ke akun Anda' : 'Daftar untuk mulai menggunakan'}
+            </p>
           </div>
 
-          {/* Footer */}
-          <p className="text-center text-xs text-[var(--cream-dim)]/60 mt-6">
-            Kasirku POS
-          </p>
-        </motion.div>
-      </div>
+          {/* Demo Button (login only) */}
+          {authMode === 'login' && (
+            <motion.button
+              onClick={handleDemoLogin}
+              disabled={loading || demoLoading}
+              whileHover={{ scale: loading || demoLoading ? 1 : 1.01 }}
+              whileTap={{ scale: loading || demoLoading ? 1 : 0.99 }}
+              className="w-full mb-6 relative overflow-hidden rounded-xl border border-primary/20 bg-primary/5 hover:bg-primary/10 transition-all p-3.5 text-left group disabled:opacity-50"
+            >
+              <AnimatePresence mode="wait">
+                {demoLoading ? (
+                  <motion.div
+                    key="loading"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="flex items-center justify-center gap-2 py-1"
+                  >
+                    <Loader2 className="h-4 w-4 text-primary animate-spin" />
+                    <span className="text-primary text-sm font-medium">Memuat demo...</span>
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key="default"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="flex items-start gap-3"
+                  >
+                    <div className="p-2.5 rounded-xl bg-primary/10 shrink-0">
+                      <Zap className="h-4 w-4 text-primary" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-primary font-semibold text-sm">Coba Tanpa Daftar</span>
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-primary/10 text-primary/70 font-medium tracking-wide">
+                          DEMO
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-muted-foreground leading-relaxed">
+                        Langsung rasakan pengalaman kasir, kelola stok, dan lihat laporan
+                      </p>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </motion.button>
+          )}
 
-    </>
+          {/* Divider (login only) */}
+          {authMode === 'login' && (
+            <div className="flex items-center gap-3 mb-6">
+              <div className="flex-1 h-px bg-border" />
+              <span className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground font-medium">
+                atau
+              </span>
+              <div className="flex-1 h-px bg-border" />
+            </div>
+          )}
+
+          {/* Error / Success banner */}
+          <ErrorMessage
+            error={error}
+            success={success}
+            className="mb-5"
+            variant="default"
+          />
+
+          {/* Form */}
+          <AnimatePresence mode="wait">
+            <motion.form
+              key={authMode}
+              initial={{ opacity: 0, y: authMode === 'login' ? -4 : 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: authMode === 'login' ? 4 : -4 }}
+              transition={{ duration: 0.2 }}
+              onSubmit={authMode === 'login' ? handleSignIn : handleSignup}
+              className={`space-y-4 ${loading ? 'opacity-70 pointer-events-none' : ''}`}
+            >
+              {/* Full Name (signup only) */}
+              <AnimatePresence>
+                {authMode === 'signup' && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="space-y-1.5">
+                      <Label htmlFor="fullName">Nama Lengkap</Label>
+                      <div className="relative">
+                        <Input
+                          id="fullName"
+                          value={fullName}
+                          onChange={(e) => setFullName(e.target.value)}
+                          required
+                          placeholder="Nama lengkap Anda"
+                          className="pl-10 peer"
+                          disabled={loading}
+                          aria-invalid={!!fieldErrors.fullName}
+                        />
+                        <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground peer-focus:text-primary transition-colors pointer-events-none" />
+                      </div>
+                      <FieldError message={fieldErrors.fullName} />
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* Email */}
+              <div className="space-y-1.5">
+                <Label htmlFor="email">Email</Label>
+                <div className="relative">
+                  <Input
+                    id="email"
+                    autoFocus
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                    type="email"
+                    placeholder="nama@email.com"
+                    className="pl-10 peer"
+                    disabled={loading}
+                    aria-invalid={!!fieldErrors.email}
+                  />
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground peer-focus:text-primary transition-colors pointer-events-none" />
+                </div>
+                <FieldError message={fieldErrors.email} />
+              </div>
+
+              {/* Password */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="password">Password</Label>
+                  {authMode === 'login' && (
+                    <a
+                      href="mailto:aldo_tobing@hotmail.com?subject=Lupa Password Kasirku"
+                      className="text-xs text-muted-foreground hover:text-primary transition-colors"
+                    >
+                      Lupa password?
+                    </a>
+                  )}
+                </div>
+                <div className="relative">
+                  <Input
+                    id="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    type={showPassword ? 'text' : 'password'}
+                    placeholder={authMode === 'signup' ? 'Minimal 6 karakter' : '••••••••'}
+                    className="pl-10 pr-10 peer"
+                    disabled={loading}
+                    aria-invalid={!!fieldErrors.password}
+                  />
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground peer-focus:text-primary transition-colors pointer-events-none" />
+                  <PasswordToggle
+                    show={showPassword}
+                    onToggle={() => setShowPassword(!showPassword)}
+                  />
+                </div>
+                <FieldError message={fieldErrors.password} />
+              </div>
+
+              {/* Confirm Password (signup only) */}
+              <AnimatePresence>
+                {authMode === 'signup' && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="space-y-1.5">
+                      <Label htmlFor="confirmPassword">Konfirmasi Password</Label>
+                      <div className="relative">
+                        <Input
+                          id="confirmPassword"
+                          value={confirmPassword}
+                          onChange={(e) => setConfirmPassword(e.target.value)}
+                          required
+                          type={showConfirmPassword ? 'text' : 'password'}
+                          placeholder="Ulangi password"
+                          className="pl-10 pr-10 peer"
+                          disabled={loading}
+                          aria-invalid={!!fieldErrors.confirmPassword}
+                        />
+                        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground peer-focus:text-primary transition-colors pointer-events-none" />
+                        <PasswordToggle
+                          show={showConfirmPassword}
+                          onToggle={() => setShowConfirmPassword(!showConfirmPassword)}
+                        />
+                      </div>
+                      <FieldError message={fieldErrors.confirmPassword} />
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* Submit */}
+              <Button
+                type="submit"
+                disabled={loading}
+                size="lg"
+                className="w-full mt-2"
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span>{authMode === 'login' ? 'Memproses...' : 'Membuat akun...'}</span>
+                  </>
+                ) : (
+                  <>
+                    <span>{authMode === 'login' ? 'Masuk' : 'Daftar'}</span>
+                    <ArrowRight className="h-4 w-4" />
+                  </>
+                )}
+              </Button>
+            </motion.form>
+          </AnimatePresence>
+
+          {/* Toggle mode */}
+          <p className="text-center text-sm text-muted-foreground mt-6">
+            {authMode === 'login' ? 'Belum punya akun? ' : 'Sudah punya akun? '}
+            <button
+              onClick={toggleAuthMode}
+              disabled={loading}
+              className="text-primary font-medium hover:text-primary/85 transition-colors ml-1 disabled:opacity-50"
+            >
+              {authMode === 'login' ? 'Daftar' : 'Masuk'}
+            </button>
+          </p>
+        </div>
+
+        {/* Footer */}
+        <p className="text-center text-xs text-muted-foreground/60 mt-5">
+          Kasirku POS
+        </p>
+      </motion.div>
+    </div>
   );
 }
 
-// Export dengan Suspense untuk handle useSearchParams
+// ─── Export with Suspense ────────────────────────────────────────────────────
+
 export default function LoginPage() {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen bg-[#181815] flex items-center justify-center">
-        <div className="animate-spin h-8 w-8 border-2 border-[#D4AF37] border-t-transparent rounded-full" />
-      </div>
-    }>
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-background flex items-center justify-center">
+          <div className="animate-spin h-8 w-8 border-2 border-primary border-t-transparent rounded-full" />
+        </div>
+      }
+    >
       <LoginForm />
     </Suspense>
   );
