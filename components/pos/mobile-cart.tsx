@@ -131,6 +131,23 @@ export function MobileCart() {
   const manualDiscountSet = useRef(false);
   const router = useRouter();
 
+  const loadingMessages = useMemo(() => [
+    "Memproses...",
+    "Menyimpan...",
+    "Hampir selesai...",
+    "Finalisasi...",
+  ], [])
+  const [messageIndex, setMessageIndex] = useState(0)
+
+  useEffect(() => {
+    if (!isProcessing) return
+    setMessageIndex(0)
+    const interval = setInterval(() => {
+      setMessageIndex((prev) => Math.min(prev + 1, loadingMessages.length - 1))
+    }, 2800)
+    return () => clearInterval(interval)
+  }, [isProcessing, loadingMessages])
+
   const { subtotal, discountAmount, discountedSubtotal, tax, service, total, totalItems } = useMemo(() => {
     const sub = cart.reduce((sum, c) => sum + Math.max(0, c.price * c.qty - (c.discount ?? 0)), 0);
     const discAmt = discountType === 'percent' ? Math.round(sub * discountValue / 100) : discountValue;
@@ -197,10 +214,10 @@ export function MobileCart() {
 
   // Close when cart becomes empty
   useEffect(() => {
-    if (cart.length === 0 && isExpanded) {
+    if (cart.length === 0 && isExpanded && !showReceiptModal && !isProcessing) {
       setIsExpanded(false);
     }
-  }, [cart.length, isExpanded]);
+  }, [cart.length, isExpanded, showReceiptModal, isProcessing]);
 
   // Animation for the cart icon jump
   const [controls, setControls] = useState({ scale: 1 });
@@ -303,7 +320,40 @@ export function MobileCart() {
             {/* Cart items */}
             <div className="overflow-y-auto p-3 space-y-3 flex-grow max-h-[40vh]">
               {cart.length === 0 ? (
-                <div className="text-center py-4 text-muted-foreground">Belum ada item.</div>
+                isProcessing ? (
+                  <div className="flex flex-col items-center justify-center py-6 text-center select-none">
+                    <motion.div
+                      animate={{ scale: [1, 1.06, 1] }}
+                      transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
+                    >
+                      <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-3">
+                        <Loader2 className="h-6 w-6 text-primary/70 animate-spin" />
+                      </div>
+                    </motion.div>
+                    <motion.div
+                      key={messageIndex}
+                      initial={{ opacity: 0, y: 4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -4 }}
+                      transition={{ duration: 0.4 }}
+                      className="text-sm font-medium text-foreground"
+                    >
+                      {loadingMessages[messageIndex]}
+                    </motion.div>
+                    <div className="flex items-center gap-1 mt-2">
+                      {[0, 1, 2].map((i) => (
+                        <motion.span
+                          key={i}
+                          className="w-1.5 h-1.5 rounded-full bg-primary/40"
+                          animate={{ opacity: [0.3, 1, 0.3] }}
+                          transition={{ repeat: Infinity, duration: 1.2, delay: i * 0.2 }}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-4 text-muted-foreground">Belum ada item.</div>
+                )
               ) : (
                 cart.map((c) => (
                   <MemoizedCartItem
@@ -438,10 +488,10 @@ export function MobileCart() {
                       })
                       setReceiptTransaction(tx)
                       setShowReceiptModal(true)
+                      setIsExpanded(false)
                     }
                   } finally {
                     setIsProcessing(false);
-                    setIsExpanded(false);
                   }
                 }}
               >
@@ -467,6 +517,7 @@ export function MobileCart() {
           onClose={() => {
             setShowReceiptModal(false)
             setReceiptTransaction(null)
+            setIsExpanded(false)
           }}
         />
       )}

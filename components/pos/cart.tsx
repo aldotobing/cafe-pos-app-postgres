@@ -1,7 +1,8 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useMemo } from "react"
 import { useRouter } from "next/navigation"
+import { motion } from "framer-motion"
 import { useCart } from "../../contexts/cart-context"
 import { useAuth } from "@/lib/auth-context"
 import { useMenu, useCafeSettings } from "@/hooks/use-cafe-data"
@@ -37,6 +38,23 @@ export function CartPanel() {
   const [promotions, setPromotions] = useState<PromoRule[]>([])
   const [appliedPromoName, setAppliedPromoName] = useState<string | null>(null)
   const manualDiscountSet = useRef(false)
+
+  const loadingMessages = useMemo(() => [
+    "Memproses...",
+    "Menyimpan...",
+    "Hampir selesai...",
+    "Finalisasi...",
+  ], [])
+  const [messageIndex, setMessageIndex] = useState(0)
+
+  useEffect(() => {
+    if (!isProcessing) return
+    setMessageIndex(0)
+    const interval = setInterval(() => {
+      setMessageIndex((prev) => Math.min(prev + 1, loadingMessages.length - 1))
+    }, 2800)
+    return () => clearInterval(interval)
+  }, [isProcessing, loadingMessages])
 
   useEffect(() => {
     if (!userData?.cafe_id) return
@@ -113,13 +131,46 @@ export function CartPanel() {
       {/* Items */}
       <div className="flex-1 overflow-y-auto px-4 py-3 scrollbar-custom">
         {cart.length === 0 && (
-          <div className="flex flex-col items-center justify-center h-full text-center">
-            <div className="w-14 h-14 rounded-full bg-muted/60 flex items-center justify-center mb-3">
-              <ShoppingCart className="h-5 w-5 text-muted-foreground/60" />
+          isProcessing ? (
+            <div className="flex flex-col items-center justify-center h-full text-center select-none">
+              <motion.div
+                animate={{ scale: [1, 1.08, 1] }}
+                transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
+              >
+                <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-4">
+                  <Loader2 className="h-8 w-8 text-primary/70 animate-spin" />
+                </div>
+              </motion.div>
+              <motion.div
+                key={messageIndex}
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -6 }}
+                transition={{ duration: 0.4 }}
+                className="text-sm font-medium text-foreground"
+              >
+                {loadingMessages[messageIndex]}
+              </motion.div>
+              <div className="flex items-center gap-1 mt-2.5">
+                {[0, 1, 2].map((i) => (
+                  <motion.span
+                    key={i}
+                    className="w-1.5 h-1.5 rounded-full bg-primary/40"
+                    animate={{ opacity: [0.3, 1, 0.3] }}
+                    transition={{ repeat: Infinity, duration: 1.2, delay: i * 0.2 }}
+                  />
+                ))}
+              </div>
             </div>
-            <div className="text-sm font-medium text-foreground">Keranjang kosong</div>
-            <div className="text-xs text-muted-foreground mt-0.5">Pilih item dari menu untuk memulai</div>
-          </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center h-full text-center">
+              <div className="w-14 h-14 rounded-full bg-muted/60 flex items-center justify-center mb-3">
+                <ShoppingCart className="h-5 w-5 text-muted-foreground/60" />
+              </div>
+              <div className="text-sm font-medium text-foreground">Keranjang kosong</div>
+              <div className="text-xs text-muted-foreground mt-0.5">Pilih item dari menu untuk memulai</div>
+            </div>
+          )
         )}
         {cart.length > 0 && (
           <div className="space-y-2.5">
