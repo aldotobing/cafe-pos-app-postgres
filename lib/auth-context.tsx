@@ -1,14 +1,11 @@
 'use client';
 
-import { createContext, useContext, useState, useEffect, ReactNode, useRef } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
+import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
 import { fetchClient, FetchError } from '@/lib/fetch-client';
 import { mutate } from 'swr';
 import { toast } from 'sonner';
-
-// Pages where we know there's no session — skip the /auth/me check
-const SKIP_SESSION_CHECK = ['/login', '/signup', '/reset-password'];
 
 interface AuthContextType {
   user: any | null;
@@ -39,27 +36,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [signingOut, setSigningOut] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
-  const pathname = usePathname();
 
+  // Check session on mount — Supabase client reads cookies, no network
   useEffect(() => {
-    if (SKIP_SESSION_CHECK.includes(pathname)) {
-      setLoading(false);
-      return;
-    }
     checkSession();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
+  // Re-check on tab focus
+  useEffect(() => {
     const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible' && !SKIP_SESSION_CHECK.includes(pathname)) {
+      if (document.visibilityState === 'visible') {
         checkSession().then(async (result) => {
           if (result?.expired && !loading) {
             toast.error('Sesi telah berakhir karena tidak aktif. Silakan masuk kembali.', {
               id: 'session-expired',
               duration: 5000,
             });
-            await new Promise(r => setTimeout(r, 600));
+            await new Promise((r) => setTimeout(r, 600));
             router.push('/login');
           } else if (result && !result.expired) {
-            mutate(() => true, undefined, { revalidate: true })
+            mutate(() => true, undefined, { revalidate: true });
           }
         });
       }
@@ -69,53 +66,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [pathname]);
+  }, [loading]);
 
   const checkSession = async () => {
     try {
+      const supabase = createClient();
+
+      // Step 1: Read session from cookies — instant, no network request
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (!session) {
+        setUser(null);
+        setUserData(null);
+        return { expired: true };
+      }
+
+      // Step 2: Session exists — fetch profile from server
       const response = await fetch('/api/auth/me', {
         credentials: 'include',
       });
+
       if (response.ok) {
         const data = await response.json();
         setUser(data.user);
         setUserData(data.userData);
         return { ...data, expired: false };
       }
-      if (response.status === 401) {
-        const refreshed = await tryRefresh();
-        if (refreshed) {
-          const retryResponse = await fetch('/api/auth/me', {
-            credentials: 'include',
-          });
-          if (retryResponse.ok) {
-            const data = await retryResponse.json();
-            setUser(data.user);
-            setUserData(data.userData);
-            return { ...data, expired: false };
-          }
-        }
-        setUser(null);
-        setUserData(null);
-        return { expired: true };
-      }
+
+      // Profile fetch failed despite valid session — treat as expired
       setUser(null);
       setUserData(null);
       return { expired: true };
     } catch {
+      // Network error — don't clear existing user state
       return { expired: false };
     } finally {
       setLoading(false);
-    }
-  };
-
-  const tryRefresh = async (): Promise<boolean> => {
-    try {
-      const supabase = createClient();
-      const { data } = await supabase.auth.getSession();
-      return !!data.session;
-    } catch {
-      return false;
     }
   };
 
@@ -203,7 +189,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               keysToRemove.push(key);
             }
           }
-          keysToRemove.forEach(key => localStorage.removeItem(key));
+          keysToRemove.forEach((key) => localStorage.removeItem(key));
           localStorage.removeItem('pwa-install-dismissed-at');
           localStorage.removeItem('cart');
           localStorage.removeItem('cafe-settings');
@@ -231,9 +217,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       router.push('/login');
       return { success: true };
     } catch (err) {
-      const message = err instanceof FetchError
-        ? err.message
-        : (err instanceof Error ? err.message : 'Gagal menghubungi server');
+      const message =
+        err instanceof FetchError
+          ? err.message
+          : err instanceof Error
+            ? err.message
+            : 'Gagal menghubungi server';
       setError(message);
       return { success: false, error: message };
     } finally {
@@ -257,9 +246,5 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     userData,
   };
 
-  return (
-    <AuthContext.Provider value={value}>
-      {!loading && children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{!loading && children}</AuthContext.Provider>;
 }
