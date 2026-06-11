@@ -43,7 +43,7 @@ export async function POST(request: Request) {
     return NextResponse.json({
       success: true,
       message:
-        'Jika email terdaftar, link reset password telah dikirim. Silakan periksa kotak masuk Anda.',
+        'Link reset password telah dikirim. Silakan periksa kotak masuk email Anda.',
     });
   } catch (err) {
     console.error('Forgot password error:', err);
