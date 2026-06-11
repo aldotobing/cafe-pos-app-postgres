@@ -6,7 +6,6 @@ const PUBLIC_ROUTES = [
   '/',
   '/login',
   '/signup',
-  '/reset-password',
   '/api/auth/login',
   '/api/auth/signup',
   '/api/auth/logout',
@@ -21,6 +20,11 @@ const PUBLIC_ROUTES = [
   '/.well-known',
   '/icons',
   '/sw.js',
+]
+
+// Routes that are public but need Supabase session exchange (PKCE callbacks)
+const AUTH_CALLBACK_ROUTES = [
+  '/reset-password',
 ]
 
 const STATIC_EXTENSIONS = [
@@ -45,7 +49,12 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next()
   }
 
-  if (isPublicRoute(pathname)) {
+  // Auth callback routes need Supabase session exchange but are still public
+  const isAuthCallback = AUTH_CALLBACK_ROUTES.some(
+    (route) => pathname === route || pathname.startsWith(`${route}/`),
+  );
+
+  if (isPublicRoute(pathname) && !isAuthCallback) {
     return NextResponse.next()
   }
 
@@ -73,6 +82,12 @@ export async function proxy(request: NextRequest) {
   )
 
   const { data: { session } } = await supabase.auth.getSession()
+
+  // Auth callback routes: PKCE exchange happens above, but don't redirect
+  if (isAuthCallback) {
+    supabaseResponse.headers.set('X-Content-Type-Options', 'nosniff')
+    return supabaseResponse
+  }
 
   if (!session) {
     const loginUrl = new URL('/login', request.url)

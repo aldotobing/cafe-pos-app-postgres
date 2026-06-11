@@ -27,50 +27,58 @@ function ResetPasswordForm() {
       try {
         const supabase = createClient();
 
-        // First, check if Supabase already set a session via the redirect
+        // First: check if Supabase already set a session via cookies
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-
         if (session && !sessionError) {
-          // Session already established by the redirect — ready to set password
           setVerifying(false);
           return;
         }
 
-        // Fallback: manually verify token from URL hash/query params
+        // Second: check for token in hash fragment
+        // Supabase redirects with: #access_token=...&refresh_token=...&type=recovery
         const hash = window.location.hash.substring(1);
         const hashParams = new URLSearchParams(hash);
-        const type = hashParams.get('type') || searchParams.get('type');
+
+        // Third: check for token in query params (some Supabase configs)
+        const type =
+          hashParams.get('type') ||
+          searchParams.get('type') ||
+          searchParams.get('token_type');
+
         const tokenHash =
-          hashParams.get('token_hash') ||
           searchParams.get('token_hash') ||
-          hashParams.get('access_token');
+          searchParams.get('token') ||
+          hashParams.get('token_hash') ||
+          hashParams.get('access_token') ||
+          searchParams.get('access_token');
 
-        if (!tokenHash || type !== 'recovery') {
-          setTokenError(
-            'Link reset password tidak valid. Silakan minta link baru dari halaman login.',
-          );
-          setVerifying(false);
-          return;
+        if (tokenHash && type === 'recovery') {
+          const { error: verifyError } = await supabase.auth.verifyOtp({
+            token_hash: tokenHash,
+            type: 'recovery',
+          });
+
+          if (!verifyError) {
+            // Clean URL
+            window.history.replaceState(null, '', window.location.pathname);
+            setVerifying(false);
+            return;
+          }
         }
 
-        const { error: verifyError } = await supabase.auth.verifyOtp({
-          token_hash: tokenHash,
-          type: 'recovery',
+        // No valid token found
+        console.error('Reset password: no session or valid token', {
+          hasSession: !!session,
+          hash: window.location.hash,
+          search: window.location.search,
         });
-
-        if (verifyError) {
-          setTokenError(
-            'Link reset password sudah kadaluarsa. Silakan minta link baru dari halaman login.',
-          );
-        }
+        setTokenError(
+          'Link reset password tidak valid atau sudah kadaluarsa. Silakan minta link baru dari halaman login.',
+        );
       } catch {
         setTokenError('Gagal memverifikasi link. Silakan coba lagi.');
       } finally {
         setVerifying(false);
-        // Clean the hash from the URL
-        if (window.location.hash) {
-          window.history.replaceState(null, '', window.location.pathname);
-        }
       }
     };
 
