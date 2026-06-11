@@ -54,7 +54,7 @@ function validateForm(
   return errors;
 }
 
-// ─── Input field builders ────────────────────────────────────────────────────
+// ─── Helpers ───────────────────────────────────────────────────────────────
 
 function FieldError({ message }: { message?: string }) {
   if (!message) return null;
@@ -85,7 +85,7 @@ function PasswordToggle({ show, onToggle }: { show: boolean; onToggle: () => voi
 // ─── Main component ─────────────────────────────────────────────────────────
 
 function LoginForm() {
-  const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
+  const [authMode, setAuthMode] = useState<'login' | 'signup' | 'forgot'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
@@ -104,15 +104,15 @@ function LoginForm() {
   const redirectTo = searchParams.get('redirect') || '/';
   const { signUp, signIn } = useAuth();
 
-  const toggleAuthMode = () => {
+  const goTo = (mode: 'login' | 'signup' | 'forgot') => {
     setError('');
     setSuccess('');
     setFieldErrors({});
     setConfirmPassword('');
-    setAuthMode((prev) => (prev === 'login' ? 'signup' : 'login'));
+    setAuthMode(mode);
   };
 
-  // Focus the first field when mode changes (after AnimatePresence mounts new form)
+  // Focus the first field when mode changes
   useEffect(() => {
     const timer = setTimeout(() => {
       if (authMode === 'signup') {
@@ -120,7 +120,7 @@ function LoginForm() {
       } else {
         emailInputRef.current?.focus();
       }
-    }, 300); // must exceed the outer AnimatePresence transition (200ms)
+    }, 300);
   }, [authMode]);
 
   // ── Demo login ────────────────────────────────────────────────────────
@@ -158,9 +158,7 @@ function LoginForm() {
 
     try {
       const userData = await signIn(email, password);
-      if (!userData.is_approved) {
-        throw new Error('pending');
-      }
+      if (!userData.is_approved) throw new Error('pending');
       const targetPath =
         redirectTo !== '/'
           ? redirectTo
@@ -215,17 +213,59 @@ function LoginForm() {
       setPassword('');
       setFullName('');
       setConfirmPassword('');
-      // Auto-switch to login after brief delay
-      setTimeout(() => {
-        setAuthMode('login');
-        setSuccess('');
-      }, 2000);
+      setTimeout(() => goTo('login'), 2000);
     } catch (err: any) {
       setError(getErrorMessage(err));
     } finally {
       setLoading(false);
     }
   };
+
+  // ── Forgot password ───────────────────────────────────────────────────
+
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email.trim()) {
+      setFieldErrors({ email: 'Email wajib diisi' });
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setFieldErrors({ email: 'Format email tidak valid' });
+      return;
+    }
+    setFieldErrors({});
+    setLoading(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      const res = await fetch('/api/auth/forgot-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || 'Gagal mengirim link reset.');
+      } else {
+        setSuccess(data.message);
+      }
+    } catch {
+      setError('Tidak dapat terhubung ke server.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ── Form submit router ────────────────────────────────────────────────
+
+  const handleSubmit = (e: React.FormEvent) => {
+    if (authMode === 'forgot') return handleForgotPassword(e);
+    if (authMode === 'login') return handleSignIn(e);
+    return handleSignup(e);
+  };
+
+  const showPasswordFields = authMode !== 'forgot';
 
   // ── Render ────────────────────────────────────────────────────────────
 
@@ -244,15 +284,18 @@ function LoginForm() {
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
       >
-        {/* Card */}
         <div className="bg-card/80 border border-border p-6 sm:p-8 rounded-2xl shadow-xl relative overflow-hidden backdrop-blur-sm">
           {/* Header */}
           <div className="text-center mb-7">
             <h1 className="text-2xl sm:text-3xl font-semibold text-foreground mb-1.5 tracking-tight">
-              {authMode === 'login' ? 'Selamat Datang' : 'Buat Akun'}
+              {authMode === 'login' ? 'Selamat Datang' : authMode === 'forgot' ? 'Lupa Password' : 'Buat Akun'}
             </h1>
             <p className="text-muted-foreground text-sm">
-              {authMode === 'login' ? 'Masuk ke akun Anda' : 'Daftar untuk mulai menggunakan'}
+              {authMode === 'login'
+                ? 'Masuk ke akun Anda'
+                : authMode === 'forgot'
+                  ? 'Masukkan email Anda, kami akan kirimkan link reset'
+                  : 'Daftar untuk mulai menggunakan'}
             </p>
           </div>
 
@@ -291,9 +334,7 @@ function LoginForm() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
                         <span className="text-primary font-semibold text-sm">Coba Tanpa Daftar</span>
-                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-primary/10 text-primary/70 font-medium tracking-wide">
-                          DEMO
-                        </span>
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-primary/10 text-primary/70 font-medium tracking-wide">DEMO</span>
                       </div>
                       <p className="text-[11px] text-muted-foreground leading-relaxed">
                         Langsung rasakan pengalaman kasir, kelola stok, dan lihat laporan
@@ -309,20 +350,13 @@ function LoginForm() {
           {authMode === 'login' && (
             <div className="flex items-center gap-3 mb-6">
               <div className="flex-1 h-px bg-border" />
-              <span className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground font-medium">
-                atau
-              </span>
+              <span className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground font-medium">atau</span>
               <div className="flex-1 h-px bg-border" />
             </div>
           )}
 
-          {/* Error / Success banner */}
-          <ErrorMessage
-            error={error}
-            success={success}
-            className="mb-5"
-            variant="default"
-          />
+          {/* Error / Success */}
+          <ErrorMessage error={error} success={success} className="mb-5" variant="default" />
 
           {/* Form */}
           <AnimatePresence mode="wait">
@@ -332,7 +366,7 @@ function LoginForm() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: authMode === 'login' ? 4 : -4 }}
               transition={{ duration: 0.2 }}
-              onSubmit={authMode === 'login' ? handleSignIn : handleSignup}
+              onSubmit={handleSubmit}
               className={`space-y-4 ${loading ? 'opacity-70 pointer-events-none' : ''}`}
             >
               {/* Full Name (signup only) */}
@@ -378,100 +412,97 @@ function LoginForm() {
                 <FieldError message={fieldErrors.email} />
               </div>
 
-              {/* Password */}
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="password">Password</Label>
-                  {authMode === 'login' && (
-                    <a
-                      href="mailto:aldo_tobing@hotmail.com?subject=Lupa Password Kasirku"
-                      className="text-xs text-muted-foreground hover:text-primary transition-colors"
-                    >
-                      Lupa password?
-                    </a>
-                  )}
-                </div>
-                <div className="relative">
-                  <Input
-                    id="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                    type={showPassword ? 'text' : 'password'}
-                    placeholder={authMode === 'signup' ? 'Minimal 6 karakter' : '••••••••'}
-                    className="pl-10 pr-10 peer"
-                    disabled={loading}
-                    aria-invalid={!!fieldErrors.password}
-                  />
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground peer-focus:text-primary transition-colors pointer-events-none" />
-                  <PasswordToggle
-                    show={showPassword}
-                    onToggle={() => setShowPassword(!showPassword)}
-                  />
-                </div>
-                <FieldError message={fieldErrors.password} />
-              </div>
-
-              {/* Confirm Password (signup only) */}
-              {authMode === 'signup' && (
-                <div className="space-y-1.5">
-                  <Label htmlFor="confirmPassword">Konfirmasi Password</Label>
-                  <div className="relative">
-                    <Input
-                      id="confirmPassword"
-                      value={confirmPassword}
-                      onChange={(e) => {
-                        setConfirmPassword(e.target.value);
-                        // Clear inline error as user types
-                        if (fieldErrors.confirmPassword) {
-                          setFieldErrors((prev) => ({ ...prev, confirmPassword: undefined }));
-                        }
-                      }}
-                      required
-                      type={showConfirmPassword ? 'text' : 'password'}
-                      placeholder="Ulangi password"
-                      className={`pl-10 pr-14 peer ${
-                        confirmPassword && password === confirmPassword
-                          ? 'border-emerald-500 focus-visible:ring-emerald-500/20'
-                          : ''
-                      }`}
-                      disabled={loading}
-                      aria-invalid={!!fieldErrors.confirmPassword}
-                    />
-                    <ShieldCheck className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground peer-focus:text-primary transition-colors pointer-events-none" />
-                    {confirmPassword && password === confirmPassword && (
-                      <CheckCircle2 className="absolute right-9 top-1/2 -translate-y-1/2 h-4 w-4 text-emerald-500" />
-                    )}
-                    <PasswordToggle
-                      show={showConfirmPassword}
-                      onToggle={() => setShowConfirmPassword(!showConfirmPassword)}
-                    />
+              {/* Password + Confirm (hidden in forgot mode) */}
+              {showPasswordFields && (
+                <>
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="password">Password</Label>
+                      {authMode === 'login' && (
+                        <button
+                          type="button"
+                          onClick={() => goTo('forgot')}
+                          className="text-xs text-muted-foreground hover:text-primary transition-colors"
+                        >
+                          Lupa password?
+                        </button>
+                      )}
+                    </div>
+                    <div className="relative">
+                      <Input
+                        id="password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        required
+                        type={showPassword ? 'text' : 'password'}
+                        placeholder={authMode === 'signup' ? 'Minimal 6 karakter' : '••••••••'}
+                        className="pl-10 pr-10 peer"
+                        disabled={loading}
+                        aria-invalid={!!fieldErrors.password}
+                      />
+                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground peer-focus:text-primary transition-colors pointer-events-none" />
+                      <PasswordToggle show={showPassword} onToggle={() => setShowPassword(!showPassword)} />
+                    </div>
+                    <FieldError message={fieldErrors.password} />
                   </div>
-                  {confirmPassword && password !== confirmPassword ? (
-                    <p className="text-xs text-destructive mt-1">Password tidak cocok</p>
-                  ) : confirmPassword && password === confirmPassword ? (
-                    <p className="text-xs text-emerald-500 mt-1">Password cocok</p>
-                  ) : (
-                    <FieldError message={fieldErrors.confirmPassword} />
+
+                  {/* Confirm Password (signup only) */}
+                  {authMode === 'signup' && (
+                    <div className="space-y-1.5">
+                      <Label htmlFor="confirmPassword">Konfirmasi Password</Label>
+                      <div className="relative">
+                        <Input
+                          id="confirmPassword"
+                          value={confirmPassword}
+                          onChange={(e) => {
+                            setConfirmPassword(e.target.value);
+                            if (fieldErrors.confirmPassword) {
+                              setFieldErrors((prev) => ({ ...prev, confirmPassword: undefined }));
+                            }
+                          }}
+                          required
+                          type={showConfirmPassword ? 'text' : 'password'}
+                          placeholder="Ulangi password"
+                          className={`pl-10 pr-14 peer ${
+                            confirmPassword && password === confirmPassword
+                              ? 'border-emerald-500 focus-visible:ring-emerald-500/20'
+                              : ''
+                          }`}
+                          disabled={loading}
+                          aria-invalid={!!fieldErrors.confirmPassword}
+                        />
+                        <ShieldCheck className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground peer-focus:text-primary transition-colors pointer-events-none" />
+                        {confirmPassword && password === confirmPassword && (
+                          <CheckCircle2 className="absolute right-9 top-1/2 -translate-y-1/2 h-4 w-4 text-emerald-500" />
+                        )}
+                        <PasswordToggle show={showConfirmPassword} onToggle={() => setShowConfirmPassword(!showConfirmPassword)} />
+                      </div>
+                      {confirmPassword && password !== confirmPassword ? (
+                        <p className="text-xs text-destructive mt-1">Password tidak cocok</p>
+                      ) : confirmPassword && password === confirmPassword ? (
+                        <p className="text-xs text-emerald-500 mt-1">Password cocok</p>
+                      ) : (
+                        <FieldError message={fieldErrors.confirmPassword} />
+                      )}
+                    </div>
                   )}
-                </div>
+                </>
               )}
 
               {/* Submit */}
-              <Button
-                type="submit"
-                disabled={loading}
-                size="lg"
-                className="w-full mt-2"
-              >
+              <Button type="submit" disabled={loading} size="lg" className="w-full mt-2">
                 {loading ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin" />
-                    <span>{authMode === 'login' ? 'Memproses...' : 'Membuat akun...'}</span>
+                    <span>
+                      {authMode === 'forgot' ? 'Mengirim...' : authMode === 'login' ? 'Memproses...' : 'Membuat akun...'}
+                    </span>
                   </>
                 ) : (
                   <>
-                    <span>{authMode === 'login' ? 'Masuk' : 'Daftar'}</span>
+                    <span>
+                      {authMode === 'forgot' ? 'Kirim Link Reset' : authMode === 'login' ? 'Masuk' : 'Daftar'}
+                    </span>
                     <ArrowRight className="h-4 w-4" />
                   </>
                 )}
@@ -481,21 +512,41 @@ function LoginForm() {
 
           {/* Toggle mode */}
           <p className="text-center text-sm text-muted-foreground mt-6">
-            {authMode === 'login' ? 'Belum punya akun? ' : 'Sudah punya akun? '}
-            <button
-              onClick={toggleAuthMode}
-              disabled={loading}
-              className="text-primary font-medium hover:text-primary/85 transition-colors ml-1 disabled:opacity-50"
-            >
-              {authMode === 'login' ? 'Daftar' : 'Masuk'}
-            </button>
+            {authMode === 'forgot' ? (
+              <button
+                onClick={() => goTo('login')}
+                disabled={loading}
+                className="text-primary font-medium hover:text-primary/85 transition-colors disabled:opacity-50"
+              >
+                Kembali ke login
+              </button>
+            ) : authMode === 'login' ? (
+              <>
+                Belum punya akun?{' '}
+                <button
+                  onClick={() => goTo('signup')}
+                  disabled={loading}
+                  className="text-primary font-medium hover:text-primary/85 transition-colors disabled:opacity-50"
+                >
+                  Daftar
+                </button>
+              </>
+            ) : (
+              <>
+                Sudah punya akun?{' '}
+                <button
+                  onClick={() => goTo('login')}
+                  disabled={loading}
+                  className="text-primary font-medium hover:text-primary/85 transition-colors disabled:opacity-50"
+                >
+                  Masuk
+                </button>
+              </>
+            )}
           </p>
         </div>
 
-        {/* Footer */}
-        <p className="text-center text-xs text-muted-foreground/60 mt-5">
-          Kasirku POS
-        </p>
+        <p className="text-center text-xs text-muted-foreground/60 mt-5">Kasirku POS</p>
       </motion.div>
     </div>
   );
