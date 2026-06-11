@@ -286,7 +286,7 @@ function ModalContent({
       <div className="flex items-center justify-between px-5 py-4 border-b bg-muted/20 shrink-0">
         <div className="flex flex-col gap-0.5">
           <div className="flex items-center gap-2">
-            <h2 className={cn('font-bold text-lg tracking-tight', isVoided && 'line-through text-muted-foreground')}>Detail Transaksi</h2>
+            <h2 className="font-bold text-lg tracking-tight">Detail Transaksi</h2>
             {isVoided && (
               <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">
                 Void
@@ -296,7 +296,7 @@ function ModalContent({
           {tx && (
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <Hash className="h-3 w-3" />
-              <span className={cn('font-mono tracking-tight', isVoided && 'line-through')}>{tx.transactionNumber || tx.id?.slice(0, 10)}</span>
+              <span className="font-mono tracking-tight">{tx.transactionNumber || tx.id?.slice(0, 10)}</span>
             </div>
           )}
         </div>

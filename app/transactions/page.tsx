@@ -391,14 +391,15 @@ export default function Page() {
             <p className="text-xs text-muted-foreground max-w-sm mx-auto">Coba ubah filter atau tambahkan transaksi baru.</p>
           </div>
         ) : (
-          <table className="w-full text-sm">
+          <table className="w-full table-fixed text-sm">
             <thead className="bg-muted/30">
               <tr className="border-b">
-                <th className="px-4 py-3 text-left font-medium text-[11px] uppercase tracking-wider text-muted-foreground w-[160px]">Waktu</th>
-                <th className="px-4 py-3 text-left font-medium text-[11px] uppercase tracking-wider text-muted-foreground w-[120px]">Kasir</th>
-                <th className="px-4 py-3 text-left font-medium text-[11px] uppercase tracking-wider text-muted-foreground w-[100px]">Metode</th>
-                <th className="px-4 py-3 text-right font-medium text-[11px] uppercase tracking-wider text-muted-foreground w-[110px]">Total</th>
-                <th className="px-4 py-3 text-left font-medium text-[11px] uppercase tracking-wider text-muted-foreground">Item</th>
+                <th className="px-4 py-3 text-left font-medium text-[11px] uppercase tracking-wider text-muted-foreground w-[140px]">Waktu</th>
+                <th className="px-4 py-3 text-center font-medium text-[11px] uppercase tracking-wider text-muted-foreground w-[64px]">Status</th>
+                <th className="px-4 py-3 text-left font-medium text-[11px] uppercase tracking-wider text-muted-foreground w-[100px]">Kasir</th>
+                <th className="px-4 py-3 text-left font-medium text-[11px] uppercase tracking-wider text-muted-foreground w-[90px]">Metode</th>
+                <th className="px-4 py-3 text-right font-medium text-[11px] uppercase tracking-wider text-muted-foreground w-[100px]">Total</th>
+                <th className="px-4 py-3 text-left font-medium text-[11px] uppercase tracking-wider text-muted-foreground w-[30%]">Item</th>
               </tr>
             </thead>
             <tbody>
@@ -417,11 +418,30 @@ export default function Page() {
                     )}
                     onClick={() => { setSelectedTransactionId(t.id); setShowDetailModal(true) }}
                   >
-                    <td className="px-4 py-3 font-medium">
-                      <div className="flex items-center gap-1.5">
-                        <span>{formatTanggal(t.createdAt)}</span>
-                        {t.status === 'voided' && <Ban className="h-3.5 w-3.5 text-destructive shrink-0" />}
+                    <td className="px-4 py-3">
+                      <div className="space-y-0.5">
+                        <div className="text-sm font-semibold tabular-nums">
+                          {(() => {
+                            const d = new Date(t.createdAt)
+                            return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`
+                          })()}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                            {(() => {
+                              const d = new Date(t.createdAt)
+                              return d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })
+                          })()}
+                          </div>
+                        <div className="text-[10px] text-muted-foreground/60 font-mono">{t.transaction_number || t.id?.slice(0, 10)}</div>
                       </div>
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      {t.status === 'voided' && (
+                        <div className="flex flex-col items-center gap-0.5" title={`Divoid · ${t.void_reason || 'Tanpa alasan'}`}>
+                          <Ban className="h-4 w-4 text-destructive" />
+                          <span className="text-[9px] text-destructive/70 leading-tight text-center max-w-[60px] truncate">{t.void_reason || '-'}</span>
+                        </div>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-xs">{cashierName}</td>
                     <td className="px-4 py-3">
@@ -440,15 +460,15 @@ export default function Page() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
-                        <div className="min-w-0 flex-1">
+                        <a href={`/receipt/${t.id}`} target="_blank" rel="noopener noreferrer" className="p-1 hover:bg-primary/10 rounded-lg transition-colors text-primary shrink-0" title="Lihat & cetak struk" onClick={(e) => e.stopPropagation()}>
+                          <FileText className="h-4 w-4" />
+                        </a>
+                        <div className="min-w-0">
                           <div className="truncate text-xs" title={t.items.map((i) => `${i.name || i.menu_name || i.menuName} x${i.qty || i.quantity}`).join(", ")}>
                             {t.items.map((i) => `${i.name || i.menu_name || i.menuName} x${i.qty || i.quantity}`).join(", ")}
                           </div>
                           <div className="text-[10px] text-muted-foreground mt-0.5">{t.items.length} item</div>
                         </div>
-                        <a href={`/receipt/${t.id}`} target="_blank" rel="noopener noreferrer" className="p-1.5 hover:bg-primary/10 rounded-lg transition-colors text-primary shrink-0" title="Lihat & cetak struk" onClick={(e) => e.stopPropagation()}>
-                          <FileText className="h-4 w-4" />
-                        </a>
                       </div>
                     </td>
                   </tr>
