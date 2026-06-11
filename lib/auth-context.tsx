@@ -1,11 +1,14 @@
 'use client';
 
 import { createContext, useContext, useState, useEffect, ReactNode, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
 import { fetchClient, FetchError } from '@/lib/fetch-client';
 import { mutate } from 'swr';
 import { toast } from 'sonner';
+
+// Pages where we know there's no session — skip the /auth/me check
+const SKIP_SESSION_CHECK = ['/login', '/signup', '/reset-password'];
 
 interface AuthContextType {
   user: any | null;
@@ -36,12 +39,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [signingOut, setSigningOut] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
+    if (SKIP_SESSION_CHECK.includes(pathname)) {
+      setLoading(false);
+      return;
+    }
     checkSession();
 
     const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
+      if (document.visibilityState === 'visible' && !SKIP_SESSION_CHECK.includes(pathname)) {
         checkSession().then(async (result) => {
           if (result?.expired && !loading) {
             toast.error('Sesi telah berakhir karena tidak aktif. Silakan masuk kembali.', {
@@ -61,7 +69,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, []);
+  }, [pathname]);
 
   const checkSession = async () => {
     try {
