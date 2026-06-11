@@ -33,9 +33,35 @@ export async function GET(request: Request) {
     const search = url.searchParams.get('search');
 
     // Sanitize search term for ILIKE: escape special wildcard chars, wrap with %%
-    const searchPattern = search?.trim()
-      ? `%${search.trim().replace(/[%_]/g, '\\$&')}%`
+    const rawTerm = search?.trim();
+    const searchPattern = rawTerm
+      ? `%${rawTerm.replace(/[%_]/g, '\\$&')}%`
       : null;
+
+    // If searching, also find matching transactions via item names
+    let itemMatchIds: string[] | null = null;
+    if (searchPattern) {
+      const { data: matchingItems } = await supabaseAdmin
+        .from('transaction_items')
+        .select('transaction_id')
+        .ilike('menu_name', searchPattern)
+        .limit(500);
+      itemMatchIds = matchingItems?.length
+        ? [...new Set(matchingItems.map((i: any) => i.transaction_id))]
+        : [];
+    }
+
+    // Build combined search filter: main table fields + matched item IDs
+    const buildSearchOr = (pattern: string, itemIds: string[] | null) => {
+      const parts = [
+        `transaction_number.ilike.${pattern}`,
+        `cashier_name.ilike.${pattern}`,
+      ];
+      if (itemIds && itemIds.length > 0) {
+        parts.push(`id.in.(${itemIds.join(',')})`);
+      }
+      return parts.join(',');
+    };
 
     // Build filter conditions for reuse
     const fromDate = createdAtGte || startDate;
@@ -71,7 +97,7 @@ export async function GET(request: Request) {
       dataQuery = dataQuery.eq('payment_method', paymentMethod as "Tunai" | "QRIS" | "Debit" | "Transfer");
     }
     if (searchPattern) {
-      dataQuery = dataQuery.or(`transaction_number.ilike.${searchPattern},cashier_name.ilike.${searchPattern}`);
+      dataQuery = dataQuery.or(buildSearchOr(searchPattern, itemMatchIds));
     }
 
     // Apply pagination with safe upper bound

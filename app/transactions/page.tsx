@@ -332,7 +332,7 @@ export default function Page() {
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Cari no. transaksi atau nama kasir..."
+            placeholder="Cari nomor, kasir, atau nama item..."
             className="w-full h-10 rounded-xl border bg-background pl-10 pr-10 text-sm outline-none focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-muted-foreground/60"
           />
           {search && (
