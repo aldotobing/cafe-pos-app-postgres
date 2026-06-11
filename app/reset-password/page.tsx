@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, Suspense } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Lock, Eye, EyeOff, ArrowRight, Loader2, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { Input } from '@/components/ui/input';
@@ -12,7 +12,6 @@ import { ErrorMessage } from '@/components/ui/error-message';
 type RecoveryTokens = { access_token: string; refresh_token: string } | null;
 
 function useRecoveryTokens(): { tokens: RecoveryTokens; checking: boolean; error: string } {
-  const searchParams = useSearchParams();
   const [state, setState] = useState<{ tokens: RecoveryTokens; checking: boolean; error: string }>({
     tokens: null,
     checking: true,
@@ -24,17 +23,9 @@ function useRecoveryTokens(): { tokens: RecoveryTokens; checking: boolean; error
     const hash = window.location.hash.substring(1);
     const hashParams = new URLSearchParams(hash);
 
-    const type = hashParams.get('type') || searchParams.get('type');
-    const access_token =
-      hashParams.get('access_token') || searchParams.get('token');
+    const type = hashParams.get('type');
+    const access_token = hashParams.get('access_token');
     const refresh_token = hashParams.get('refresh_token') || '';
-
-    console.log('Reset password debug:', {
-      hash: window.location.hash,
-      search: window.location.search,
-      type,
-      hasAccessToken: !!access_token,
-    });
 
     if (access_token && type === 'recovery') {
       // Clean the URL
@@ -47,7 +38,8 @@ function useRecoveryTokens(): { tokens: RecoveryTokens; checking: boolean; error
         error: 'Link reset password tidak valid. Silakan minta link baru dari halaman login.',
       });
     }
-  }, [searchParams]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return state;
 }
