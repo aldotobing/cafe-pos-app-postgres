@@ -55,7 +55,7 @@ export function ToasterWithTheme() {
 
   return (
     <Toaster
-      position={isMobile ? "bottom-center" : "top-center"}
+      position="top-center"
       gap={isMobile ? 6 : 8}
       offset={isMobile ? "5rem" : "1rem"}
       theme={theme as any}
