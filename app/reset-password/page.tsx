@@ -8,7 +8,42 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { ErrorMessage } from '@/components/ui/error-message';
-import { createClient } from '@/utils/supabase/client';
+
+type RecoveryTokens = { access_token: string; refresh_token: string } | null;
+
+function useRecoveryTokens(): { tokens: RecoveryTokens; checking: boolean; error: string } {
+  const searchParams = useSearchParams();
+  const [state, setState] = useState<{ tokens: RecoveryTokens; checking: boolean; error: string }>({
+    tokens: null,
+    checking: true,
+    error: '',
+  });
+
+  useEffect(() => {
+    // Extract tokens from email link hash: #access_token=...&refresh_token=...&type=recovery
+    const hash = window.location.hash.substring(1);
+    const hashParams = new URLSearchParams(hash);
+
+    const type = hashParams.get('type') || searchParams.get('type');
+    const access_token =
+      hashParams.get('access_token') || searchParams.get('token');
+    const refresh_token = hashParams.get('refresh_token') || '';
+
+    if (access_token && type === 'recovery') {
+      // Clean the URL
+      window.history.replaceState(null, '', window.location.pathname);
+      setState({ tokens: { access_token, refresh_token }, checking: false, error: '' });
+    } else {
+      setState({
+        tokens: null,
+        checking: false,
+        error: 'Link reset password tidak valid. Silakan minta link baru dari halaman login.',
+      });
+    }
+  }, [searchParams]);
+
+  return state;
+}
 
 function ResetPasswordForm() {
   const [password, setPassword] = useState('');
@@ -16,74 +51,8 @@ function ResetPasswordForm() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
-  const [verifying, setVerifying] = useState(true);
-  const [tokenError, setTokenError] = useState('');
   const router = useRouter();
-  const searchParams = useSearchParams();
-
-  // Verify the session from the email link
-  useEffect(() => {
-    const verifyToken = async () => {
-      try {
-        const supabase = createClient();
-
-        // First: check if Supabase already set a session via cookies
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        if (session && !sessionError) {
-          setVerifying(false);
-          return;
-        }
-
-        // Second: check for token in hash fragment
-        // Supabase redirects with: #access_token=...&refresh_token=...&type=recovery
-        const hash = window.location.hash.substring(1);
-        const hashParams = new URLSearchParams(hash);
-
-        // Third: check for token in query params (some Supabase configs)
-        const type =
-          hashParams.get('type') ||
-          searchParams.get('type') ||
-          searchParams.get('token_type');
-
-        const tokenHash =
-          searchParams.get('token_hash') ||
-          searchParams.get('token') ||
-          hashParams.get('token_hash') ||
-          hashParams.get('access_token') ||
-          searchParams.get('access_token');
-
-        if (tokenHash && type === 'recovery') {
-          const { error: verifyError } = await supabase.auth.verifyOtp({
-            token_hash: tokenHash,
-            type: 'recovery',
-          });
-
-          if (!verifyError) {
-            // Clean URL
-            window.history.replaceState(null, '', window.location.pathname);
-            setVerifying(false);
-            return;
-          }
-        }
-
-        // No valid token found
-        console.error('Reset password: no session or valid token', {
-          hasSession: !!session,
-          hash: window.location.hash,
-          search: window.location.search,
-        });
-        setTokenError(
-          'Link reset password tidak valid atau sudah kadaluarsa. Silakan minta link baru dari halaman login.',
-        );
-      } catch {
-        setTokenError('Gagal memverifikasi link. Silakan coba lagi.');
-      } finally {
-        setVerifying(false);
-      }
-    };
-
-    verifyToken();
-  }, [searchParams]);
+  const { tokens, checking, error: tokenError } = useRecoveryTokens();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -93,22 +62,33 @@ function ResetPasswordForm() {
       return;
     }
 
+    if (!tokens) {
+      setError('Token reset tidak ditemukan. Silakan minta link baru.');
+      return;
+    }
+
     setLoading(true);
     setError('');
 
     try {
-      const supabase = createClient();
-      const { error: updateError } = await supabase.auth.updateUser({ password });
+      const res = await fetch('/api/auth/reset-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          access_token: tokens.access_token,
+          refresh_token: tokens.refresh_token,
+          password,
+        }),
+      });
 
-      if (updateError) {
-        setError(updateError.message || 'Gagal memperbarui password.');
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.error || 'Gagal memperbarui password.');
         return;
       }
 
-      // Sign out so user logs in with new password
-      await supabase.auth.signOut();
-
-      setSuccess('Password berhasil diperbarui. Silakan masuk dengan password baru.');
+      setSuccess(data.message);
       setTimeout(() => router.push('/login'), 2500);
     } catch {
       setError('Tidak dapat terhubung ke server.');
@@ -117,20 +97,20 @@ function ResetPasswordForm() {
     }
   };
 
-  // ── Verifying state ──────────────────────────────────────────────────
+  // ── Checking state ────────────────────────────────────────────────────
 
-  if (verifying) {
+  if (checking) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <div className="flex flex-col items-center gap-3">
           <Loader2 className="h-8 w-8 text-primary animate-spin" />
-          <p className="text-sm text-muted-foreground">Memverifikasi link...</p>
+          <p className="text-sm text-muted-foreground">Memeriksa link...</p>
         </div>
       </div>
     );
   }
 
-  // ── Invalid/expired token ─────────────────────────────────────────────
+  // ── Invalid token ─────────────────────────────────────────────────────
 
   if (tokenError) {
     return (
