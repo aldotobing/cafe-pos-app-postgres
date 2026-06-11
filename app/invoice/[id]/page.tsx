@@ -159,17 +159,17 @@ export default function InvoicePage() {
         <div className="px-12 pt-12 pb-8 flex justify-between items-start">
           <div>
             {settings?.logoUrl && (
-              <img src={settings.logoUrl} alt="" className="h-9 object-contain mb-4" />
+              <img src={settings.logoUrl} alt="" className="h-10 object-contain mb-4" />
             )}
-            <h1 className="text-lg font-bold tracking-tight text-slate-900">{settings?.name || 'Business'}</h1>
-            <div className="text-xs text-slate-500 mt-1 space-y-0.5">
+            <h1 className="text-xl font-bold tracking-tight text-slate-900">{settings?.name || 'Business'}</h1>
+            <div className="text-sm text-slate-500 mt-1.5 space-y-0.5">
               {settings?.address && <p>{settings.address}</p>}
               {settings?.phone && <p>{settings.phone}</p>}
             </div>
           </div>
           <div className="text-right">
             <h2 className="text-[28px] font-black tracking-tighter text-slate-900 leading-none">INVOICE</h2>
-            <p className="text-xs text-slate-400 font-mono mt-2">{invoiceNumber}</p>
+            <p className="text-sm text-slate-500 font-mono mt-2">{invoiceNumber}</p>
           </div>
         </div>
 
@@ -177,53 +177,53 @@ export default function InvoicePage() {
         <div className="px-12 pb-10 grid grid-cols-2 gap-12">
           {/* Bill To / Customer */}
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-[.2em] text-slate-400 mb-3">Tagihan Untuk</p>
+            <p className="text-xs font-bold uppercase tracking-[.15em] text-slate-500 mb-3">Tagihan Untuk</p>
             <div className="print-hidden space-y-2">
               <input
                 type="text"
                 value={customerName}
                 onChange={(e) => setCustomerName(e.target.value)}
                 placeholder="Nama pelanggan / perusahaan"
-                className="text-sm font-semibold text-slate-800 border-0 border-b border-dashed border-slate-300 bg-transparent outline-none focus:border-slate-600 transition-colors px-0 py-0.5 w-full placeholder:text-slate-300"
+                className="text-sm font-semibold text-slate-800 border-0 border-b border-dashed border-slate-300 bg-transparent outline-none focus:border-slate-600 transition-colors px-0 py-0.5 w-full placeholder:text-slate-400"
               />
               <input
                 type="text"
                 value={customerAddress}
                 onChange={(e) => setCustomerAddress(e.target.value)}
                 placeholder="Alamat (opsional)"
-                className="text-xs text-slate-600 border-0 border-b border-dashed border-slate-200 bg-transparent outline-none focus:border-slate-400 transition-colors px-0 py-0.5 w-full placeholder:text-slate-300"
+                className="text-sm text-slate-600 border-0 border-b border-dashed border-slate-200 bg-transparent outline-none focus:border-slate-400 transition-colors px-0 py-0.5 w-full placeholder:text-slate-400"
               />
               <input
                 type="text"
                 value={customerPhone}
                 onChange={(e) => setCustomerPhone(e.target.value)}
                 placeholder="Telepon (opsional)"
-                className="text-xs text-slate-600 border-0 border-b border-dashed border-slate-200 bg-transparent outline-none focus:border-slate-400 transition-colors px-0 py-0.5 w-full placeholder:text-slate-300"
+                className="text-sm text-slate-600 border-0 border-b border-dashed border-slate-200 bg-transparent outline-none focus:border-slate-400 transition-colors px-0 py-0.5 w-full placeholder:text-slate-400"
               />
             </div>
-            <div className="hidden print:block text-sm space-y-1">
-              <p className="font-semibold text-slate-800">{customerName || 'Pelanggan'}</p>
-              {customerAddress && <p className="text-xs text-slate-600">{customerAddress}</p>}
-              {customerPhone && <p className="text-xs text-slate-600">{customerPhone}</p>}
+            <div className="hidden print:block space-y-1">
+              <p className="text-sm font-semibold text-slate-800">{customerName || 'Pelanggan'}</p>
+              {customerAddress && <p className="text-sm text-slate-600">{customerAddress}</p>}
+              {customerPhone && <p className="text-sm text-slate-600">{customerPhone}</p>}
             </div>
           </div>
 
           {/* Invoice Details */}
-          <div className="space-y-2.5 text-sm">
+          <div className="space-y-3 text-sm">
             <div className="flex justify-between">
-              <span className="text-slate-400">Tanggal</span>
+              <span className="text-slate-500">Tanggal</span>
               <span className="font-medium text-right">{dateStr}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-slate-400">Waktu</span>
+              <span className="text-slate-500">Waktu</span>
               <span className="font-medium">{timeStr} WIB</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-slate-400">Pembayaran</span>
+              <span className="text-slate-500">Pembayaran</span>
               <span className="font-medium">{tx.paymentMethod}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-slate-400">Kasir</span>
+              <span className="text-slate-500">Kasir</span>
               <span className="font-medium">{creatorName || '-'}</span>
             </div>
           </div>
@@ -241,11 +241,11 @@ export default function InvoicePage() {
             </colgroup>
             <thead>
               <tr className="border-y-2 border-slate-200">
-                <th className="py-3 text-left text-[10px] font-bold uppercase tracking-[.15em] text-slate-400">#</th>
-                <th className="py-3 text-left text-[10px] font-bold uppercase tracking-[.15em] text-slate-400">Item</th>
-                <th className="py-3 text-center text-[10px] font-bold uppercase tracking-[.15em] text-slate-400">Qty</th>
-                <th className="py-3 text-right text-[10px] font-bold uppercase tracking-[.15em] text-slate-400">Harga</th>
-                <th className="py-3 text-right text-[10px] font-bold uppercase tracking-[.15em] text-slate-400">Jumlah</th>
+                <th className="py-3 text-left text-xs font-bold uppercase tracking-[.12em] text-slate-500">#</th>
+                <th className="py-3 text-left text-xs font-bold uppercase tracking-[.12em] text-slate-500">Item</th>
+                <th className="py-3 text-center text-xs font-bold uppercase tracking-[.12em] text-slate-500">Qty</th>
+                <th className="py-3 text-right text-xs font-bold uppercase tracking-[.12em] text-slate-500">Harga</th>
+                <th className="py-3 text-right text-xs font-bold uppercase tracking-[.12em] text-slate-500">Jumlah</th>
               </tr>
             </thead>
             <tbody>
@@ -264,12 +264,12 @@ export default function InvoicePage() {
 
                 return (
                   <tr key={`${item.id || 'item'}-${index}`} className="border-b border-slate-100">
-                    <td className="py-3.5 text-sm text-slate-300 align-top">{index + 1}</td>
+                    <td className="py-3.5 text-sm text-slate-400 align-top">{index + 1}</td>
                     <td className="py-3.5 align-top pr-4">
                       <p className="text-sm font-medium text-slate-800">{itemName}</p>
-                      {itemVariant && <span className="text-xs text-slate-400">· {itemVariant}</span>}
-                      {hasItemDiscount && <span className="text-xs text-red-500 ml-2">−{formatRupiah(discountNum)}</span>}
-                      {hasItemNote && <p className="text-xs text-slate-400 mt-1 italic leading-relaxed">{noteStr}</p>}
+                      {itemVariant && <span className="text-sm text-slate-500">· {itemVariant}</span>}
+                      {hasItemDiscount && <span className="text-sm text-red-500 ml-2">−{formatRupiah(discountNum)}</span>}
+                      {hasItemNote && <p className="text-sm text-slate-500 mt-1 italic leading-relaxed">{noteStr}</p>}
                     </td>
                     <td className="py-3.5 text-center text-sm text-slate-600 align-top tabular-nums">{displayQty}</td>
                     <td className="py-3.5 text-right text-sm text-slate-600 align-top tabular-nums">{formatRupiah(item.price)}</td>
@@ -302,22 +302,22 @@ export default function InvoicePage() {
         {/* ===== NOTE ===== */}
         {hasNote && (
           <div className="mx-12 mb-8 px-5 py-4 border-l-2 border-slate-300 bg-slate-50">
-            <p className="text-[10px] font-bold uppercase tracking-[.15em] text-slate-400 mb-1">Catatan</p>
-            <p className="text-sm text-slate-600 leading-relaxed">{tx.orderNote}</p>
+            <p className="text-xs font-bold uppercase tracking-[.12em] text-slate-500 mb-1">Catatan</p>
+            <p className="text-sm text-slate-700 leading-relaxed">{tx.orderNote}</p>
           </div>
         )}
 
         {/* ===== FOOTER ===== */}
-        <div className="px-12 py-5 border-t-2 border-slate-200 flex justify-between items-center text-xs text-slate-400">
+        <div className="px-12 py-5 border-t-2 border-slate-200 flex justify-between items-center text-sm text-slate-500">
           <p>{settings?.name || ''}{settings?.address ? ` — ${settings.address}` : ''}{settings?.phone ? ` · ${settings.phone}` : ''}</p>
           <div>
             {isVoided ? (
               <div className="flex items-center gap-2">
-                <span className="text-red-500 font-bold uppercase tracking-wider text-[10px]">Dibatalkan</span>
-                {tx.void_reason && <span className="text-slate-400">— {tx.void_reason}</span>}
+                <span className="text-red-500 font-bold uppercase tracking-wider text-xs">Dibatalkan</span>
+                {tx.void_reason && <span className="text-slate-500">— {tx.void_reason}</span>}
               </div>
             ) : (
-              <span className="text-emerald-600 font-bold uppercase tracking-wider text-[10px]">Lunas</span>
+              <span className="text-emerald-600 font-bold uppercase tracking-wider text-xs">Lunas</span>
             )}
           </div>
         </div>
