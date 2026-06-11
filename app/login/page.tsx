@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, Suspense } from 'react';
+import { useState, useRef, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/lib/auth-context';
-import { Zap, Mail, Lock, User, Eye, EyeOff, ArrowRight, Loader2 } from 'lucide-react';
+import { Zap, Mail, Lock, ShieldCheck, CheckCircle2, User, Eye, EyeOff, ArrowRight, Loader2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -97,6 +97,8 @@ function LoginForm() {
   const [loading, setLoading] = useState(false);
   const [demoLoading, setDemoLoading] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
+  const nameInputRef = useRef<HTMLInputElement>(null);
+  const emailInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirectTo = searchParams.get('redirect') || '/';
@@ -109,6 +111,17 @@ function LoginForm() {
     setConfirmPassword('');
     setAuthMode((prev) => (prev === 'login' ? 'signup' : 'login'));
   };
+
+  // Focus the first field when mode changes (after AnimatePresence mounts new form)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (authMode === 'signup') {
+        nameInputRef.current?.focus();
+      } else {
+        emailInputRef.current?.focus();
+      }
+    }, 300); // must exceed the outer AnimatePresence transition (200ms)
+  }, [authMode]);
 
   // ── Demo login ────────────────────────────────────────────────────────
 
@@ -197,11 +210,16 @@ function LoginForm() {
 
     try {
       await signUp(email, password, fullName);
-      setSuccess('Pendaftaran berhasil! Akun Anda sedang diproses.');
+      setSuccess('Pendaftaran berhasil! Silakan masuk.');
       setEmail('');
       setPassword('');
       setFullName('');
       setConfirmPassword('');
+      // Auto-switch to login after brief delay
+      setTimeout(() => {
+        setAuthMode('login');
+        setSuccess('');
+      }, 2000);
     } catch (err: any) {
       setError(getErrorMessage(err));
     } finally {
@@ -318,35 +336,26 @@ function LoginForm() {
               className={`space-y-4 ${loading ? 'opacity-70 pointer-events-none' : ''}`}
             >
               {/* Full Name (signup only) */}
-              <AnimatePresence>
-                {authMode === 'signup' && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    exit={{ opacity: 0, height: 0 }}
-                    transition={{ duration: 0.2 }}
-                    className="overflow-hidden"
-                  >
-                    <div className="space-y-1.5">
-                      <Label htmlFor="fullName">Nama Lengkap</Label>
-                      <div className="relative">
-                        <Input
-                          id="fullName"
-                          value={fullName}
-                          onChange={(e) => setFullName(e.target.value)}
-                          required
-                          placeholder="Nama lengkap Anda"
-                          className="pl-10 peer"
-                          disabled={loading}
-                          aria-invalid={!!fieldErrors.fullName}
-                        />
-                        <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground peer-focus:text-primary transition-colors pointer-events-none" />
-                      </div>
-                      <FieldError message={fieldErrors.fullName} />
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+              {authMode === 'signup' && (
+                <div className="space-y-1.5">
+                  <Label htmlFor="fullName">Nama Lengkap</Label>
+                  <div className="relative">
+                    <Input
+                      id="fullName"
+                      ref={nameInputRef}
+                      value={fullName}
+                      onChange={(e) => setFullName(e.target.value)}
+                      required
+                      placeholder="Nama lengkap Anda"
+                      className="pl-10 peer"
+                      disabled={loading}
+                      aria-invalid={!!fieldErrors.fullName}
+                    />
+                    <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground peer-focus:text-primary transition-colors pointer-events-none" />
+                  </div>
+                  <FieldError message={fieldErrors.fullName} />
+                </div>
+              )}
 
               {/* Email */}
               <div className="space-y-1.5">
@@ -354,7 +363,7 @@ function LoginForm() {
                 <div className="relative">
                   <Input
                     id="email"
-                    autoFocus
+                    ref={emailInputRef}
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
@@ -404,40 +413,49 @@ function LoginForm() {
               </div>
 
               {/* Confirm Password (signup only) */}
-              <AnimatePresence>
-                {authMode === 'signup' && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    exit={{ opacity: 0, height: 0 }}
-                    transition={{ duration: 0.2 }}
-                    className="overflow-hidden"
-                  >
-                    <div className="space-y-1.5">
-                      <Label htmlFor="confirmPassword">Konfirmasi Password</Label>
-                      <div className="relative">
-                        <Input
-                          id="confirmPassword"
-                          value={confirmPassword}
-                          onChange={(e) => setConfirmPassword(e.target.value)}
-                          required
-                          type={showConfirmPassword ? 'text' : 'password'}
-                          placeholder="Ulangi password"
-                          className="pl-10 pr-10 peer"
-                          disabled={loading}
-                          aria-invalid={!!fieldErrors.confirmPassword}
-                        />
-                        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground peer-focus:text-primary transition-colors pointer-events-none" />
-                        <PasswordToggle
-                          show={showConfirmPassword}
-                          onToggle={() => setShowConfirmPassword(!showConfirmPassword)}
-                        />
-                      </div>
-                      <FieldError message={fieldErrors.confirmPassword} />
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+              {authMode === 'signup' && (
+                <div className="space-y-1.5">
+                  <Label htmlFor="confirmPassword">Konfirmasi Password</Label>
+                  <div className="relative">
+                    <Input
+                      id="confirmPassword"
+                      value={confirmPassword}
+                      onChange={(e) => {
+                        setConfirmPassword(e.target.value);
+                        // Clear inline error as user types
+                        if (fieldErrors.confirmPassword) {
+                          setFieldErrors((prev) => ({ ...prev, confirmPassword: undefined }));
+                        }
+                      }}
+                      required
+                      type={showConfirmPassword ? 'text' : 'password'}
+                      placeholder="Ulangi password"
+                      className={`pl-10 pr-14 peer ${
+                        confirmPassword && password === confirmPassword
+                          ? 'border-emerald-500 focus-visible:ring-emerald-500/20'
+                          : ''
+                      }`}
+                      disabled={loading}
+                      aria-invalid={!!fieldErrors.confirmPassword}
+                    />
+                    <ShieldCheck className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground peer-focus:text-primary transition-colors pointer-events-none" />
+                    {confirmPassword && password === confirmPassword && (
+                      <CheckCircle2 className="absolute right-9 top-1/2 -translate-y-1/2 h-4 w-4 text-emerald-500" />
+                    )}
+                    <PasswordToggle
+                      show={showConfirmPassword}
+                      onToggle={() => setShowConfirmPassword(!showConfirmPassword)}
+                    />
+                  </div>
+                  {confirmPassword && password !== confirmPassword ? (
+                    <p className="text-xs text-destructive mt-1">Password tidak cocok</p>
+                  ) : confirmPassword && password === confirmPassword ? (
+                    <p className="text-xs text-emerald-500 mt-1">Password cocok</p>
+                  ) : (
+                    <FieldError message={fieldErrors.confirmPassword} />
+                  )}
+                </div>
+              )}
 
               {/* Submit */}
               <Button
