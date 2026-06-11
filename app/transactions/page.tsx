@@ -8,7 +8,7 @@ import { useTransactionsPaginated, useCafeSettings } from "@/hooks/use-cafe-data
 import { transactionsApi } from '@/lib/api'
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Filter, Receipt, TrendingUp, Calendar as CalendarIcon, FileText, ChevronLeft, ChevronRight, ChevronFirst, ChevronLast, Loader2, BadgePercent, Ban } from 'lucide-react';
+import { Filter, Receipt, TrendingUp, Calendar as CalendarIcon, FileText, ScrollText, ChevronLeft, ChevronRight, ChevronFirst, ChevronLast, Loader2, BadgePercent, Ban } from 'lucide-react';
 import { generateTransactionReport } from '@/lib/reports/transaction-report';
 import { toast } from 'sonner';
 import { TransactionsSkeleton } from '@/components/skeletons';
@@ -460,9 +460,14 @@ export default function Page() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
-                        <a href={`/receipt/${t.id}`} target="_blank" rel="noopener noreferrer" className="p-1 hover:bg-primary/10 rounded-lg transition-colors text-primary shrink-0" title="Lihat & cetak struk" onClick={(e) => e.stopPropagation()}>
-                          <FileText className="h-4 w-4" />
-                        </a>
+                        <div className="flex items-center gap-0.5 shrink-0" onClick={(e) => e.stopPropagation()}>
+                          <a href={`/receipt/${t.id}`} target="_blank" rel="noopener noreferrer" className="p-1 hover:bg-primary/10 rounded-lg transition-colors text-primary" title="Cetak Struk">
+                            <Receipt className="h-4 w-4" />
+                          </a>
+                          <a href={`/invoice/${t.id}`} target="_blank" rel="noopener noreferrer" className="p-1 hover:bg-blue-50 rounded-lg transition-colors text-blue-600 dark:text-blue-400" title="Download Invoice">
+                            <ScrollText className="h-4 w-4" />
+                          </a>
+                        </div>
                         <div className="min-w-0">
                           <div className="truncate text-xs" title={t.items.map((i) => `${i.name || i.menu_name || i.menuName} x${i.qty || i.quantity}`).join(", ")}>
                             {t.items.map((i) => `${i.name || i.menu_name || i.menuName} x${i.qty || i.quantity}`).join(", ")}
@@ -542,9 +547,14 @@ export default function Page() {
                         <div className="text-xs text-muted-foreground truncate">{itemsText || `${t.items.length} item`}</div>
                         <div className="text-[10px] text-muted-foreground/60 mt-0.5">{t.items.length} item</div>
                       </div>
-                      <a href={`/receipt/${t.id}`} target="_blank" rel="noopener noreferrer" className="p-1.5 hover:bg-primary/10 rounded-lg transition-colors text-primary shrink-0" onClick={(e) => e.stopPropagation()} title="Lihat & cetak struk">
-                        <FileText className="h-4 w-4" />
-                      </a>
+                      <div className="flex items-center gap-0.5 shrink-0" onClick={(e) => e.stopPropagation()}>
+                        <a href={`/receipt/${t.id}`} target="_blank" rel="noopener noreferrer" className="p-1 hover:bg-primary/10 rounded-lg transition-colors text-primary" title="Cetak Struk">
+                          <Receipt className="h-4 w-4" />
+                        </a>
+                        <a href={`/invoice/${t.id}`} target="_blank" rel="noopener noreferrer" className="p-1 hover:bg-blue-50 rounded-lg transition-colors text-blue-600 dark:text-blue-400" title="Download Invoice">
+                          <ScrollText className="h-4 w-4" />
+                        </a>
+                      </div>
                     </div>
                   </div>
                 </motion.div>

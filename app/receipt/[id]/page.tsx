@@ -202,9 +202,15 @@ export default function ReceiptPage() {
         <div className="text-[8px]">
           {tx.items.map((item: TransactionItem, index: number) => {
             const itemName = item.name || item.menu_name || item.menuName || "Item";
-            const itemQty = item.qty || item.quantity || 1;
+            const rawQty = item.qty ?? item.quantity
+            const itemQty = rawQty != null && String(rawQty) !== "" && !isNaN(Number(rawQty)) ? Number(rawQty) : 1
+            const displayQty = itemQty === 0 ? "" : itemQty
             const lineTotal = item.lineTotal !== undefined ? item.lineTotal : (item.price * itemQty);
-            
+            const discountNum = Number(item.discount)
+            const hasItemDiscount = !isNaN(discountNum) && discountNum > 0
+            const noteStr = item.note != null ? String(item.note).trim() : ""
+            const hasItemNote = noteStr !== "" && noteStr !== "0" && isNaN(Number(noteStr))
+
             return (
             <div key={`${item.id || 'item'}-${index}`} className="mb-1.5">
               <div className="font-semibold truncate">{itemName}</div>
@@ -215,24 +221,21 @@ export default function ReceiptPage() {
                 </colgroup>
                 <tbody>
                   <tr>
-                    <td className="overflow-hidden">{itemQty}x @ {formatRupiah(item.price)}</td>
+                    <td className="overflow-hidden">{displayQty}{displayQty !== "" ? "x @ " : ""}{formatRupiah(item.price)}</td>
                     <td className="text-right font-medium text-[8px] whitespace-nowrap overflow-hidden">{formatRupiah(lineTotal)}</td>
                   </tr>
                 </tbody>
               </table>
 
-              {item.discount && Number(item.discount) > 0 && (
+              {hasItemDiscount && (
                 <div className="text-red-600 text-[8px]">
-                  Diskon: -{formatRupiah(item.discount || 0)}
+                  Diskon: -{formatRupiah(discountNum)}
                 </div>
               )}
 
-              {item.note &&
-                item.note !== "0" &&
-                item.note.trim() !== "" &&
-                isNaN(Number(item.note)) && (
+              {hasItemNote && (
                   <div className="italic text-gray-600 text-[8px] mt-0.5">
-                    Catatan: {item.note}
+                    Catatan: {noteStr}
                   </div>
               )}
             </div>

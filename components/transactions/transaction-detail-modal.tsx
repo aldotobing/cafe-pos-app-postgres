@@ -8,7 +8,7 @@ import { useAuth } from "@/lib/auth-context"
 import { useRouter } from "next/navigation"
 import { swrConfig } from "@/lib/swr-config"
 import type { Transaction, TransactionItem } from "@/types"
-import { X, Printer, Calendar, User, CreditCard, Hash, Loader2, BadgePercent, Ban } from "lucide-react"
+import { X, Printer, Calendar, User, CreditCard, Hash, Loader2, BadgePercent, Ban, ScrollText } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
@@ -130,6 +130,11 @@ export function TransactionDetailModal({ transactionId, isOpen, onClose }: Trans
     router.push(`/receipt/${transactionId}`)
   }
 
+  const handleViewInvoice = () => {
+    onClose()
+    router.push(`/invoice/${transactionId}`)
+  }
+
   const handleVoid = async () => {
     if (!voidReason.trim()) {
       toast.error('Berikan alasan void.')
@@ -197,6 +202,7 @@ export function TransactionDetailModal({ transactionId, isOpen, onClose }: Trans
                 settings={settings as any}
                 onClose={onClose}
                 onViewReceipt={handleViewReceipt}
+                onViewInvoice={handleViewInvoice}
                 isVoided={tx?.status === 'voided'}
                 isAdmin={isAdmin}
                 voiding={voiding}
@@ -232,6 +238,7 @@ export function TransactionDetailModal({ transactionId, isOpen, onClose }: Trans
                 settings={settings as any}
                 onClose={onClose}
                 onViewReceipt={handleViewReceipt}
+                onViewInvoice={handleViewInvoice}
                 isVoided={tx?.status === 'voided'}
                 isAdmin={isAdmin}
                 voiding={voiding}
@@ -256,6 +263,7 @@ function ModalContent({
   settings,
   onClose,
   onViewReceipt,
+  onViewInvoice,
   isVoided,
   isAdmin,
   voiding,
@@ -271,6 +279,7 @@ function ModalContent({
   settings: any
   onClose: () => void
   onViewReceipt: () => void
+  onViewInvoice: () => void
   isVoided: boolean
   isAdmin: boolean
   voiding: boolean
@@ -487,7 +496,7 @@ function ModalContent({
 
       {/* Footer Actions */}
       {tx && !showVoidConfirm && (
-        <div className="px-5 py-4 border-t bg-muted/10 shrink-0">
+        <div className="px-5 py-4 border-t bg-muted/10 shrink-0 space-y-2">
           <div className="grid grid-cols-2 gap-2">
             <button
               onClick={onViewReceipt}
@@ -496,16 +505,23 @@ function ModalContent({
               <Printer className="h-4 w-4" />
               Cetak Struk
             </button>
-            {!isVoided && (
-              <button
-                onClick={() => { setVoidReason(''); setShowVoidConfirm(true) }}
-                className="flex items-center justify-center gap-2 rounded-xl bg-destructive/10 text-destructive border border-destructive/20 px-4 py-2.5 text-sm font-semibold hover:bg-destructive/20 transition-all active:scale-[0.97]"
-              >
-                <Ban className="h-4 w-4" />
-                Void
-              </button>
-            )}
+            <button
+              onClick={onViewInvoice}
+              className="flex items-center justify-center gap-2 rounded-xl bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-950/30 dark:text-blue-300 dark:border-blue-800 px-4 py-3 text-sm font-semibold hover:bg-blue-100 dark:hover:bg-blue-950/50 transition-all active:scale-[0.97]"
+            >
+              <ScrollText className="h-4 w-4" />
+              Invoice
+            </button>
           </div>
+          {!isVoided && (
+            <button
+              onClick={() => { setVoidReason(''); setShowVoidConfirm(true) }}
+              className="w-full flex items-center justify-center gap-2 rounded-xl bg-destructive/10 text-destructive border border-destructive/20 px-4 py-2.5 text-sm font-semibold hover:bg-destructive/20 transition-all active:scale-[0.97]"
+            >
+              <Ban className="h-4 w-4" />
+              Void
+            </button>
+          )}
         </div>
       )}
 
