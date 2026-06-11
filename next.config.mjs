@@ -85,7 +85,7 @@ const nextConfig = {
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
               "img-src 'self' blob: data: https: *.r2.dev *.r2.cloudflarestorage.com *.kasirku.biz.id",
               "font-src 'self' https://fonts.gstatic.com",
-              "connect-src 'self' https://*.vercel.app https://*.cloud.redislabs.com https://*.kasirku.biz.id https://va.vercel-scripts.com https://fonts.googleapis.com",
+              "connect-src 'self' https://*.vercel.app https://*.cloud.redislabs.com https://*.kasirku.biz.id https://*.supabase.co https://va.vercel-scripts.com https://fonts.googleapis.com",
               "frame-ancestors 'none'",
               "base-uri 'self'",
               "form-action 'self'",
