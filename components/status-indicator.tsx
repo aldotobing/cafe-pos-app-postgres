@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { Wifi, WifiOff, CheckCircle2, Loader2 } from "lucide-react"
 
-export type StatusType = 'online' | 'offline' | 'syncing' | 'success' | 'idle'
+export type StatusType = 'online' | 'offline' | 'syncing' | 'success' | 'slow' | 'idle'
 
 interface StatusIndicatorProps {
   status?: StatusType
@@ -45,10 +45,12 @@ export function StatusIndicator({
     }
   }, [])
 
-  // Determine actual status
+  // Determine actual status — offline beats everything
   let actualStatus = status
-  if (status === 'idle') {
-    actualStatus = isOnline ? 'online' : 'offline'
+  if (!isOnline) {
+    actualStatus = 'offline'
+  } else if (status === 'idle') {
+    actualStatus = 'online'
   }
 
   const getStatusConfig = () => {
@@ -59,6 +61,13 @@ export function StatusIndicator({
           shadow: 'shadow-[0_0_8px_rgba(239,68,68,0.6)]',
           icon: WifiOff,
           title: 'Tidak ada koneksi internet'
+        }
+      case 'slow':
+        return {
+          color: 'bg-amber-500',
+          shadow: 'shadow-[0_0_8px_rgba(245,158,11,0.6)]',
+          icon: Wifi,
+          title: 'Koneksi lambat'
         }
       case 'syncing':
         return {
@@ -117,7 +126,7 @@ export function useStatusIndicator() {
     const handleTransactionCompleted = () => {
       setStatus('success')
       setLastTransactionTime(Date.now())
-      
+
       // Reset to online after 5 seconds
       setTimeout(() => {
         setStatus(prev => prev === 'success' ? 'online' : prev)
@@ -128,14 +137,26 @@ export function useStatusIndicator() {
     const handleSyncStart = () => setStatus('syncing')
     const handleSyncEnd = () => setStatus('online')
 
+    // Listen for connection quality events from fetch-client
+    const handleSlow = () => {
+      if (navigator.onLine) {
+        setStatus('slow')
+      }
+    }
+    const handleRecovered = () => setStatus('online')
+
     window.addEventListener('transactionCompleted', handleTransactionCompleted)
     window.addEventListener('syncStart', handleSyncStart)
     window.addEventListener('syncEnd', handleSyncEnd)
+    window.addEventListener('connection-slow', handleSlow)
+    window.addEventListener('connection-recovered', handleRecovered)
 
     return () => {
       window.removeEventListener('transactionCompleted', handleTransactionCompleted)
       window.removeEventListener('syncStart', handleSyncStart)
       window.removeEventListener('syncEnd', handleSyncEnd)
+      window.removeEventListener('connection-slow', handleSlow)
+      window.removeEventListener('connection-recovered', handleRecovered)
     }
   }, [])
 

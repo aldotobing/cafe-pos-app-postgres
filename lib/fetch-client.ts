@@ -1,6 +1,6 @@
 const DEFAULT_TIMEOUT = 20000
-const SLOW_THRESHOLD = 3000      // moving average above this → "slow"
-const RECOVER_THRESHOLD = 1500   // moving average below this → "recovered"
+const SLOW_THRESHOLD = 2000      // moving average above this → "slow" (Chrome Slow 3G RTT ≈ 2s)
+const RECOVER_THRESHOLD = 1000   // moving average below this → "recovered"
 const LATENCY_WINDOW = 10        // number of recent requests to average
 
 // --- Connection quality tracking ---
@@ -67,6 +67,36 @@ function resetConnectionState() {
 // Listen to browser online/offline to reset state
 if (typeof window !== 'undefined') {
   window.addEventListener('offline', resetConnectionState)
+
+  // Use Network Information API as an immediate signal on load
+  // (Chrome, Edge, Opera — not Firefox/Safari)
+  const conn = (navigator as any).connection
+  if (conn) {
+    const slowTypes = new Set(['slow-2g', '2g'])
+    if (slowTypes.has(conn.effectiveType)) {
+      // Immediately signal slow — latency tracking will refine later
+      currentState = 'slow'
+      window.dispatchEvent(new CustomEvent('connection-slow', {
+        detail: { source: 'effectiveType', effectiveType: conn.effectiveType }
+      }))
+    }
+    conn.addEventListener('change', () => {
+      if (slowTypes.has(conn.effectiveType)) {
+        if (currentState === 'healthy') {
+          currentState = 'slow'
+          window.dispatchEvent(new CustomEvent('connection-slow', {
+            detail: { source: 'effectiveType', effectiveType: conn.effectiveType }
+          }))
+        }
+      } else if (conn.effectiveType === '4g' && currentState === 'slow' && recentLatencies.length === 0) {
+        // Only recover from effectiveType signal if we haven't measured real latency yet
+        currentState = 'healthy'
+        window.dispatchEvent(new CustomEvent('connection-recovered', {
+          detail: { source: 'effectiveType' }
+        }))
+      }
+    })
+  }
 }
 
 // --- Public helpers ---

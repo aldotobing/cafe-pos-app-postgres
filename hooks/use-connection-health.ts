@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
+import { getConnectionState } from '@/lib/fetch-client';
 
 export interface ConnectionHealth {
   isOffline: boolean;
@@ -12,11 +13,23 @@ export function useConnectionHealth(): ConnectionHealth {
   const [isOffline, setIsOffline] = useState(() =>
     typeof navigator !== 'undefined' ? !navigator.onLine : false
   );
-  const [isSlow, setIsSlow] = useState(false);
+
+  // Check initial slow state: fetch-client may have already detected slowness
+  // via navigator.connection.effectiveType before React mounted
+  const [isSlow, setIsSlow] = useState(() => {
+    if (getConnectionState().state === 'slow') return true;
+    // Also check directly in case the module init hasn't run yet
+    if (typeof navigator !== 'undefined') {
+      const conn = (navigator as any).connection;
+      if (conn && ['slow-2g', '2g'].includes(conn.effectiveType)) {
+        return true;
+      }
+    }
+    return false;
+  });
+
   const [isRecovering, setIsRecovering] = useState(false);
 
-  // Use a ref so event handlers always read the latest offline state
-  // without needing to re-attach listeners
   const offlineRef = useRef(isOffline);
   offlineRef.current = isOffline;
 
@@ -33,7 +46,6 @@ export function useConnectionHealth(): ConnectionHealth {
     };
 
     const handleSlow = () => {
-      // Only show slow if we're not offline
       if (!offlineRef.current) {
         setIsSlow(true);
       }
@@ -54,7 +66,7 @@ export function useConnectionHealth(): ConnectionHealth {
       window.removeEventListener('connection-slow', handleSlow);
       window.removeEventListener('connection-recovered', handleRecovered);
     };
-  }, []); // only attach once — ref keeps handlers fresh
+  }, []);
 
   return { isOffline, isSlow, isRecovering };
 }
