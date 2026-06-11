@@ -21,31 +21,38 @@ function ResetPasswordForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  // Verify the recovery token from the email link
+  // Verify the session from the email link
   useEffect(() => {
     const verifyToken = async () => {
-      // Supabase sends token via hash fragment: #access_token=...&type=recovery
-      // or via query params: ?token_hash=...&type=recovery
-      const hash = window.location.hash.substring(1);
-      const hashParams = new URLSearchParams(hash);
-      const queryParams = searchParams;
-
-      const type = hashParams.get('type') || queryParams.get('type');
-      const tokenHash =
-        hashParams.get('token_hash') ||
-        queryParams.get('token_hash') ||
-        hashParams.get('access_token');
-
-      if (!tokenHash || type !== 'recovery') {
-        setTokenError(
-          'Link reset password tidak valid. Silakan minta link baru dari halaman login.',
-        );
-        setVerifying(false);
-        return;
-      }
-
       try {
         const supabase = createClient();
+
+        // First, check if Supabase already set a session via the redirect
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+
+        if (session && !sessionError) {
+          // Session already established by the redirect — ready to set password
+          setVerifying(false);
+          return;
+        }
+
+        // Fallback: manually verify token from URL hash/query params
+        const hash = window.location.hash.substring(1);
+        const hashParams = new URLSearchParams(hash);
+        const type = hashParams.get('type') || searchParams.get('type');
+        const tokenHash =
+          hashParams.get('token_hash') ||
+          searchParams.get('token_hash') ||
+          hashParams.get('access_token');
+
+        if (!tokenHash || type !== 'recovery') {
+          setTokenError(
+            'Link reset password tidak valid. Silakan minta link baru dari halaman login.',
+          );
+          setVerifying(false);
+          return;
+        }
+
         const { error: verifyError } = await supabase.auth.verifyOtp({
           token_hash: tokenHash,
           type: 'recovery',
@@ -61,7 +68,9 @@ function ResetPasswordForm() {
       } finally {
         setVerifying(false);
         // Clean the hash from the URL
-        window.history.replaceState(null, '', window.location.pathname);
+        if (window.location.hash) {
+          window.history.replaceState(null, '', window.location.pathname);
+        }
       }
     };
 
