@@ -97,7 +97,11 @@ export function VariantSelector({ menuItem, isOpen, onClose, onAddToCart }: Vari
     })
 
     const totalItems = selectedVariants.reduce((sum, { quantity }) => sum + quantity, 0)
-    toast.success(`${totalItems} item ditambahkan ke pesanan`)
+    const label =
+      selectedVariants.length === 1
+        ? `${menuItem.name} - ${selectedVariants[0].variant.variantName || selectedVariants[0].variant.variant_name}`
+        : `${totalItems} item`
+    toast.success(`${label} ditambahkan ke pesanan`)
     setTimeout(() => {
       onClose()
       setIsAddingToCart(false)
