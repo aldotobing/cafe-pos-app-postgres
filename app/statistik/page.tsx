@@ -19,7 +19,7 @@ import {
   DollarSign
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { StatCard } from '@/components/statistik/StatCard';
 import { RevenueChart } from '@/components/statistik/RevenueChart';
 import { CategoryChart } from '@/components/statistik/CategoryChart';
@@ -35,6 +35,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 import { generateFinancialReport } from '@/lib/reports/financial-report';
+import { StatistikSkeleton, DataSkeleton } from '@/components/skeletons';
 import { toast } from 'sonner';
 import useSWR from 'swr';
 import { swrConfigForTransactions } from '@/lib/swr-config';
@@ -51,6 +52,12 @@ export default function StatistikPage() {
     to: new Date(),
   });
   const [exporting, setExporting] = useState(false);
+  const [filterVersion, setFilterVersion] = useState(0);
+
+  const handleDateChange = (newDate: DateRange | undefined) => {
+    setDate(newDate);
+    setFilterVersion((v) => v + 1);
+  };
 
   const toLocalISO = (dateStr: string) => new Date(dateStr + 'T00:00:00').toISOString();
 
@@ -82,7 +89,7 @@ export default function StatistikPage() {
   // NOTE: Use large limit (1000) to fetch all transactions for statistik calculation
   const { data: txs, error, isLoading: isFetching, isValidating, mutate } = useSWR(
     !authLoading && userData?.cafe_id 
-      ? `/api/rest/transactions?cafe_id=${userData.cafe_id}&created_at_gte=${dateParams.startDateStr}&created_at_lt=${dateParams.endDateStr}&limit=1000`
+      ? `/api/rest/transactions?cafe_id=${userData.cafe_id}&created_at_gte=${dateParams.startDateStr}&created_at_lt=${dateParams.endDateStr}&limit=1000&_v=${filterVersion}`
       : null,
     null, // Use global fetcher
     swrConfigForTransactions
@@ -384,40 +391,16 @@ export default function StatistikPage() {
     };
   }, [txs, prevTxs, menu, categories]);
 
-  // Handle the initial empty state while SWR is idle or working
-  if (authLoading || menuLoading || categoriesLoading || (isFetching && !txs)) {
-    return (
-      <AppShell>
-        <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
-          <div className="flex flex-col items-center gap-2">
-            <RefreshCw className="h-8 w-8 animate-spin text-primary/30" />
-            <p className="text-muted-foreground text-sm font-medium">Memuat statistik...</p>
-          </div>
-        </div>
-      </AppShell>
-    );
+  // Only full skeleton on initial auth/menu load — not on SWR revalidation
+  if (authLoading || menuLoading || categoriesLoading) {
+    return <StatistikSkeleton />;
   }
+
+  const isLoading = isFetching && !txs;
 
   return (
     <AppShell>
-      <div className="space-y-6 pb-16 relative">
-        {/* Global Loading Overlay for revalidating */}
-        <AnimatePresence>
-          {(isFetching || isValidating) && txs && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="absolute inset-0 z-50 bg-background/20 backdrop-blur-[1px] flex items-start justify-center pt-24 pointer-events-none"
-            >
-              <div className="bg-card border shadow-xl rounded-full px-4 py-2 flex items-center gap-2">
-                <RefreshCw className="h-4 w-4 animate-spin text-primary" />
-                <span className="text-xs font-medium">Memperbarui data...</span>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
- 
+      <div className="space-y-6 pb-16">
         {/* Header Section */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6 mb-8">
           <div className="space-y-1">
@@ -433,7 +416,7 @@ export default function StatistikPage() {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => setDate({ from: startOfDay(new Date()), to: new Date() })}
+                onClick={() => handleDateChange({ from: startOfDay(new Date()), to: new Date() })}
                 className={cn(
                   "flex-1 sm:flex-initial h-8 px-4 text-[11px] font-bold transition-all rounded-lg",
                   date?.from && format(date.from, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd') && (!date?.to || (date?.to && format(date?.to, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd')))
@@ -446,7 +429,7 @@ export default function StatistikPage() {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => setDate({ from: startOfDay(addDays(new Date(), -6)), to: new Date() })}
+                onClick={() => handleDateChange({ from: startOfDay(addDays(new Date(), -6)), to: new Date() })}
                 className={cn(
                   "flex-1 sm:flex-initial h-8 px-4 text-[11px] font-bold transition-all rounded-lg",
                   date?.from && format(date.from, 'yyyy-MM-dd') === format(addDays(new Date(), -6), 'yyyy-MM-dd')
@@ -459,7 +442,7 @@ export default function StatistikPage() {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => setDate({ from: startOfDay(addDays(new Date(), -29)), to: new Date() })}
+                onClick={() => handleDateChange({ from: startOfDay(addDays(new Date(), -29)), to: new Date() })}
                 className={cn(
                   "flex-1 sm:flex-initial h-8 px-4 text-[11px] font-bold transition-all rounded-lg",
                   date?.from && format(date.from, 'yyyy-MM-dd') === format(addDays(new Date(), -29), 'yyyy-MM-dd')
@@ -504,7 +487,7 @@ export default function StatistikPage() {
                     mode="range"
                     defaultMonth={date?.from}
                     selected={date}
-                    onSelect={setDate}
+                    onSelect={handleDateChange}
                     numberOfMonths={2}
                     locale={id}
                   />
@@ -556,7 +539,9 @@ export default function StatistikPage() {
           </div>
         </div>
  
-        {!statisticData ? (
+        {isLoading ? (
+          <DataSkeleton />
+        ) : !statisticData ? (
           <div className="flex flex-col items-center justify-center py-32 bg-muted/5 rounded-[2rem] border-2 border-dashed border-muted/50">
             <Package className="h-20 w-20 text-muted-foreground/20 mb-6" />
             <h3 className="text-2xl font-bold tracking-tight">Belum ada transaksi</h3>

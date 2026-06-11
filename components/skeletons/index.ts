@@ -6,3 +6,4 @@ export { CategoriesSkeleton } from './categories-skeleton';
 export { ProfitSkeleton } from './profit-skeleton';
 export { POSSkeleton } from './pos-skeleton';
 export { ExpenseSkeleton } from './expense-skeleton';
+export { StatistikSkeleton, DataSkeleton } from './statistik-skeleton';
