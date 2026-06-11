@@ -29,6 +29,13 @@ function useRecoveryTokens(): { tokens: RecoveryTokens; checking: boolean; error
       hashParams.get('access_token') || searchParams.get('token');
     const refresh_token = hashParams.get('refresh_token') || '';
 
+    console.log('Reset password debug:', {
+      hash: window.location.hash,
+      search: window.location.search,
+      type,
+      hasAccessToken: !!access_token,
+    });
+
     if (access_token && type === 'recovery') {
       // Clean the URL
       window.history.replaceState(null, '', window.location.pathname);
