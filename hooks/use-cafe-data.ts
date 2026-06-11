@@ -100,16 +100,16 @@ export interface UsePaginatedTransactionsReturn {
 export function useTransactionsPaginated(
   cafeId?: number,
   limit = 10,
-  filters?: { from?: string; to?: string; created_by?: string; payment_method?: string; status?: string }
+  filters?: { from?: string; to?: string; created_by?: string; payment_method?: string; status?: string; search?: string }
 ): UsePaginatedTransactionsReturn {
   const [offset, setOffset] = useState(0);
 
   useEffect(() => {
     setOffset(0);
-  }, [filters?.from, filters?.to, filters?.created_by, filters?.payment_method, filters?.status]);
+  }, [filters?.from, filters?.to, filters?.created_by, filters?.payment_method, filters?.status, filters?.search]);
 
   const { data, error, mutate, isValidating } = useSWR<PaginatedTransactions>(
-    cafeId ? ['paginated-transactions', cafeId, limit, offset, filters?.from, filters?.to, filters?.created_by, filters?.payment_method, filters?.status] : null,
+    cafeId ? ['paginated-transactions', cafeId, limit, offset, filters?.from, filters?.to, filters?.created_by, filters?.payment_method, filters?.status, filters?.search] : null,
     () => transactionsApi.getPaginated(cafeId, limit, offset, filters),
     {
       // Keep previous data while loading new page for smoother UX

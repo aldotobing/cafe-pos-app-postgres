@@ -300,7 +300,7 @@ export const transactionsApi = {
     }));
   },
 
-  getPaginated: async (cafeId?: number, limit = 10, offset = 0, filters?: { from?: string; to?: string; created_by?: string; payment_method?: string; status?: string }): Promise<PaginatedTransactions> => {
+  getPaginated: async (cafeId?: number, limit = 10, offset = 0, filters?: { from?: string; to?: string; created_by?: string; payment_method?: string; status?: string; search?: string }): Promise<PaginatedTransactions> => {
     let url = '/rest/transactions';
     const params = new URLSearchParams();
     if (cafeId) params.set('cafe_id', cafeId.toString());
@@ -326,6 +326,9 @@ export const transactionsApi = {
     }
     if (filters?.status && filters.status !== 'all') {
       params.set('status', filters.status);
+    }
+    if (filters?.search && filters.search.trim()) {
+      params.set('search', filters.search.trim());
     }
 
     if (params.toString()) url += `?${params.toString()}`;

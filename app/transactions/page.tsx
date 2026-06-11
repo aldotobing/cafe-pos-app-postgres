@@ -1,14 +1,14 @@
 "use client"
 
 import { AppShell } from "../../components/app-shell"
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { formatRupiah, formatTanggal } from "../../lib/format"
 import { useAuth } from '@/lib/auth-context';
 import { useTransactionsPaginated, useCafeSettings } from "@/hooks/use-cafe-data"
 import { transactionsApi } from '@/lib/api'
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Filter, Receipt, TrendingUp, Calendar as CalendarIcon, FileText, ScrollText, ChevronLeft, ChevronRight, ChevronFirst, ChevronLast, Loader2, BadgePercent, Ban } from 'lucide-react';
+import { Filter, Receipt, TrendingUp, Calendar as CalendarIcon, FileText, ScrollText, ChevronLeft, ChevronRight, ChevronFirst, ChevronLast, Loader2, BadgePercent, Ban, Search, X } from 'lucide-react';
 import { generateTransactionReport } from '@/lib/reports/transaction-report';
 import { toast } from 'sonner';
 import { TransactionsSkeleton } from '@/components/skeletons';
@@ -33,6 +33,21 @@ export default function Page() {
   const [to, setTo] = useState<string>(today)
   const [userFilter, setUserFilter] = useState<string>("Semua")
   const [statusFilter, setStatusFilter] = useState<'all' | 'completed' | 'voided'>('all')
+  const [search, setSearch] = useState("")
+  const [debouncedSearch, setDebouncedSearch] = useState("")
+  const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Debounce search input to avoid hammering the API on every keystroke
+  useEffect(() => {
+    if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current)
+    searchTimeoutRef.current = setTimeout(() => {
+      setDebouncedSearch(search.trim())
+    }, 300)
+    return () => {
+      if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current)
+    }
+  }, [search])
+
   const [usersList, setUsersList] = useState<Array<{id: string, full_name: string}>>([])
   const [exporting, setExporting] = useState(false)
 
@@ -57,7 +72,7 @@ export default function Page() {
     goToNextPage,
     goToPrevPage,
     goToPage,
-  } = useTransactionsPaginated(cafeId, 10, { from, to, created_by: userFilter, payment_method: method, status: statusFilter });
+  } = useTransactionsPaginated(cafeId, 10, { from, to, created_by: userFilter, payment_method: method, status: statusFilter, search: debouncedSearch });
 
   // Combined loading state: initial load OR page switch
   const isFetching = isLoading || isValidating;
@@ -202,7 +217,7 @@ export default function Page() {
     const loadingToast = toast.loading(`Menyiapkan ${summaryStats.count.toLocaleString('id-ID')} transaksi...`);
     try {
       const result = await transactionsApi.getPaginated(cafeId!, totalCount, 0, {
-        from, to, created_by: userFilter, payment_method: method
+        from, to, created_by: userFilter, payment_method: method, search: debouncedSearch
       });
       toast.loading("Membuat laporan PDF...", { id: loadingToast });
       await generateTransactionReport({
@@ -311,6 +326,24 @@ export default function Page() {
             </button>
           ))}
         </div>
+        <div className="mb-4 relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Cari no. transaksi atau nama kasir..."
+            className="w-full h-10 rounded-xl border bg-background pl-10 pr-10 text-sm outline-none focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-muted-foreground/60"
+          />
+          {search && (
+            <button
+              onClick={() => setSearch("")}
+              className="absolute right-3 top-1/2 -translate-y-1/2 p-0.5 rounded-full hover:bg-muted transition-colors text-muted-foreground"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          )}
+        </div>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-x-4 gap-y-3">
           <div className="flex flex-col gap-1.5">
             <label className="text-[10px] font-bold uppercase text-muted-foreground px-1">Kasir</label>
@@ -368,7 +401,7 @@ export default function Page() {
         </div>
         <div className="flex items-center gap-2 pt-4 mt-4 border-t border-dashed">
           <button
-            onClick={() => { setUserFilter("Semua"); setMethod("Semua"); setFrom(today); setTo(today); }}
+            onClick={() => { setUserFilter("Semua"); setMethod("Semua"); setFrom(today); setTo(today); setSearch(""); }}
             className="flex-1 sm:flex-none px-4 h-9 rounded-xl border border-dashed hover:bg-muted/50 transition-all text-xs font-medium text-muted-foreground"
           >
             Reset

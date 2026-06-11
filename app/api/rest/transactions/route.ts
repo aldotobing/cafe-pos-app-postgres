@@ -30,6 +30,12 @@ export async function GET(request: Request) {
     const endDate = url.searchParams.get('end_date');
     const createdBy = url.searchParams.get('created_by');
     const paymentMethod = url.searchParams.get('payment_method');
+    const search = url.searchParams.get('search');
+
+    // Sanitize search term for ILIKE: escape special wildcard chars, wrap with %%
+    const searchPattern = search?.trim()
+      ? `%${search.trim().replace(/[%_]/g, '\\$&')}%`
+      : null;
 
     // Build filter conditions for reuse
     const fromDate = createdAtGte || startDate;
@@ -63,6 +69,9 @@ export async function GET(request: Request) {
     }
     if (paymentMethod && paymentMethod !== 'Semua') {
       dataQuery = dataQuery.eq('payment_method', paymentMethod as "Tunai" | "QRIS" | "Debit" | "Transfer");
+    }
+    if (searchPattern) {
+      dataQuery = dataQuery.or(`transaction_number.ilike.${searchPattern},cashier_name.ilike.${searchPattern}`);
     }
 
     // Apply pagination with safe upper bound
@@ -105,6 +114,10 @@ export async function GET(request: Request) {
     if (paymentMethod && paymentMethod !== 'Semua') {
       summaryQuery = summaryQuery.eq('payment_method', paymentMethod as "Tunai" | "QRIS" | "Debit" | "Transfer");
     }
+    if (search && search.trim()) {
+      const term = `%${search.trim()}%`;
+      summaryQuery = summaryQuery.or(`transaction_number.ilike.${term},cashier_name.ilike.${term}`);
+    }
 
     const { data: summaryData, error: summaryError } = await summaryQuery;
 
@@ -124,6 +137,10 @@ export async function GET(request: Request) {
     if (toDate) completedTotalQuery = completedTotalQuery.lt('created_at', toDate);
     if (createdBy && createdBy !== 'Semua') completedTotalQuery = completedTotalQuery.eq('created_by', createdBy);
     if (paymentMethod && paymentMethod !== 'Semua') completedTotalQuery = completedTotalQuery.eq('payment_method', paymentMethod as any);
+    if (search && search.trim()) {
+      const term = `%${search.trim()}%`;
+      completedTotalQuery = completedTotalQuery.or(`transaction_number.ilike.${term},cashier_name.ilike.${term}`);
+    }
 
     const { data: completedData } = await completedTotalQuery;
     const completedTotal = (completedData || []).reduce((sum: number, t: any) => sum + (parseFloat(t.total_amount) || 0), 0);
