@@ -96,6 +96,7 @@ function LoginForm() {
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
   const [demoLoading, setDemoLoading] = useState(false);
+  const [navigating, setNavigating] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const nameInputRef = useRef<HTMLInputElement>(null);
   const emailInputRef = useRef<HTMLInputElement>(null);
@@ -135,10 +136,10 @@ function LoginForm() {
         setDemoLoading(false);
         return;
       }
+      setNavigating(true);
       router.push(redirectTo);
     } catch (err: any) {
       setError(getErrorMessage(err));
-    } finally {
       setDemoLoading(false);
     }
   };
@@ -169,6 +170,7 @@ function LoginForm() {
               : userData.role === 'admin' && !userData.cafe_id
                 ? '/create-cafe'
                 : '/';
+      setNavigating(true);
       router.push(targetPath);
     } catch (err: any) {
       if (err.message === 'pending') {
@@ -187,7 +189,6 @@ function LoginForm() {
       } else {
         setError(getErrorMessage(err));
       }
-    } finally {
       setLoading(false);
     }
   };
@@ -303,7 +304,7 @@ function LoginForm() {
           {authMode === 'login' && (
             <motion.button
               onClick={handleDemoLogin}
-              disabled={loading || demoLoading}
+              disabled={loading || demoLoading || navigating}
               whileHover={{ scale: loading || demoLoading ? 1 : 1.01 }}
               whileTap={{ scale: loading || demoLoading ? 1 : 0.99 }}
               className="w-full mb-6 relative overflow-hidden rounded-xl border border-primary/20 bg-primary/5 hover:bg-primary/10 transition-all p-3.5 text-left group disabled:opacity-50"
@@ -367,7 +368,7 @@ function LoginForm() {
               exit={{ opacity: 0, y: authMode === 'login' ? 4 : -4 }}
               transition={{ duration: 0.2 }}
               onSubmit={handleSubmit}
-              className={`space-y-4 ${loading ? 'opacity-70 pointer-events-none' : ''}`}
+              className={`space-y-4 ${loading || navigating ? 'opacity-70 pointer-events-none' : ''}`}
             >
               {/* Full Name (signup only) */}
               {authMode === 'signup' && (
@@ -382,7 +383,7 @@ function LoginForm() {
                       required
                       placeholder="Nama lengkap Anda"
                       className="pl-10 peer"
-                      disabled={loading}
+                      disabled={loading || navigating}
                       aria-invalid={!!fieldErrors.fullName}
                     />
                     <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground peer-focus:text-primary transition-colors pointer-events-none" />
@@ -404,7 +405,7 @@ function LoginForm() {
                     type="email"
                     placeholder="nama@email.com"
                     className="pl-10 peer"
-                    disabled={loading}
+                    disabled={loading || navigating}
                     aria-invalid={!!fieldErrors.email}
                   />
                   <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground peer-focus:text-primary transition-colors pointer-events-none" />
@@ -437,7 +438,7 @@ function LoginForm() {
                         type={showPassword ? 'text' : 'password'}
                         placeholder={authMode === 'signup' ? 'Minimal 6 karakter' : '••••••••'}
                         className="pl-10 pr-10 peer"
-                        disabled={loading}
+                        disabled={loading || navigating}
                         aria-invalid={!!fieldErrors.password}
                       />
                       <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground peer-focus:text-primary transition-colors pointer-events-none" />
@@ -468,7 +469,7 @@ function LoginForm() {
                               ? 'border-emerald-500 focus-visible:ring-emerald-500/20'
                               : ''
                           }`}
-                          disabled={loading}
+                          disabled={loading || navigating}
                           aria-invalid={!!fieldErrors.confirmPassword}
                         />
                         <ShieldCheck className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground peer-focus:text-primary transition-colors pointer-events-none" />
@@ -490,8 +491,13 @@ function LoginForm() {
               )}
 
               {/* Submit */}
-              <Button type="submit" disabled={loading} size="lg" className="w-full mt-2">
-                {loading ? (
+              <Button type="submit" disabled={loading || navigating} size="lg" className="w-full mt-2">
+                {navigating ? (
+                  <>
+                    <CheckCircle2 className="h-4 w-4" />
+                    <span>Berhasil! Mengalihkan...</span>
+                  </>
+                ) : loading ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin" />
                     <span>
@@ -525,7 +531,7 @@ function LoginForm() {
                 Belum punya akun?{' '}
                 <button
                   onClick={() => goTo('signup')}
-                  disabled={loading}
+                  disabled={loading || navigating}
                   className="text-primary font-medium hover:text-primary/85 transition-colors disabled:opacity-50"
                 >
                   Daftar
@@ -536,7 +542,7 @@ function LoginForm() {
                 Sudah punya akun?{' '}
                 <button
                   onClick={() => goTo('login')}
-                  disabled={loading}
+                  disabled={loading || navigating}
                   className="text-primary font-medium hover:text-primary/85 transition-colors disabled:opacity-50"
                 >
                   Masuk
