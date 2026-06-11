@@ -1,4 +1,84 @@
 const DEFAULT_TIMEOUT = 20000
+const SLOW_THRESHOLD = 3000      // moving average above this → "slow"
+const RECOVER_THRESHOLD = 1500   // moving average below this → "recovered"
+const LATENCY_WINDOW = 10        // number of recent requests to average
+
+// --- Connection quality tracking ---
+
+const recentLatencies: number[] = []
+let pendingCount = 0
+let currentState: 'healthy' | 'slow' = 'healthy'
+
+function recordLatency(ms: number) {
+  recentLatencies.push(ms)
+  if (recentLatencies.length > LATENCY_WINDOW) {
+    recentLatencies.shift()
+  }
+}
+
+function movingAverage(): number {
+  if (recentLatencies.length === 0) return 0
+  const sum = recentLatencies.reduce((a, b) => a + b, 0)
+  return sum / recentLatencies.length
+}
+
+function evaluateConnectionQuality() {
+  if (recentLatencies.length < 3) return // need enough data
+
+  const avg = movingAverage()
+
+  if (currentState === 'healthy' && avg > SLOW_THRESHOLD) {
+    currentState = 'slow'
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('connection-slow', { detail: { avgLatency: avg } }))
+    }
+  } else if (currentState === 'slow' && avg < RECOVER_THRESHOLD) {
+    currentState = 'healthy'
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('connection-recovered'))
+    }
+  }
+}
+
+function onRequestStart() {
+  pendingCount++
+}
+
+function onRequestEnd(latencyMs: number, isNetworkError: boolean) {
+  pendingCount = Math.max(0, pendingCount - 1)
+
+  if (isNetworkError) {
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('connection-error'))
+    }
+    return // don't record network errors as latency
+  }
+
+  recordLatency(latencyMs)
+  evaluateConnectionQuality()
+}
+
+function resetConnectionState() {
+  recentLatencies.length = 0
+  pendingCount = 0
+  currentState = 'healthy'
+}
+
+// Listen to browser online/offline to reset state
+if (typeof window !== 'undefined') {
+  window.addEventListener('offline', resetConnectionState)
+}
+
+// --- Public helpers ---
+
+export function getConnectionState() {
+  return {
+    state: currentState,
+    pendingCount,
+    avgLatency: movingAverage(),
+    recentCount: recentLatencies.length,
+  }
+}
 
 function isNetworkError(err: unknown): boolean {
   if (err instanceof TypeError) {
@@ -45,6 +125,9 @@ export async function fetchClient(
   const controller = new AbortController()
   const timeoutId = setTimeout(() => controller.abort(), timeout)
 
+  onRequestStart()
+  const startTime = performance.now()
+
   try {
     const response = await fetch(url, {
       ...fetchOptions,
@@ -59,11 +142,16 @@ export async function fetchClient(
     })
 
     clearTimeout(timeoutId)
+    const latency = performance.now() - startTime
+    onRequestEnd(latency, false)
     return response
   } catch (err) {
     clearTimeout(timeoutId)
+    const latency = performance.now() - startTime
+    const networkErr = isNetworkError(err)
+    onRequestEnd(latency, networkErr)
 
-    if (isNetworkError(err)) {
+    if (networkErr) {
       throw new FetchError(getUserMessage(err), true)
     }
 
