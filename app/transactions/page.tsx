@@ -391,15 +391,15 @@ export default function Page() {
             <p className="text-xs text-muted-foreground max-w-sm mx-auto">Coba ubah filter atau tambahkan transaksi baru.</p>
           </div>
         ) : (
-          <table className="w-full table-fixed text-sm">
+          <table className="w-full table-auto text-sm">
             <thead className="bg-muted/30">
               <tr className="border-b">
-                <th className="px-4 py-3 text-left font-medium text-[11px] uppercase tracking-wider text-muted-foreground w-[140px]">Waktu</th>
-                <th className="px-4 py-3 text-center font-medium text-[11px] uppercase tracking-wider text-muted-foreground w-[64px]">Status</th>
-                <th className="px-4 py-3 text-left font-medium text-[11px] uppercase tracking-wider text-muted-foreground w-[100px]">Kasir</th>
-                <th className="px-4 py-3 text-left font-medium text-[11px] uppercase tracking-wider text-muted-foreground w-[90px]">Metode</th>
-                <th className="px-4 py-3 text-right font-medium text-[11px] uppercase tracking-wider text-muted-foreground w-[100px]">Total</th>
-                <th className="px-4 py-3 text-left font-medium text-[11px] uppercase tracking-wider text-muted-foreground w-[30%]">Item</th>
+                <th className="px-4 py-3 text-left font-medium text-[11px] uppercase tracking-wider text-muted-foreground">Waktu</th>
+                <th className="px-4 py-3 text-center font-medium text-[11px] uppercase tracking-wider text-muted-foreground">Status</th>
+                <th className="px-4 py-3 text-left font-medium text-[11px] uppercase tracking-wider text-muted-foreground">Kasir</th>
+                <th className="px-4 py-3 text-left font-medium text-[11px] uppercase tracking-wider text-muted-foreground">Metode</th>
+                <th className="px-4 py-3 text-right font-medium text-[11px] uppercase tracking-wider text-muted-foreground">Total</th>
+                <th className="px-4 py-3 text-left font-medium text-[11px] uppercase tracking-wider text-muted-foreground">Item</th>
               </tr>
             </thead>
             <tbody>
@@ -439,7 +439,7 @@ export default function Page() {
                       {t.status === 'voided' && (
                         <div className="flex flex-col items-center gap-0.5" title={`Divoid · ${t.void_reason || 'Tanpa alasan'}`}>
                           <Ban className="h-4 w-4 text-destructive" />
-                          <span className="text-[9px] text-destructive/70 leading-tight text-center max-w-[60px] truncate">{t.void_reason || '-'}</span>
+                          <span className="text-[11px] text-destructive font-medium leading-tight text-center block max-w-[120px] truncate">{t.void_reason || '-'}</span>
                         </div>
                       )}
                     </td>

@@ -302,6 +302,9 @@ function ModalContent({
               </span>
             )}
           </div>
+          {isVoided && tx.voidReason && (
+            <p className="text-xs text-red-600/80 dark:text-red-400/80 mt-1">{tx.voidReason}</p>
+          )}
           {tx && (
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <Hash className="h-3 w-3" />
