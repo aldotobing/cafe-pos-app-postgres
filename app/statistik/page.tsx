@@ -397,6 +397,7 @@ export default function StatistikPage() {
   }
 
   const isLoading = isFetching && !txs;
+  const isRefreshing = isValidating && !!txs;
 
   return (
     <AppShell>
@@ -539,7 +540,7 @@ export default function StatistikPage() {
           </div>
         </div>
  
-        {isLoading ? (
+        {(isLoading || isRefreshing) ? (
           <DataSkeleton />
         ) : !statisticData ? (
           <div className="flex flex-col items-center justify-center py-32 bg-muted/5 rounded-[2rem] border-2 border-dashed border-muted/50">
