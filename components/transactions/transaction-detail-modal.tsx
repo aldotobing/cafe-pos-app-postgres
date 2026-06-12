@@ -293,28 +293,33 @@ function ModalContent({
     <>
       {/* Header */}
       <div className="flex items-center justify-between px-5 py-4 border-b bg-muted/20 shrink-0">
-        <div className="flex flex-col gap-0.5">
+        <div className="flex flex-col gap-0.5 min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <h2 className="font-bold text-lg tracking-tight">Detail Transaksi</h2>
+            <h2 className="font-bold text-lg tracking-tight truncate">Detail Transaksi</h2>
             {isVoided && (
-              <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">
+              <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 shrink-0">
                 Batal
               </span>
             )}
           </div>
-          {isVoided && tx.voidReason && (
-            <p className="text-xs text-red-600/80 dark:text-red-400/80 mt-1">{tx.voidReason}</p>
-          )}
           {tx && (
-            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-              <Hash className="h-3 w-3" />
-              <span className="font-mono tracking-tight">{tx.transactionNumber || tx.id?.slice(0, 10)}</span>
+            <div className="flex flex-col">
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <Hash className="h-3 w-3 shrink-0" />
+                <span className="font-mono tracking-tight truncate">{tx.transactionNumber || tx.id?.slice(0, 10)}</span>
+              </div>
+              {isVoided && tx.voidReason && (
+                <div className="flex items-center gap-1.5 text-xs text-red-600/80 dark:text-red-400/80 ml-[18px]">
+                  <span className="shrink-0">—</span>
+                  <span className="truncate">{tx.voidReason}</span>
+                </div>
+              )}
             </div>
           )}
         </div>
         <button
           onClick={onClose}
-          className="p-1.5 rounded-xl hover:bg-background hover:text-foreground transition-all text-muted-foreground active:scale-90"
+          className="p-1.5 rounded-xl hover:bg-background hover:text-foreground transition-all text-muted-foreground active:scale-90 shrink-0 ml-2"
         >
           <X className="h-5 w-5" />
         </button>
