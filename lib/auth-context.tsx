@@ -90,7 +90,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     checkingRef.current = true;
 
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 5000);
+    // Use a longer timeout (12s) to give the browser time to wake up the network
+    // after long idle periods, especially on mobile/PWA
+    const timeout = setTimeout(() => controller.abort(), 12000);
 
     try {
       const supabase = createClient();
@@ -108,6 +110,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const { data: { session } } = await Promise.race([sessionPromise, timeoutPromise]);
 
       if (!session) {
+        // If we had a user before, don't immediately treat as expired —
+        // the network may still be waking up. Retry once after a delay.
+        if (user) {
+          await new Promise((r) => setTimeout(r, 2000));
+          const { data: { session: retrySession } } = await supabase.auth.getSession();
+          if (retrySession) {
+            const response = await fetch('/api/auth/me', { credentials: 'include' });
+            if (response.ok) {
+              const data = await response.json();
+              setUser(data.user);
+              setUserData(data.userData);
+              return { ...data, expired: false };
+            }
+          }
+        }
         setUser(null);
         setUserData(null);
         return { expired: true };
@@ -135,6 +152,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setUserData(null);
           return { expired: true };
         }
+        // If we have a user but the request timed out (12s), keep the
+        // current session — the network is likely still waking up.
+        return { expired: false };
       }
       return { expired: false };
     } finally {
