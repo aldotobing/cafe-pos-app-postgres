@@ -92,6 +92,8 @@ export function CartPanel() {
       setDiscountValue(match.promo.value)
     } else {
       setAppliedPromoName(null)
+      setDiscountValue(0)
+      setDiscountType('percent')
     }
   }, [cart, subtotal, promotions, menu])
 

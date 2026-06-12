@@ -67,11 +67,13 @@ export function ToasterWithTheme() {
           border: "1px solid var(--border)",
           borderRadius: "var(--radius)",
           fontSize: isMobile ? "0.8125rem" : "0.875rem",
-          boxShadow: "0 4px 12px rgba(0, 0, 0, 0.08)",
+          boxShadow: "0 8px 24px rgba(0, 0, 0, 0.18), 0 0 0 1px rgba(0, 0, 0, 0.04)",
           padding: isMobile ? "10px 14px" : "12px 18px",
           width: "max-content",
           maxWidth: isMobile ? "calc(100vw - 32px)" : "340px",
+          backdropFilter: "blur(8px)",
         },
+        className: "!bg-card/95",
       }}
     />
   )

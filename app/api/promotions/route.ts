@@ -59,7 +59,7 @@ export async function POST(request: Request) {
     const user = await getAuthenticatedUser(request);
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    if (user.role !== 'admin' && user.role !== 'superadmin') {
+    if (user.role !== 'admin' && user.role !== 'superadmin' && user.role !== 'cashier') {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 

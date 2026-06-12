@@ -346,19 +346,31 @@ export default function PromotionsPage() {
                         {promo.maxDiscount && <span className="font-normal text-muted-foreground"> · Max {formatRupiah(promo.maxDiscount)}</span>}
                       </div>
                     </div>
-                    <button
-                      onClick={() => handleToggleActive(promo)}
-                      disabled={togglingId === promo.id}
-                      className={`
-                        text-[10px] font-bold px-2 py-0.5 rounded-full transition-colors disabled:opacity-70 shrink-0
-                        ${promo.isActive ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200' : 'bg-muted text-muted-foreground hover:bg-muted/80'}
-                      `}
-                      title={promo.isActive ? 'Nonaktifkan' : 'Aktifkan'}
-                    >
-                      {togglingId === promo.id ? (
-                        <Loader2 className="h-3 w-3 animate-spin" />
-                      ) : promo.isActive ? 'AKTIF' : 'NONAKTIF'}
-                    </button>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button
+                        onClick={() => handleToggleActive(promo)}
+                        disabled={togglingId === promo.id}
+                        className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 ${
+                          promo.isActive ? 'bg-emerald-500' : 'bg-muted-foreground/25'
+                        } ${togglingId === promo.id ? 'opacity-70 cursor-wait' : ''}`}
+                        title={promo.isActive ? 'Nonaktifkan' : 'Aktifkan'}
+                      >
+                        {togglingId === promo.id ? (
+                          <span className="absolute inset-0 flex items-center justify-center">
+                            <Loader2 className="h-3 w-3 text-white animate-spin" />
+                          </span>
+                        ) : (
+                          <span
+                            className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform ${
+                              promo.isActive ? 'translate-x-[18px]' : 'translate-x-[2px]'
+                            }`}
+                          />
+                        )}
+                      </button>
+                      <span className={`text-[10px] font-medium ${promo.isActive ? 'text-emerald-600' : 'text-muted-foreground'}`}>
+                        {promo.isActive ? 'Aktif' : 'Nonaktif'}
+                      </span>
+                    </div>
                   </div>
 
                   {/* Middle row: applies-to detail */}
