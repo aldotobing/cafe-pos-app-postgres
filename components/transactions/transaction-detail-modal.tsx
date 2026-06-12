@@ -423,7 +423,7 @@ function ModalContent({
                         </div>
                         <div className="flex items-center gap-3 mt-1.5 ml-7">
                           <span className="text-xs text-muted-foreground">{formatRupiah(item.price)}/item</span>
-                          {item.discount && Number(item.discount) > 0 && (
+                          {Number(item.discount || 0) > 0 && (
                             <span className="text-[11px] text-red-500 font-medium">
                               Diskon -{formatRupiah(Number(item.discount))}
                             </span>
