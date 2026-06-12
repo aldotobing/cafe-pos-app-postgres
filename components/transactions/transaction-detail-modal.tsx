@@ -51,7 +51,7 @@ export function TransactionDetailModal({ transactionId, isOpen, onClose }: Trans
   const [voiding, setVoiding] = useState(false)
   const [showVoidConfirm, setShowVoidConfirm] = useState(false)
   const [voidReason, setVoidReason] = useState('')
-  const canVoid = userData?.role === 'admin' || userData?.role === 'superadmin' || userData?.role === 'cashier'
+  const isAdmin = userData?.role === 'admin' || userData?.role === 'superadmin' || userData?.role === 'cashier'
 
   const { data: tx, isLoading, mutate } = useSWR(
     isOpen && cafeId ? `/api/rest/transactions/${transactionId}` : null,
