@@ -180,7 +180,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
             quantity: item.quantity,
             reference_type: 'void',
             reference_id: tx.id,
-            notes: `Void: ${tx.transaction_number} (${reason || 'No reason'})`,
+            notes: `Pembatalan: ${tx.transaction_number} (${reason || 'Tanpa alasan'})`,
             created_by: user.id,
           });
       })

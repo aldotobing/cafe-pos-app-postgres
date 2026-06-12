@@ -137,7 +137,7 @@ export function TransactionDetailModal({ transactionId, isOpen, onClose }: Trans
 
   const handleVoid = async () => {
     if (!voidReason.trim()) {
-      toast.error('Berikan alasan void.')
+      toast.error('Berikan alasan pembatalan.')
       return
     }
     setVoiding(true)
@@ -149,7 +149,7 @@ export function TransactionDetailModal({ transactionId, isOpen, onClose }: Trans
       })
       if (!res.ok) {
         const err = await res.json()
-        throw new Error(err.error || 'Gagal void transaksi')
+        throw new Error(err.error || 'Gagal membatalkan transaksi')
       }
       mutate()
       globalMutate(() => true, undefined, { revalidate: true })
@@ -157,9 +157,9 @@ export function TransactionDetailModal({ transactionId, isOpen, onClose }: Trans
         window.dispatchEvent(new CustomEvent('transactionVoided'))
       }
       setShowVoidConfirm(false)
-      toast.success('Transaksi berhasil di-void. Stok dikembalikan.')
+      toast.success('Transaksi berhasil dibatalkan. Stok dikembalikan.')
     } catch (e: any) {
-      toast.error(e.message || 'Gagal void transaksi')
+      toast.error(e.message || 'Gagal membatalkan transaksi')
     } finally {
       setVoiding(false)
     }
@@ -298,7 +298,7 @@ function ModalContent({
             <h2 className="font-bold text-lg tracking-tight">Detail Transaksi</h2>
             {isVoided && (
               <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">
-                Void
+                Batal
               </span>
             )}
           </div>
@@ -522,18 +522,18 @@ function ModalContent({
               className="w-full flex items-center justify-center gap-2 rounded-xl bg-destructive/10 text-destructive border border-destructive/20 px-4 py-2.5 text-sm font-semibold hover:bg-destructive/20 transition-all active:scale-[0.97]"
             >
               <Ban className="h-4 w-4" />
-              Void
+              Batalkan
             </button>
           )}
         </div>
       )}
 
-      {/* Void Confirmation */}
+      {/* Konfirmasi Pembatalan */}
       {tx && showVoidConfirm && (
         <div className="px-5 py-4 border-t bg-destructive/5 shrink-0 space-y-3">
           <div className="flex items-center gap-2 text-sm font-semibold text-destructive">
             <Ban className="h-4 w-4" />
-            Konfirmasi Void
+            Konfirmasi Pembatalan
           </div>
           <p className="text-xs text-muted-foreground">
             Stok akan dikembalikan ke inventory. Transaksi ini akan dikecualikan dari laporan keuangan.
@@ -542,7 +542,7 @@ function ModalContent({
             type="text"
             value={voidReason}
             onChange={(e) => setVoidReason(e.target.value)}
-            placeholder="Alasan void (wajib)..."
+            placeholder="Alasan pembatalan (wajib)..."
             className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-destructive/30"
             autoFocus
           />
@@ -552,14 +552,14 @@ function ModalContent({
               disabled={voiding || !voidReason.trim()}
               className="flex-1 rounded-xl bg-destructive text-destructive-foreground px-4 py-2.5 text-sm font-semibold hover:brightness-110 transition-all active:scale-[0.97] disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {voiding ? 'Memproses...' : 'Ya, Void Transaksi'}
+              {voiding ? 'Memproses...' : 'Ya, Batalkan Transaksi'}
             </button>
             <button
               onClick={() => setShowVoidConfirm(false)}
               disabled={voiding}
               className="flex-1 rounded-xl bg-background border px-4 py-2.5 text-sm font-medium hover:bg-muted transition-all active:scale-[0.97] disabled:opacity-50"
             >
-              Batal
+              Kembali
             </button>
           </div>
         </div>

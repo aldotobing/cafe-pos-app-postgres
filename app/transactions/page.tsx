@@ -322,7 +322,7 @@ export default function Page() {
                   : 'bg-muted/50 text-muted-foreground hover:bg-muted'
               )}
             >
-              {s === 'all' ? 'Semua' : s === 'completed' ? 'Selesai' : 'Void'}
+              {s === 'all' ? 'Semua' : s === 'completed' ? 'Selesai' : 'Dibatalkan'}
             </button>
           ))}
         </div>
@@ -470,7 +470,7 @@ export default function Page() {
                     </td>
                     <td className="px-4 py-3 text-center">
                       {t.status === 'voided' && (
-                        <div className="flex flex-col items-center gap-0.5" title={`Divoid · ${t.void_reason || 'Tanpa alasan'}`}>
+                        <div className="flex flex-col items-center gap-0.5" title={`Dibatalkan · ${t.void_reason || 'Tanpa alasan'}`}>
                           <Ban className="h-4 w-4 text-destructive" />
                           <span className="text-[11px] text-destructive font-medium leading-tight text-center block max-w-[120px] truncate">{t.void_reason || '-'}</span>
                         </div>
