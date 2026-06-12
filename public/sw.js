@@ -34,6 +34,18 @@ self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
+  // Skip service worker for:
+  // 1. Cross-origin requests (e.g., Supabase auth token refresh)
+  //    The SW's retry/timeout logic interferes with auth and can cause
+  //    "Returned response is null" errors when cache fallback returns undefined.
+  // 2. Non-GET requests to external origins — these can't be cached anyway.
+  const isCrossOrigin = url.origin !== self.location.origin;
+  if (isCrossOrigin) {
+    // Let the browser handle cross-origin requests directly.
+    // This is critical for Supabase auth token refresh to work properly.
+    return; // Do NOT call event.respondWith() — browser handles it natively
+  }
+
   // Strategy 1: Navigation requests (pages) - Network first, cache fallback
   if (request.mode === 'navigate') {
     event.respondWith(
@@ -54,7 +66,14 @@ self.addEventListener('fetch', (event) => {
             url: request.url,
             error: error.message
           });
-          return caches.match('/');
+          return caches.match('/').then((cached) => {
+            if (cached) return cached;
+            // Absolute fallback: return a simple HTML page if even the cache is empty
+            return new Response(
+              '<html><body><h1>Offline</h1><p>Silakan periksa koneksi internet Anda.</p></body></html>',
+              { status: 503, headers: { 'Content-Type': 'text/html' } }
+            );
+          });
         })
     );
     return;
@@ -130,23 +149,44 @@ self.addEventListener('fetch', (event) => {
             });
           }
           return response;
+        }).catch((error) => {
+          console.log('[SW] Static asset fetch failed:', url.pathname, error.message);
+          // Return a minimal error response so respondWith always gets a Response
+          return new Response('', { status: 503, statusText: 'Offline' });
         });
       })
     );
     return;
   }
 
-  // Fallback for other GET requests
+  // Fallback for other same-origin requests (GET or POST)
   // Skip non-HTTP(S) schemes entirely
   if (!url.protocol.startsWith('http')) {
-    return fetch(request);
+    return; // Let browser handle non-HTTP natively
   }
 
+  // Only apply retry/timeout to idempotent GET requests.
+  // POST/PUT/DELETE (e.g., API writes, token refresh) go straight to network
+  // — retrying them is dangerous and timeout+retry delays worsen the UX.
+  if (request.method !== 'GET') {
+    event.respondWith(
+      fetch(request).catch((error) => {
+        console.log('[SW] Non-GET request failed:', url.pathname, error.message);
+        return new Response(
+          JSON.stringify({ error: 'offline', message: 'No network connection', isOffline: true }),
+          { status: 503, headers: { 'Content-Type': 'application/json' } }
+        );
+      })
+    );
+    return;
+  }
+
+  // GET fallback: network-first with retry, cache fallback
   event.respondWith(
     fetchWithRetry(request, NETWORK_TIMEOUT, MAX_RETRIES)
       .then((response) => {
-        // ONLY cache http/https requests
-        if (response && response.ok && request.method === 'GET') {
+        // Cache successful GET responses
+        if (response && response.ok) {
           const responseClone = response.clone();
           caches.open(CACHE_NAME).then((cache) => {
             cache.put(request, responseClone).catch((err) => {
@@ -156,7 +196,18 @@ self.addEventListener('fetch', (event) => {
         }
         return response;
       })
-      .catch(() => caches.match(request))
+      .catch((error) => {
+        console.log('[SW] GET fallback failed after retries, trying cache:', url.pathname);
+        // Try cache, but return an offline Response if cache is empty
+        // — this prevents "Returned response is null" errors.
+        return caches.match(request).then((cached) => {
+          if (cached) return cached;
+          return new Response(
+            JSON.stringify({ error: 'offline', message: 'No network connection', isOffline: true }),
+            { status: 503, headers: { 'Content-Type': 'application/json' } }
+          );
+        });
+      })
   );
 });
 
@@ -190,6 +241,9 @@ function fetchWithTimeout(request, timeout) {
 
 // Helper: Fetch with retry and exponential backoff
 // Phase 5.1: Retry failed requests for better mobile network resilience
+// IMPORTANT: Only retry on network/timeout errors, NOT on HTTP error responses.
+// A 400/401/500 response from the server is a valid response — retrying it
+// just wastes time and battery (especially for expired token refresh calls).
 async function fetchWithRetry(request, timeout, maxRetries) {
   let lastError;
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
@@ -200,7 +254,10 @@ async function fetchWithRetry(request, timeout, maxRetries) {
         console.log(`[SW] Retry attempt ${attempt}/${maxRetries} after ${delay}ms`);
         await new Promise(resolve => setTimeout(resolve, delay));
       }
-      return await fetchWithTimeout(request, timeout);
+      const response = await fetchWithTimeout(request, timeout);
+      // If we got ANY HTTP response (even an error), return it immediately.
+      // Don't retry 4xx/5xx — the server already told us the result.
+      return response;
     } catch (error) {
       lastError = error;
       console.log(`[SW] Fetch attempt ${attempt + 1} failed:`, error.message);

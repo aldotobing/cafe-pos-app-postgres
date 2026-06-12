@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
 import { fetchClient, FetchError } from '@/lib/fetch-client';
@@ -37,27 +37,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
+  // Prevent concurrent checkSession() calls — critical for avoiding
+  // token-refresh storms when the app wakes up after a long idle period.
+  const checkingRef = useRef(false);
+  const lastCheckRef = useRef(0);
+
   // Check session on mount — Supabase client reads cookies, no network
   useEffect(() => {
     checkSession();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Re-check on tab focus
+  // Re-check on tab focus (e.g., user returns after long idle)
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
+        // Throttle: don't re-check more than once every 5 seconds
+        const now = Date.now();
+        if (now - lastCheckRef.current < 5000) return;
+        lastCheckRef.current = now;
+
         checkSession().then(async (result) => {
-          if (result?.expired && !loading) {
-            toast.error('Sesi telah berakhir karena tidak aktif. Silakan masuk kembali.', {
-              id: 'session-expired',
-              duration: 5000,
-            });
-            await new Promise((r) => setTimeout(r, 600));
-            router.push('/login');
+          if (result?.expired) {
+            // Only redirect if we're not already on the login page
+            if (window.location.pathname !== '/login') {
+              toast.error('Sesi telah berakhir karena tidak aktif. Silakan masuk kembali.', {
+                id: 'session-expired',
+                duration: 5000,
+              });
+              await new Promise((r) => setTimeout(r, 600));
+              router.push('/login');
+            }
           } else if (result && !result.expired) {
+            // Session is valid — revalidate SWR data in the background
             mutate(() => true, undefined, { revalidate: true });
           }
+          // If result is null (network error), do nothing — keep existing state
         });
       }
     };
@@ -66,9 +81,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [loading]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const checkSession = async () => {
+    // Prevent concurrent calls — if one is already in flight, skip.
+    // This avoids token-refresh storms when mount + visibilitychange fire together.
+    if (checkingRef.current) return null;
+    checkingRef.current = true;
+
     try {
       const supabase = createClient();
 
@@ -102,6 +123,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return { expired: false };
     } finally {
       setLoading(false);
+      checkingRef.current = false;
     }
   };
 
