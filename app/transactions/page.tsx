@@ -8,7 +8,7 @@ import { useTransactionsPaginated, useCafeSettings } from "@/hooks/use-cafe-data
 import { transactionsApi } from '@/lib/api'
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Filter, Receipt, TrendingUp, Calendar as CalendarIcon, FileText, ScrollText, ChevronLeft, ChevronRight, ChevronFirst, ChevronLast, Loader2, BadgePercent, Ban, Search, X } from 'lucide-react';
+import { Filter, Receipt, TrendingUp, Calendar as CalendarIcon, FileText, ScrollText, ChevronLeft, ChevronRight, ChevronFirst, ChevronLast, Loader2, BadgePercent, Ban, Search, X, CheckCircle2 } from 'lucide-react';
 import { generateTransactionReport } from '@/lib/reports/transaction-report';
 import { toast } from 'sonner';
 import { TransactionsSkeleton } from '@/components/skeletons';
@@ -469,10 +469,15 @@ export default function Page() {
                       </div>
                     </td>
                     <td className="px-4 py-3 text-center">
-                      {t.status === 'voided' && (
+                      {t.status === 'voided' ? (
                         <div className="flex flex-col items-center gap-0.5" title={`Dibatalkan · ${t.void_reason || 'Tanpa alasan'}`}>
                           <Ban className="h-4 w-4 text-destructive" />
                           <span className="text-[11px] text-destructive font-medium leading-tight text-center block max-w-[120px] truncate">{t.void_reason || '-'}</span>
+                        </div>
+                      ) : (
+                        <div className="flex flex-col items-center gap-0.5">
+                          <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                          <span className="text-[11px] text-emerald-600 font-medium">Selesai</span>
                         </div>
                       )}
                     </td>
@@ -487,7 +492,7 @@ export default function Page() {
                       {(t.discountType || t.discount_type) !== 'none' && (t.discountAmount || t.discount_amount) > 0 && (
                         <div className="text-[10px] text-emerald-600 font-medium flex items-center justify-end gap-0.5 mt-0.5">
                           <BadgePercent className="h-3 w-3" />
-                          Promo
+                          {t.discountName || t.discount_name || 'Promo'}
                         </div>
                       )}
                     </td>
@@ -558,13 +563,13 @@ export default function Page() {
                   <div className={cn("flex items-center justify-between p-3 border-b border-border/30", t.status === 'voided' ? 'bg-red-50/50 dark:bg-red-950/30' : 'bg-muted/20')}>
                     <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                       <span>{formatTanggal(t.createdAt)}</span>
-                      {t.status === 'voided' && <Ban className="h-3.5 w-3.5 text-destructive" />}
+                      {t.status === 'voided' ? <Ban className="h-3.5 w-3.5 text-destructive" /> : <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />}
                     </div>
                     <div className="flex items-center gap-2">
                       {(t.discountType || t.discount_type) !== 'none' && (t.discountAmount || t.discount_amount) > 0 && (
                         <div className="text-[10px] text-emerald-600 font-medium flex items-center gap-0.5 bg-emerald-50 px-1.5 py-0.5 rounded-full">
                           <BadgePercent className="h-3 w-3" />
-                          Promo
+                          {t.discountName || t.discount_name || 'Promo'}
                         </div>
                       )}
                       <div className="font-bold text-sm tabular-nums">{formatRupiah(t.totalAmount || 0)}</div>
