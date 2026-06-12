@@ -45,6 +45,21 @@ export default function PromotionsPage() {
   const [isDeleting, setIsDeleting] = useState(false)
   const [togglingId, setTogglingId] = useState<string | null>(null)
 
+  // Category IDs already claimed by other promotions.
+  // When editing, the current promo's own categories are excluded so they remain selectable.
+  const usedCategoryIds = new Set<string>(
+    promotions
+      .filter(p => !editingPromo || p.id !== editingPromo.id)
+      .flatMap(p => p.targetCategoryIds || [])
+  )
+
+  // Item IDs already claimed by other promotions (same one-to-one rule).
+  const usedItemIds = new Set<string>(
+    promotions
+      .filter(p => !editingPromo || p.id !== editingPromo.id)
+      .flatMap(p => p.targetItemIds || [])
+  )
+
   const [form, setForm] = useState({
     name: '',
     type: 'percent' as 'percent' | 'flat',
@@ -113,6 +128,30 @@ export default function PromotionsPage() {
     if (form.value <= 0) {
       toast.error("Nilai diskon harus lebih dari 0")
       return
+    }
+    // Block if any selected category is already used by another promotion
+    if (form.appliesTo === 'categories' && form.targetCategoryIds.length > 0) {
+      const overlapping = form.targetCategoryIds.filter(id => usedCategoryIds.has(id))
+      if (overlapping.length > 0) {
+        const names = overlapping
+          .map(id => categories.find(c => c.id === id)?.name)
+          .filter(Boolean)
+          .join(', ')
+        toast.error(`Kategori sudah digunakan di promosi lain: ${names}`)
+        return
+      }
+    }
+    // Block if any selected item is already used by another promotion
+    if (form.appliesTo === 'specific_items' && form.targetItemIds.length > 0) {
+      const overlapping = form.targetItemIds.filter(id => usedItemIds.has(id))
+      if (overlapping.length > 0) {
+        const names = overlapping
+          .map(id => menu.find(m => m.id === id)?.name)
+          .filter(Boolean)
+          .join(', ')
+        toast.error(`Menu sudah digunakan di promosi lain: ${names}`)
+        return
+      }
     }
     setIsSubmitting(true)
     try {
@@ -466,35 +505,58 @@ export default function PromotionsPage() {
                   {form.appliesTo === 'categories' && (
                     <div className="border rounded-lg p-3 max-h-40 overflow-y-auto space-y-1">
                       <p className="text-xs text-muted-foreground mb-2">Pilih kategori:</p>
-                      {categories.map(cat => (
-                        <label key={cat.id} className="flex items-center gap-2 py-1 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={form.targetCategoryIds.includes(cat.id)}
-                            onChange={() => toggleTargetCategory(cat.id)}
-                            className="rounded accent-primary"
-                          />
-                          <span className="text-sm">{cat.name}</span>
-                        </label>
-                      ))}
+                      {categories.map(cat => {
+                        const isUsed = usedCategoryIds.has(cat.id)
+                        return (
+                          <label
+                            key={cat.id}
+                            className={`flex items-center gap-2 py-1 ${isUsed ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
+                            title={isUsed ? `Kategori "${cat.name}" sudah digunakan di promosi lain` : ''}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={form.targetCategoryIds.includes(cat.id)}
+                              onChange={() => !isUsed && toggleTargetCategory(cat.id)}
+                              disabled={isUsed}
+                              className="rounded accent-primary disabled:opacity-40"
+                            />
+                            <span className="text-sm">{cat.name}</span>
+                            {isUsed && (
+                              <span className="text-[10px] text-muted-foreground/60">(sudah digunakan)</span>
+                            )}
+                          </label>
+                        )
+                      })}
+                      {categories.every(c => usedCategoryIds.has(c.id)) && (
+                        <p className="text-xs text-muted-foreground text-center py-2">
+                          Semua kategori sudah digunakan di promosi lain.
+                        </p>
+                      )}
                     </div>
                   )}
 
                   {form.appliesTo === 'specific_items' && (
                     <div className="border rounded-lg p-3 max-h-40 overflow-y-auto space-y-1">
                       <p className="text-xs text-muted-foreground mb-2">Pilih menu:</p>
-                      {menu.map(item => (
-                        <label key={item.id} className="flex items-center gap-2 py-1 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={form.targetItemIds.includes(item.id)}
-                            onChange={() => toggleTargetItem(item.id)}
-                            className="rounded accent-primary"
-                          />
-                          <span className="text-sm">{item.name}</span>
-                          <span className="text-xs text-muted-foreground ml-auto">{formatRupiah(item.price)}</span>
-                        </label>
-                      ))}
+                      {menu
+                        .filter(item => !usedItemIds.has(item.id))
+                        .map(item => (
+                          <label key={item.id} className="flex items-center gap-2 py-1 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={form.targetItemIds.includes(item.id)}
+                              onChange={() => toggleTargetItem(item.id)}
+                              className="rounded accent-primary"
+                            />
+                            <span className="text-sm">{item.name}</span>
+                            <span className="text-xs text-muted-foreground ml-auto">{formatRupiah(item.price)}</span>
+                          </label>
+                        ))}
+                      {menu.every(item => usedItemIds.has(item.id)) && (
+                        <p className="text-xs text-muted-foreground text-center py-2">
+                          Semua menu sudah digunakan di promosi lain.
+                        </p>
+                      )}
                     </div>
                   )}
                 </div>

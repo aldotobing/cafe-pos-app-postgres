@@ -75,6 +75,46 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Cafe ID, nama, dan tipe promo wajib diisi" }, { status: 400 });
     }
 
+    // Prevent duplicate category/item usage: each category/item can only be in one promotion.
+    if (targetCategoryIds?.length > 0 || targetItemIds?.length > 0) {
+      const { data: existing } = await supabaseAdmin
+        .from('promotions')
+        .select('id, name, applies_to, target_category_ids, target_item_ids')
+        .eq('cafe_id', parseInt(cafeId.toString()))
+        .is('deleted_at', null)
+
+      const conflicts: string[] = []
+
+      if (appliesTo === 'categories' && targetCategoryIds?.length > 0) {
+        for (const promo of (existing || [])) {
+          const overlap = (promo.target_category_ids || []).filter((id: string) =>
+            targetCategoryIds.includes(id)
+          )
+          if (overlap.length > 0) {
+            conflicts.push(`"${promo.name}" (${overlap.length} kategori)`)
+          }
+        }
+      }
+
+      if (appliesTo === 'specific_items' && targetItemIds?.length > 0) {
+        for (const promo of (existing || [])) {
+          const overlap = (promo.target_item_ids || []).filter((id: string) =>
+            targetItemIds.includes(id)
+          )
+          if (overlap.length > 0) {
+            conflicts.push(`"${promo.name}" (${overlap.length} menu)`)
+          }
+        }
+      }
+
+      if (conflicts.length > 0) {
+        return NextResponse.json(
+          { error: `Sudah digunakan di promosi lain: ${conflicts.join(', ')}` },
+          { status: 409 }
+        )
+      }
+    }
+
     const { data: promo, error } = await supabaseAdmin
       .from('promotions')
       .insert({
