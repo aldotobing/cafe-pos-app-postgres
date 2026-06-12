@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useMemo } from "react"
 import { useRouter } from "next/navigation"
-import { motion } from "framer-motion"
+import { motion, AnimatePresence } from "framer-motion"
 import { useCart } from "../../contexts/cart-context"
 import { useAuth } from "@/lib/auth-context"
 import { useMenu, useCafeSettings, usePromotions } from "@/hooks/use-cafe-data"
@@ -127,31 +127,40 @@ export function CartPanel() {
         {cart.length === 0 && (
           isProcessing ? (
             <div className="flex flex-col items-center justify-center h-full text-center select-none">
-              <motion.div
-                animate={{ scale: [1, 1.08, 1] }}
-                transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
-              >
-                <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-4">
-                  <Loader2 className="h-8 w-8 text-primary/70 animate-spin" />
-                </div>
-              </motion.div>
-              <motion.div
-                key={messageIndex}
-                initial={{ opacity: 0, y: 6 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -6 }}
-                transition={{ duration: 0.4 }}
-                className="text-sm font-medium text-foreground"
-              >
-                {loadingMessages[messageIndex]}
-              </motion.div>
-              <div className="flex items-center gap-1 mt-2.5">
+              <Loader2 className="h-8 w-8 text-primary animate-spin mb-5" />
+
+              {/* Message with fade transition */}
+              <div className="relative h-6 flex items-center justify-center mb-1">
+                <AnimatePresence mode="wait">
+                  <motion.p
+                    key={messageIndex}
+                    initial={{ opacity: 0, filter: "blur(4px)" }}
+                    animate={{ opacity: 1, filter: "blur(0px)" }}
+                    exit={{ opacity: 0, filter: "blur(4px)" }}
+                    transition={{ duration: 0.35, ease: [0.4, 0, 0.2, 1] }}
+                    className="text-sm font-semibold text-foreground absolute"
+                  >
+                    {loadingMessages[messageIndex]}
+                  </motion.p>
+                </AnimatePresence>
+              </div>
+
+              {/* iOS-style pulsing dots */}
+              <div className="flex items-center gap-1.5 mt-1">
                 {[0, 1, 2].map((i) => (
                   <motion.span
                     key={i}
-                    className="w-1.5 h-1.5 rounded-full bg-primary/40"
-                    animate={{ opacity: [0.3, 1, 0.3] }}
-                    transition={{ repeat: Infinity, duration: 1.2, delay: i * 0.2 }}
+                    className="w-1.5 h-1.5 rounded-full bg-primary"
+                    animate={{
+                      scale: [0.8, 1.3, 0.8],
+                      opacity: [0.4, 1, 0.4],
+                    }}
+                    transition={{
+                      repeat: Infinity,
+                      duration: 1.2,
+                      delay: i * 0.18,
+                      ease: "easeInOut",
+                    }}
                   />
                 ))}
               </div>
