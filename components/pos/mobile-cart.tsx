@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { useCart } from "../../contexts/cart-context";
 import { useAuth } from "@/lib/auth-context";
-import { useMenu, useCafeSettings } from "@/hooks/use-cafe-data";
+import { useMenu, useCafeSettings, usePromotions } from "@/hooks/use-cafe-data";
 import { formatRupiah } from "../../lib/format";
 import { toast } from "sonner";
 import { ChevronUp, ChevronDown, ShoppingCart, Loader2, Minus, Plus } from "lucide-react";
@@ -126,7 +126,7 @@ export function MobileCart() {
   const [focusedDiscountId, setFocusedDiscountId] = useState<string | null>(null);
   const [discountType, setDiscountType] = useState<'percent' | 'flat'>('percent');
   const [discountValue, setDiscountValue] = useState<number>(0);
-  const [promotions, setPromotions] = useState<PromoRule[]>([]);
+  const { promotions } = usePromotions(userData?.cafe_id)
   const [appliedPromoName, setAppliedPromoName] = useState<string | null>(null);
   const manualDiscountSet = useRef(false);
   const router = useRouter();
@@ -164,14 +164,6 @@ export function MobileCart() {
       totalItems: cart.reduce((sum, item) => sum + item.qty, 0)
     };
   }, [cart, settings?.taxPercent, settings?.servicePercent, discountType, discountValue]);
-
-  useEffect(() => {
-    if (!userData?.cafe_id) return
-    fetch(`/api/promotions?cafeId=${userData.cafe_id}`)
-      .then(r => r.json())
-      .then(d => setPromotions((d.promotions || []).filter((p: PromoRule) => p.isActive)))
-      .catch(() => {})
-  }, [userData?.cafe_id])
 
   useEffect(() => {
     if (!cart.length || !promotions.length) return

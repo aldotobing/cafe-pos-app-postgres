@@ -161,3 +161,26 @@ export function useTransactionsPaginated(
     goToPrevPage
   };
 }
+
+// SWR deduplicates concurrent requests by key, revalidates on focus,
+// and provides mutate() for programmatic invalidation.
+export function usePromotions(cafeId?: number) {
+  const { data, error, mutate, isLoading } = useSWR(
+    cafeId ? `/api/promotions?cafeId=${cafeId}` : null,
+    async (url: string) => {
+      const res = await fetch(url);
+      const json = await res.json();
+      return (json.promotions || []).filter((p: any) => p.isActive);
+    },
+    {
+      revalidateOnFocus: true,
+      dedupingInterval: 2000, // dedup within 2s
+    }
+  );
+
+  return {
+    promotions: (data || []) as any[],
+    isLoading,
+    mutate,
+  };
+}

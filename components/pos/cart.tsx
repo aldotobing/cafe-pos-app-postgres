@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import { motion } from "framer-motion"
 import { useCart } from "../../contexts/cart-context"
 import { useAuth } from "@/lib/auth-context"
-import { useMenu, useCafeSettings } from "@/hooks/use-cafe-data"
+import { useMenu, useCafeSettings, usePromotions } from "@/hooks/use-cafe-data"
 import { formatRupiah } from "../../lib/format"
 import { toast } from "sonner"
 import { ReceiptModal } from "../receipt/receipt-modal"
@@ -35,7 +35,7 @@ export function CartPanel() {
   const [focusedDiscountId, setFocusedDiscountId] = useState<string | null>(null)
   const [discountType, setDiscountType] = useState<'percent' | 'flat'>('percent')
   const [discountValue, setDiscountValue] = useState<number>(0)
-  const [promotions, setPromotions] = useState<PromoRule[]>([])
+  const { promotions } = usePromotions(userData?.cafe_id)
   const [appliedPromoName, setAppliedPromoName] = useState<string | null>(null)
   const manualDiscountSet = useRef(false)
 
@@ -55,14 +55,6 @@ export function CartPanel() {
     }, 2800)
     return () => clearInterval(interval)
   }, [isProcessing, loadingMessages])
-
-  useEffect(() => {
-    if (!userData?.cafe_id) return
-    fetch(`/api/promotions?cafeId=${userData.cafe_id}`)
-      .then(r => r.json())
-      .then(d => setPromotions((d.promotions || []).filter((p: PromoRule) => p.isActive)))
-      .catch(() => {})
-  }, [userData?.cafe_id])
 
   const subtotal = cart.reduce((sum: number, c: any) => sum + Math.max(0, c.price * c.qty - (c.discount ?? 0)), 0)
   const discountAmount = discountType === 'percent'
