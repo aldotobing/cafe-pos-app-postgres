@@ -481,6 +481,7 @@ export function MobileCart() {
                       type: discountType,
                       value: discountValue,
                       amount: discountAmount,
+                      name: appliedPromoName,
                     });
                     if (tx) {
                       toast.success('Transaksi berhasil disimpan!', {

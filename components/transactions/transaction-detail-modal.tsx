@@ -72,6 +72,7 @@ export function TransactionDetailModal({ transactionId, isOpen, onClose }: Trans
           discountType: data.discount_type || 'none',
           discountValue: data.discount_value || 0,
           discountAmount: data.discount_amount || 0,
+          discountName: data.discount_name || null,
           createdAt: data.created_at || new Date().toISOString(),
           items: data.transaction_items || data.items || [],
           status: data.status || 'completed',
@@ -463,7 +464,7 @@ function ModalContent({
                   <div className="flex justify-between items-center text-sm">
                     <span className="text-emerald-600 font-medium flex items-center gap-1">
                       <BadgePercent className="h-3.5 w-3.5" />
-                      Promo Diskon
+                      Promo Diskon{tx.discountName ? <span className="truncate max-w-[140px]"> ({tx.discountName})</span> : ''}
                     </span>
                     <span className="font-medium text-emerald-600 tabular-nums">-{formatRupiah(tx.discountAmount || tx.discount_amount || 0)}</span>
                   </div>

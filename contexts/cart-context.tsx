@@ -22,7 +22,7 @@ interface CartContextType {
     cafeId?: number,
     settings?: any,
     menuMap?: Map<string, MenuItem>,
-    discountInfo?: { type: string; value: number; amount: number }
+    discountInfo?: { type: string; value: number; amount: number; name?: string | null }
   ) => Promise<Transaction | null>;
 }
 
@@ -134,7 +134,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     cafeId?: number,
     settings?: any,
     menuMap?: Map<string, MenuItem>,
-    discountInfo?: { type: string; value: number; amount: number }
+    discountInfo?: { type: string; value: number; amount: number; name?: string | null }
   ) => {
     if (cart.length === 0) return null;
 
@@ -190,6 +190,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       discount_type: discountInfo?.type || 'none',
       discount_value: discountInfo?.value || 0,
       discount_amount: discountInfo?.amount || 0,
+      discount_name: discountInfo?.name || null,
       items: items.map((it) => ({
         menuId: it.menuId,
         name: it.name,

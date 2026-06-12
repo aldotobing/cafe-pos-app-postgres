@@ -231,6 +231,7 @@ export async function POST(request: Request) {
         discount_type: body.discount_type || 'none',
         discount_value: body.discount_value || 0,
         discount_amount: body.discount_amount || 0,
+        discount_name: body.discount_name || null,
       })
       .select()
       .single();

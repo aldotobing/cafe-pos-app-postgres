@@ -283,6 +283,7 @@ export const transactionsApi = {
       discountType: tx.discount_type || 'none',
       discountValue: tx.discount_value || 0,
       discountAmount: tx.discount_amount || 0,
+      discountName: tx.discount_name || null,
       items: (tx.transaction_items || []).map((item: any) => ({
         id: item.id || '',
         transactionId: item.transaction_id || item.transactionId || '',
@@ -352,6 +353,7 @@ export const transactionsApi = {
       discountType: tx.discount_type || 'none',
       discountValue: tx.discount_value || 0,
       discountAmount: tx.discount_amount || 0,
+      discountName: tx.discount_name || null,
       items: (tx.transaction_items || []).map((item: any) => ({
         id: item.id || '',
         transactionId: item.transaction_id || item.transactionId || '',
@@ -390,6 +392,7 @@ export const transactionsApi = {
       discountType: tx.discount_type || 'none',
       discountValue: tx.discount_value || 0,
       discountAmount: tx.discount_amount || 0,
+      discountName: tx.discount_name || null,
       items: (tx.transaction_items || tx.items || []).map((item: any) => ({
         id: item.id || '',
         transactionId: item.transaction_id || item.transactionId || '',
@@ -422,6 +425,7 @@ export const transactionsApi = {
       discount_type: tx.discount_type || 'none',
       discount_value: tx.discount_value || 0,
       discount_amount: tx.discount_amount || 0,
+      discount_name: tx.discount_name || null,
       items: tx.items?.map((item: any) => ({
         menu_id: item.menuId,
         menu_name: item.name,
@@ -452,6 +456,7 @@ export const transactionsApi = {
       discountType: serverTx.discount_type || 'none',
       discountValue: serverTx.discount_value || 0,
       discountAmount: serverTx.discount_amount || 0,
+      discountName: serverTx.discount_name || null,
       cashier_name: serverTx.cashier_name,
       items: (serverTx.transaction_items || []).map((item: any) => ({
         id: item.id || '',

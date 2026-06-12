@@ -7,7 +7,8 @@ import useSWR from "swr"
 import { formatRupiah } from "../../../lib/format"
 import { useAuth } from "@/lib/auth-context"
 import { swrConfig } from "@/lib/swr-config"
-import { ArrowLeft, Download } from "lucide-react"
+import { ArrowLeft, Download, BadgePercent } from "lucide-react"
+import { OptimizedImage } from "@/components/ui/optimized-image"
 
 import type { TransactionItem } from "../../../types"
 
@@ -37,6 +38,7 @@ export default function InvoicePage() {
           discountType: data.discount_type || 'none',
           discountValue: data.discount_value || 0,
           discountAmount: data.discount_amount || 0,
+          discountName: data.discount_name || null,
           createdAt: data.created_at || new Date().toISOString(),
           items: data.transaction_items || data.items || [],
           status: data.status || 'completed',
@@ -156,25 +158,38 @@ export default function InvoicePage() {
         <div className="h-[3px] bg-slate-800" />
 
         {/* ===== HEADER ===== */}
-        <div className="px-12 pt-12 pb-8 flex justify-between items-start">
-          <div>
+        <div className="px-12 pt-8 pb-6 flex justify-between items-center gap-8">
+          <div className="flex items-center gap-4">
             {settings?.logoUrl && (
-              <img src={settings.logoUrl} alt="" className="h-10 object-contain mb-4" />
+              <div className="shrink-0">
+                <OptimizedImage
+                  src={settings.logoUrl}
+                  alt={settings?.name || "Logo"}
+                  width={48}
+                  height={48}
+                  objectFit="contain"
+                  containerClassName="rounded-xl"
+                  priority
+                />
+              </div>
             )}
-            <h1 className="text-xl font-bold tracking-tight text-slate-900">{settings?.name || 'Business'}</h1>
-            <div className="text-sm text-slate-500 mt-1.5 space-y-0.5">
-              {settings?.address && <p>{settings.address}</p>}
-              {settings?.phone && <p>{settings.phone}</p>}
+            <div>
+              <h1 className="text-xl font-bold tracking-tight text-slate-900">{settings?.name || 'Business'}</h1>
+              <div className="text-sm text-slate-500 mt-1">
+                {settings?.address && <span>{settings.address}</span>}
+                {settings?.address && settings?.phone && <span className="mx-2">·</span>}
+                {settings?.phone && <span>{settings.phone}</span>}
+              </div>
             </div>
           </div>
-          <div className="text-right">
+          <div className="text-right shrink-0">
             <h2 className="text-[28px] font-black tracking-tighter text-slate-900 leading-none">INVOICE</h2>
             <p className="text-sm text-slate-500 font-mono mt-2">{invoiceNumber}</p>
           </div>
         </div>
 
         {/* ===== BILL TO + META ===== */}
-        <div className="px-12 pb-10 grid grid-cols-2 gap-12">
+        <div className="px-12 pb-6 grid grid-cols-2 gap-10">
           {/* Bill To / Customer */}
           <div>
             <p className="text-xs font-bold uppercase tracking-[.15em] text-slate-500 mb-3">Tagihan Untuk</p>
@@ -209,7 +224,7 @@ export default function InvoicePage() {
           </div>
 
           {/* Invoice Details */}
-          <div className="space-y-3 text-sm">
+          <div className="space-y-2 text-sm">
             <div className="flex justify-between">
               <span className="text-slate-500">Tanggal</span>
               <span className="font-medium text-right">{dateStr}</span>
@@ -241,11 +256,11 @@ export default function InvoicePage() {
             </colgroup>
             <thead>
               <tr className="border-y-2 border-slate-200">
-                <th className="py-3 text-left text-xs font-bold uppercase tracking-[.12em] text-slate-500">#</th>
-                <th className="py-3 text-left text-xs font-bold uppercase tracking-[.12em] text-slate-500">Item</th>
-                <th className="py-3 text-center text-xs font-bold uppercase tracking-[.12em] text-slate-500">Qty</th>
-                <th className="py-3 text-right text-xs font-bold uppercase tracking-[.12em] text-slate-500">Harga</th>
-                <th className="py-3 text-right text-xs font-bold uppercase tracking-[.12em] text-slate-500">Jumlah</th>
+                <th className="py-2 text-left text-xs font-bold uppercase tracking-[.12em] text-slate-500">#</th>
+                <th className="py-2 text-left text-xs font-bold uppercase tracking-[.12em] text-slate-500">Item</th>
+                <th className="py-2 text-center text-xs font-bold uppercase tracking-[.12em] text-slate-500">Qty</th>
+                <th className="py-2 text-right text-xs font-bold uppercase tracking-[.12em] text-slate-500">Harga</th>
+                <th className="py-2 text-right text-xs font-bold uppercase tracking-[.12em] text-slate-500">Jumlah</th>
               </tr>
             </thead>
             <tbody>
@@ -264,16 +279,16 @@ export default function InvoicePage() {
 
                 return (
                   <tr key={`${item.id || 'item'}-${index}`} className="border-b border-slate-100">
-                    <td className="py-3.5 text-sm text-slate-400 align-top">{index + 1}</td>
-                    <td className="py-3.5 align-top pr-4">
+                    <td className="py-2.5 text-sm text-slate-400 align-top">{index + 1}</td>
+                    <td className="py-2.5 align-top pr-4">
                       <p className="text-sm font-medium text-slate-800">{itemName}</p>
                       {itemVariant && <span className="text-sm text-slate-500">· {itemVariant}</span>}
                       {hasItemDiscount && <span className="text-sm text-red-500 ml-2">−{formatRupiah(discountNum)}</span>}
                       {hasItemNote && <p className="text-sm text-slate-500 mt-1 italic leading-relaxed">{noteStr}</p>}
                     </td>
-                    <td className="py-3.5 text-center text-sm text-slate-600 align-top tabular-nums">{displayQty}</td>
-                    <td className="py-3.5 text-right text-sm text-slate-600 align-top tabular-nums">{formatRupiah(item.price)}</td>
-                    <td className="py-3.5 text-right text-sm font-semibold text-slate-800 align-top tabular-nums">{formatRupiah(lineTotal)}</td>
+                    <td className="py-2.5 text-center text-sm text-slate-600 align-top tabular-nums">{displayQty}</td>
+                    <td className="py-2.5 text-right text-sm text-slate-600 align-top tabular-nums">{formatRupiah(item.price)}</td>
+                    <td className="py-2.5 text-right text-sm font-semibold text-slate-800 align-top tabular-nums">{formatRupiah(lineTotal)}</td>
                   </tr>
                 )
               })}
@@ -282,11 +297,19 @@ export default function InvoicePage() {
         </div>
 
         {/* ===== TOTALS ===== */}
-        <div className="px-12 pt-6 pb-10">
+        <div className="px-12 pt-4 pb-8">
           <div className="ml-auto" style={{ maxWidth: "260px" }}>
             <div className="space-y-2">
               <TRow label="Subtotal" value={formatRupiah(tx.subtotal)} />
-              {hasDiscount && <TRow label="Diskon" value={`−${formatRupiah(discountAmount)}`} muted />}
+              {hasDiscount && (
+                <div className="flex justify-between items-baseline text-sm text-slate-400">
+                  <span className="flex items-center gap-1">
+                    <BadgePercent className="h-3.5 w-3.5" />
+                    Diskon{tx.discountName ? ` (${tx.discountName})` : ''}
+                  </span>
+                  <span className="font-medium tabular-nums">−{formatRupiah(discountAmount)}</span>
+                </div>
+              )}
               {hasTax && <TRow label={`PPN ${settings.taxPercent}%`} value={formatRupiah(tx.taxAmount || 0)} />}
               {hasService && <TRow label={`Service ${settings.servicePercent}%`} value={formatRupiah(tx.serviceCharge || 0)} />}
               <div className="pt-3 mt-2 border-t-2 border-slate-800 flex justify-between items-baseline">
@@ -301,7 +324,7 @@ export default function InvoicePage() {
 
         {/* ===== NOTE ===== */}
         {hasNote && (
-          <div className="mx-12 mb-8 px-5 py-4 border-l-2 border-slate-300 bg-slate-50">
+          <div className="mx-12 mb-6 px-5 py-3 border-l-2 border-slate-300 bg-slate-50">
             <p className="text-xs font-bold uppercase tracking-[.12em] text-slate-500 mb-1">Catatan</p>
             <p className="text-sm text-slate-700 leading-relaxed">{tx.orderNote}</p>
           </div>

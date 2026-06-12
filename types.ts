@@ -152,6 +152,8 @@ export interface Transaction {
   discountValue?: number
   discount_amount?: number
   discountAmount?: number
+  discount_name?: string | null
+  discountName?: string | null
   items: TransactionItem[]
 }
 
