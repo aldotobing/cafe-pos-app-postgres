@@ -104,6 +104,16 @@ export async function proxy(request: NextRequest) {
   supabaseResponse.headers.set('X-Frame-Options', 'SAMEORIGIN')
   supabaseResponse.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin')
 
+  // Prevent Vercel Edge caching for API routes — POS data must always be fresh.
+  // Image proxy gets a short cache; everything else gets no-store.
+  if (pathname.startsWith('/api/')) {
+    if (pathname.startsWith('/api/image-proxy')) {
+      supabaseResponse.headers.set('Cache-Control', 'public, max-age=3600, s-maxage=3600')
+    } else {
+      supabaseResponse.headers.set('Cache-Control', 'no-store, max-age=0')
+    }
+  }
+
   return supabaseResponse
 }
 
