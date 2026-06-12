@@ -81,7 +81,8 @@ export async function proxy(request: NextRequest) {
     }
   )
 
-  const { data: { session } } = await supabase.auth.getSession()
+  // Use getUser() instead of getSession() to proactively refresh expired tokens
+  const { data: { user } } = await supabase.auth.getUser()
 
   // Auth callback routes: PKCE exchange happens above, but don't redirect
   if (isAuthCallback) {
@@ -89,7 +90,7 @@ export async function proxy(request: NextRequest) {
     return supabaseResponse
   }
 
-  if (!session) {
+  if (!user) {
     const loginUrl = new URL('/login', request.url)
     loginUrl.searchParams.set('redirect', pathname)
     const response = NextResponse.redirect(loginUrl)

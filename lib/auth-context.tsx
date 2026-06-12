@@ -85,16 +85,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const checkSession = async () => {
-    // Prevent concurrent calls — if one is already in flight, skip.
-    // This avoids token-refresh storms when mount + visibilitychange fire together.
+    // Prevent concurrent calls
     if (checkingRef.current) return null;
     checkingRef.current = true;
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
 
     try {
       const supabase = createClient();
 
-      // Step 1: Read session from cookies — instant, no network request
-      const { data: { session } } = await supabase.auth.getSession();
+      // Wrap getSession in a promise race because it can trigger a network
+      // token refresh and doesn't accept an AbortSignal directly
+      const sessionPromise = supabase.auth.getSession();
+      const timeoutPromise = new Promise<{data: {session: any}}>((_, reject) => {
+        const onAbort = () => reject(new DOMException('Aborted', 'AbortError'));
+        controller.signal.addEventListener('abort', onAbort);
+      });
+      // Prevent unhandled promise rejection if the race is won by sessionPromise
+      timeoutPromise.catch(() => {});
+
+      const { data: { session } } = await Promise.race([sessionPromise, timeoutPromise]);
 
       if (!session) {
         setUser(null);
@@ -102,9 +113,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return { expired: true };
       }
 
-      // Step 2: Session exists — fetch profile from server
       const response = await fetch('/api/auth/me', {
         credentials: 'include',
+        signal: controller.signal,
       });
 
       if (response.ok) {
@@ -114,14 +125,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return { ...data, expired: false };
       }
 
-      // Profile fetch failed despite valid session — treat as expired
       setUser(null);
       setUserData(null);
       return { expired: true };
-    } catch {
-      // Network error — don't clear existing user state
+    } catch (err: any) {
+      if (err?.name === 'AbortError') {
+        if (!user) {
+          setUser(null);
+          setUserData(null);
+          return { expired: true };
+        }
+      }
       return { expired: false };
     } finally {
+      clearTimeout(timeout);
       setLoading(false);
       checkingRef.current = false;
     }
@@ -268,5 +285,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     userData,
   };
 
-  return <AuthContext.Provider value={value}>{!loading && children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={value}>
+      {loading ? (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-background">
+          <div className="flex flex-col items-center">
+            <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+            <p className="mt-4 text-sm text-muted-foreground font-medium">
+              Memuat sesi...
+            </p>
+          </div>
+        </div>
+      ) : (
+        children
+      )}
+    </AuthContext.Provider>
+  );
 }

@@ -23,7 +23,9 @@ export async function GET(request: Request) {
       }
     )
 
-    const { data: { session } } = await supabase.auth.getSession()
+    // getUser() validates the JWT and triggers token refresh if expired.
+    // No need to call getSession() separately — it only reads the local
+    // cookie and adds an unnecessary step.
     const { data: { user }, error } = await supabase.auth.getUser()
 
     if (error || !user) {
@@ -54,7 +56,6 @@ export async function GET(request: Request) {
         cafe: profile.cafes,
         email: user.email,
       } : null,
-      expires_at: session?.expires_at ?? null,
     })
   } catch (error) {
     console.error('Me route error:', error)
