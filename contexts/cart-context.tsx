@@ -205,16 +205,15 @@ export function CartProvider({ children }: { children: ReactNode }) {
       })),
     };
 
-    // Clear cart before request — prevents duplicate checkout on network dropout
-    const cartSnapshot = [...cart];
-    setCart([]);
-
+    // Prevent double-checkout: button is disabled while isProcessing is true,
+    // and the cart overlay blocks interaction during checkout.
     try {
       if (typeof window !== "undefined") {
         window.dispatchEvent(new CustomEvent("syncStart"));
       }
 
       const createdTx = await transactionsApi.create(txData, currentCafeId);
+      setCart([]);
 
       if (currentCafeId) {
         globalMutate(
@@ -249,6 +248,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
               tx.totalAmount === total;
           });
           if (match) {
+            setCart([]);
             toast.success('Transaksi berhasil disimpan!');
             if (typeof window !== "undefined") {
               window.dispatchEvent(new CustomEvent("transactionCompleted"));
@@ -258,7 +258,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
         } catch {}
       }
 
-      setCart(cartSnapshot);
       toast.error("Gagal menyimpan transaksi");
       return null;
     }
