@@ -170,7 +170,7 @@ export default function RootLayout({
   };
 
   return (
-    <html lang="id" suppressHydrationWarning>
+    <html lang="id" suppressHydrationWarning className="scrollbar-hide">
       <head>
         <script
           type="application/ld+json"
