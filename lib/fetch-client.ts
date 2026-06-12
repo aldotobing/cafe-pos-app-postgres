@@ -1,13 +1,21 @@
 const DEFAULT_TIMEOUT = 20000
-const SLOW_THRESHOLD = 2000      // moving average above this → "slow" (Chrome Slow 3G RTT ≈ 2s)
-const RECOVER_THRESHOLD = 1000   // moving average below this → "recovered"
-const LATENCY_WINDOW = 10        // number of recent requests to average
+// End-to-end latency includes server processing time (cold starts, DB queries).
+// A 2-4s response is normal for serverless apps and does NOT mean the connection
+// is slow. We use two lines of defense:
+// 1. Network Information API gate: on Chromium 4G with low RTT, skip entirely
+// 2. High latency threshold: only flag when average crosses 5s (not 2s)
+const SLOW_THRESHOLD = 5000      // moving average above this → possibly slow (5s)
+const RECOVER_THRESHOLD = 2500   // moving average below this → recovered (2.5s)
+const LATENCY_WINDOW = 20        // number of recent requests to average (more stable)
+const MIN_SAMPLES = 5            // need at least this many before evaluating
+const COOLDOWN_MS = 120_000      // after recovering, don't re-trigger for 2 minutes
 
 // --- Connection quality tracking ---
 
 const recentLatencies: number[] = []
 let pendingCount = 0
 let currentState: 'healthy' | 'slow' = 'healthy'
+let lastRecoveryTime = 0
 
 function recordLatency(ms: number) {
   recentLatencies.push(ms)
@@ -22,8 +30,30 @@ function movingAverage(): number {
   return sum / recentLatencies.length
 }
 
+// Check if the browser's own connection info says the network is fast.
+// If so, high end-to-end latency is almost certainly server-side
+// (cold starts, DB queries) — NOT a slow user connection.
+function isBrowserConnectionFast(): boolean {
+  if (typeof navigator === 'undefined') return false
+  const conn = (navigator as any).connection
+  if (!conn) return false // Firefox/Safari — can't tell, assume not fast
+  // 4G with reasonable RTT → the pipe is fine, server is the bottleneck
+  return conn.effectiveType === '4g' && conn.rtt < 350
+}
+
 function evaluateConnectionQuality() {
-  if (recentLatencies.length < 3) return // need enough data
+  if (recentLatencies.length < MIN_SAMPLES) return // need enough data
+
+  // Cooldown: after recovering, wait before triggering again
+  if (currentState === 'healthy' && lastRecoveryTime > 0) {
+    if (Date.now() - lastRecoveryTime < COOLDOWN_MS) return
+    lastRecoveryTime = 0 // reset cooldown after it expires
+  }
+
+  // If the browser says the connection is fast (4G + low RTT),
+  // don't flag as "slow connection" based on end-to-end latency.
+  // The latency is coming from the server, not the user's network.
+  if (isBrowserConnectionFast()) return
 
   const avg = movingAverage()
 
@@ -34,6 +64,7 @@ function evaluateConnectionQuality() {
     }
   } else if (currentState === 'slow' && avg < RECOVER_THRESHOLD) {
     currentState = 'healthy'
+    lastRecoveryTime = Date.now()
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('connection-recovered'))
     }
