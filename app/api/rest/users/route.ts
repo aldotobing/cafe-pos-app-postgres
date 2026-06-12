@@ -22,12 +22,20 @@ export async function GET(request: Request) {
     // Role filter
     const roleFilter = url.searchParams.get('role');
 
+    // Single user lookup by id (user_id UUID)
+    const idFilter = url.searchParams.get('id');
+
     // SECURE ISOLATION: Superadmins see all, regular users only see users in their own cafe
     let query = supabaseAdmin
       .from('user_profiles')
       .select('*, cafes(id, name)', { count: 'exact' })
       .is('deleted_at', null)
       .order('created_at', { ascending: false });
+
+    // Apply id filter if specified (single user lookup)
+    if (idFilter) {
+      query = query.eq('user_id', idFilter);
+    }
 
     // Apply role filter if specified
     if (roleFilter) {

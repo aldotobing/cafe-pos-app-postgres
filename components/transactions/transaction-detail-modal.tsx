@@ -78,6 +78,7 @@ export function TransactionDetailModal({ transactionId, isOpen, onClose }: Trans
           status: data.status || 'completed',
           voidedAt: data.voided_at,
           voidReason: data.void_reason,
+          voidedBy: data.voided_by || null,
         }
       }
       return data
@@ -109,8 +110,9 @@ export function TransactionDetailModal({ transactionId, isOpen, onClose }: Trans
       try {
         const response = await fetch(`/api/rest/users?id=${cashierId}`)
         if (response.ok) {
-          const users = await response.json()
-          if (Array.isArray(users) && users.length > 0) {
+          const result = await response.json()
+          const users = result.data || (Array.isArray(result) ? result : [])
+          if (users.length > 0) {
             setCreatorName(users[0].full_name.split(' ')[0])
           } else {
             setCreatorName(cashierId.slice(0, 8))
@@ -125,6 +127,37 @@ export function TransactionDetailModal({ transactionId, isOpen, onClose }: Trans
 
     fetchCreatorName()
   }, [tx?.created_by, tx?.cashier_name])
+
+  const [voidedByName, setVoidedByName] = useState<string | null>(null)
+
+  useEffect(() => {
+    const voidedById = tx?.voidedBy || tx?.voided_by
+    if (!voidedById || tx?.status !== 'voided') {
+      setVoidedByName(null)
+      return
+    }
+
+    const invalidValues = ['local', 'system', 'unknown', '', 'undefined']
+    if (invalidValues.includes(voidedById)) {
+      setVoidedByName(null)
+      return
+    }
+
+    const fetchVoidedByName = async () => {
+      try {
+        const response = await fetch(`/api/rest/users?id=${voidedById}`)
+        if (response.ok) {
+          const result = await response.json()
+          const users = result.data || (Array.isArray(result) ? result : [])
+          if (users.length > 0) {
+            setVoidedByName(users[0].full_name)
+          }
+        }
+      } catch { setVoidedByName(null) }
+    }
+
+    fetchVoidedByName()
+  }, [tx?.voidedBy, tx?.voided_by, tx?.status])
 
   const handleViewReceipt = () => {
     onClose()
@@ -200,6 +233,7 @@ export function TransactionDetailModal({ transactionId, isOpen, onClose }: Trans
                 tx={tx}
                 isLoading={isLoading}
                 creatorName={creatorName}
+                voidedByName={voidedByName}
                 settings={settings as any}
                 onClose={onClose}
                 onViewReceipt={handleViewReceipt}
@@ -236,6 +270,7 @@ export function TransactionDetailModal({ transactionId, isOpen, onClose }: Trans
                 tx={tx}
                 isLoading={isLoading}
                 creatorName={creatorName}
+                voidedByName={voidedByName}
                 settings={settings as any}
                 onClose={onClose}
                 onViewReceipt={handleViewReceipt}
@@ -261,6 +296,7 @@ function ModalContent({
   tx,
   isLoading,
   creatorName,
+  voidedByName,
   settings,
   onClose,
   onViewReceipt,
@@ -277,6 +313,7 @@ function ModalContent({
   tx: any
   isLoading: boolean
   creatorName: string | null
+  voidedByName: string | null
   settings: any
   onClose: () => void
   onViewReceipt: () => void
@@ -309,10 +346,16 @@ function ModalContent({
                 <Hash className="h-3 w-3 shrink-0" />
                 <span className="font-mono tracking-tight truncate">{tx.transactionNumber || tx.id?.slice(0, 10)}</span>
               </div>
-              {isVoided && tx.voidReason && (
+              {isVoided && (
                 <div className="flex items-center gap-1.5 text-xs text-red-600/80 dark:text-red-400/80 ml-[18px]">
                   <span className="shrink-0">—</span>
-                  <span className="truncate">{tx.voidReason}</span>
+                  {tx.voidReason ? (
+                    <span className="truncate">{tx.voidReason}</span>
+                  ) : (
+                    <span className="text-muted-foreground">Tanpa alasan</span>
+                  )}
+                  {voidedByName && <span className="text-muted-foreground shrink-0">· oleh {voidedByName}</span>}
+                  {tx.voidedAt && <span className="text-muted-foreground shrink-0">· {formatTanggal(tx.voidedAt)}</span>}
                 </div>
               )}
             </div>
