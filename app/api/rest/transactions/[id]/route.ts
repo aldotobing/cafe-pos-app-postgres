@@ -110,7 +110,8 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   const user = await getAuthenticatedUser(request);
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  if (user.role !== 'admin' && user.role !== 'superadmin') {
+  // Admin, superadmin, and cashier can void transactions
+  if (user.role !== 'admin' && user.role !== 'superadmin' && user.role !== 'cashier') {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
@@ -134,6 +135,11 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
     if (user.role !== 'superadmin' && tx.cafe_id !== user.cafeId) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    // Only allow cashiers to void their own transactions
+    if (user.role === 'cashier' && tx.created_by !== user.id) {
+      return NextResponse.json({ error: "Kasir hanya dapat membatalkan transaksi miliknya sendiri" }, { status: 403 });
     }
 
     const { reason } = await request.json().catch(() => ({ reason: '' }));
