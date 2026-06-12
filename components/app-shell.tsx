@@ -148,10 +148,10 @@ export const AppShell = ({ children }: { children: React.ReactNode }) => {
       <header className="sticky top-0 z-30 border-b border-border/50 bg-background/95 backdrop-blur-xl shadow-sm">
         <div className="flex items-center justify-between px-4 sm:px-6 py-3 max-w-7xl mx-auto w-full">
           {/* LEFT: LOGO + NAME */}
-          <Link href={isSuperadmin ? "/superadmin" : "/dashboard"} className="flex items-center gap-2.5 min-w-0 group">
+          <Link href={isSuperadmin ? "/superadmin" : "/dashboard"} className="flex items-start gap-3 min-w-0">
             {isSuperadmin ? (
               <>
-                <span className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-purple-500 to-blue-600 text-white text-sm font-semibold shadow-lg">
+                <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-purple-500 to-blue-600 text-white text-sm font-semibold shadow-lg mt-0.5 shrink-0">
                   SA
                 </span>
                 <div className="flex flex-col leading-tight min-w-0">
@@ -169,12 +169,12 @@ export const AppShell = ({ children }: { children: React.ReactNode }) => {
                   <OptimizedThumbnail
                     src={settings.logoUrl}
                     alt={settings.name || "Logo"}
-                    size={36}
-                    className="rounded-lg border border-border/50 bg-muted transition-transform group-hover:scale-105"
+                    size={40}
+                    className="rounded-xl shrink-0 mt-0.5"
                   />
                 ) : (
-                  <span className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground text-sm font-semibold">
-                    KS
+                  <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground text-sm font-semibold mt-0.5 shrink-0">
+                    {settings?.name ? settings.name.charAt(0).toUpperCase() : 'K'}
                   </span>
                 )}
                 <div className="flex flex-col leading-tight min-w-0">
