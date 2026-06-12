@@ -134,7 +134,6 @@ export function MobileCart() {
   const loadingMessages = useMemo(() => [
     "Memproses...",
     "Menyimpan...",
-    "Hampir selesai...",
     "Finalisasi...",
   ], [])
   const [messageIndex, setMessageIndex] = useState(0)
@@ -174,7 +173,7 @@ export function MobileCart() {
       return {
         menuId: item.menuId,
         name: item.name,
-        categoryId: menuItem?.categoryId || menuItem?.category_id,
+        categoryId: menuItem?.categoryId,
         price: item.price,
         qty: item.qty,
         discount: item.discount || 0,
@@ -313,64 +312,60 @@ export function MobileCart() {
 
             {/* Cart items */}
             <div className="overflow-y-auto p-3 space-y-3 flex-grow max-h-[40vh]">
-              {cart.length === 0 ? (
-                isProcessing ? (
-                  <div className="flex flex-col items-center justify-center py-6 text-center select-none">
-                    <Loader2 className="h-7 w-7 text-primary animate-spin mb-4" />
-
-                    {/* Message with blur transition */}
-                    <div className="relative h-5 flex items-center justify-center mb-1">
-                      <AnimatePresence mode="wait">
-                        <motion.p
-                          key={messageIndex}
-                          initial={{ opacity: 0, filter: "blur(4px)" }}
-                          animate={{ opacity: 1, filter: "blur(0px)" }}
-                          exit={{ opacity: 0, filter: "blur(4px)" }}
-                          transition={{ duration: 0.35, ease: [0.4, 0, 0.2, 1] }}
-                          className="text-sm font-semibold text-foreground absolute"
-                        >
-                          {loadingMessages[messageIndex]}
-                        </motion.p>
-                      </AnimatePresence>
-                    </div>
-
-                    {/* iOS-style pulsing dots */}
-                    <div className="flex items-center gap-1.5 mt-1">
-                      {[0, 1, 2].map((i) => (
-                        <motion.span
-                          key={i}
-                          className="w-1.5 h-1.5 rounded-full bg-primary"
-                          animate={{
-                            scale: [0.8, 1.3, 0.8],
-                            opacity: [0.4, 1, 0.4],
-                          }}
-                          transition={{
-                            repeat: Infinity,
-                            duration: 1.2,
-                            delay: i * 0.18,
-                            ease: "easeInOut",
-                          }}
-                        />
-                      ))}
-                    </div>
+              {/* Empty state — only when truly empty and not processing */}
+              {cart.length === 0 && !isProcessing && (
+                <div className="text-center py-4 text-muted-foreground">Belum ada item.</div>
+              )}
+              {/* Cart items — rendered during processing too, with blur */}
+              {(cart.length > 0 || isProcessing) && (
+                <div className="relative">
+                  {/* Cart items — blurred when processing */}
+                  <div className={isProcessing ? 'blur-[2px] pointer-events-none select-none' : ''}>
+                    {cart.map((c) => (
+                      <MemoizedCartItem
+                        key={c.variantId ? `${c.menuId}-${c.variantId}` : c.menuId}
+                        item={c}
+                        menu={menu}
+                        onDecrease={decreaseQty}
+                        onIncrease={increaseQty}
+                        onSetNote={setItemNote}
+                        onSetDiscount={setItemDiscount}
+                        focusedDiscountId={focusedDiscountId}
+                        onSetFocusedDiscountId={setFocusedDiscountId}
+                      />
+                    ))}
                   </div>
-                ) : (
-                  <div className="text-center py-4 text-muted-foreground">Belum ada item.</div>
-                )
-              ) : (
-                cart.map((c) => (
-                  <MemoizedCartItem
-                    key={c.variantId ? `${c.menuId}-${c.variantId}` : c.menuId}
-                    item={c}
-                    menu={menu}
-                    onDecrease={decreaseQty}
-                    onIncrease={increaseQty}
-                    onSetNote={setItemNote}
-                    onSetDiscount={setItemDiscount}
-                    focusedDiscountId={focusedDiscountId}
-                    onSetFocusedDiscountId={setFocusedDiscountId}
-                  />
-                ))
+                  {/* Loading overlay — outside blur wrapper */}
+                  {isProcessing && (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-card/60 backdrop-blur-sm">
+                      <Loader2 className="h-7 w-7 text-primary animate-spin mb-3" />
+                      <div className="relative h-5 flex items-center justify-center mb-1">
+                        <AnimatePresence mode="wait">
+                          <motion.p
+                            key={messageIndex}
+                            initial={{ opacity: 0, filter: "blur(4px)" }}
+                            animate={{ opacity: 1, filter: "blur(0px)" }}
+                            exit={{ opacity: 0, filter: "blur(4px)" }}
+                            transition={{ duration: 0.35, ease: [0.4, 0, 0.2, 1] }}
+                            className="text-sm font-semibold text-foreground absolute"
+                          >
+                            {loadingMessages[messageIndex]}
+                          </motion.p>
+                        </AnimatePresence>
+                      </div>
+                      <div className="flex items-center gap-1.5 mt-1">
+                        {[0, 1, 2].map((i) => (
+                          <motion.span
+                            key={i}
+                            className="w-1.5 h-1.5 rounded-full bg-primary"
+                            animate={{ scale: [0.8, 1.3, 0.8], opacity: [0.4, 1, 0.4] }}
+                            transition={{ repeat: Infinity, duration: 1.2, delay: i * 0.18, ease: "easeInOut" }}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
               )}
             </div>
 
