@@ -260,7 +260,7 @@ function MobileBackdrop({ onClose }: { onClose: () => void }) {
 
   return (
     <div
-      className="fixed inset-0 z-[-1] sm:hidden"
+      className="fixed inset-0 z-[-1] sm:hidden bg-black/30 backdrop-blur-sm"
       onClick={onClose}
       aria-hidden
     />
