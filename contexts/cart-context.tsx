@@ -233,7 +233,31 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
       return createdTx;
     } catch (e) {
-      console.error(e);
+      console.error('Checkout error:', e);
+
+      // The request may have timed out but the server still processed it.
+      // Check if a matching transaction was actually created before restoring.
+      if (e instanceof DOMException && e.name === 'AbortError') {
+        try {
+          const recent = await transactionsApi.get(currentCafeId, 5);
+          const match = (recent || []).find((tx: any) => {
+            if (!tx.created_at) return false;
+            const created = new Date(tx.created_at).getTime();
+            const now = Date.now();
+            return (now - created < 60000) &&
+              tx.subtotal === subtotal &&
+              tx.totalAmount === total;
+          });
+          if (match) {
+            toast.success('Transaksi berhasil disimpan!');
+            if (typeof window !== "undefined") {
+              window.dispatchEvent(new CustomEvent("transactionCompleted"));
+            }
+            return match as any;
+          }
+        } catch {}
+      }
+
       setCart(cartSnapshot);
       toast.error("Gagal menyimpan transaksi");
       return null;

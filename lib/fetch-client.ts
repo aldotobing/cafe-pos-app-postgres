@@ -1,4 +1,4 @@
-const DEFAULT_TIMEOUT = 20000
+const DEFAULT_TIMEOUT = 30000
 // End-to-end latency includes server processing time (cold starts, DB queries).
 // A 2-4s response is normal for serverless apps and does NOT mean the connection
 // is slow. We use two lines of defense:
@@ -142,12 +142,13 @@ export function getConnectionState() {
 }
 
 function isNetworkError(err: unknown): boolean {
+  // AbortError (DOMException) is the browser's native abort signal — treat as network
+  if (err instanceof DOMException && err.name === 'AbortError') return true
   if (err instanceof TypeError) {
     const msg = err.message.toLowerCase()
     return msg.includes('failed to fetch') ||
            msg.includes('networkerror') ||
-           msg.includes('network request failed') ||
-           msg.includes('abort')
+           msg.includes('network request failed')
   }
   return false
 }
