@@ -17,9 +17,10 @@ interface Cashier {
 interface CashierManagementProps {
   userId: string | undefined
   cafeId: number | null
+  canEdit: boolean
 }
 
-export function CashierManagement({ userId, cafeId }: CashierManagementProps) {
+export function CashierManagement({ userId, cafeId, canEdit }: CashierManagementProps) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [fullName, setFullName] = useState('')
@@ -185,28 +186,30 @@ export function CashierManagement({ userId, cafeId }: CashierManagementProps) {
       transition={{ duration: 0.2 }}
     >
       <div className="p-4 md:p-5">
-      {/* Add Button */}
-      <div className="flex justify-end mb-4">
-        <motion.button
-          onClick={() => setShowForm(!showForm)}
-          className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-md hover:opacity-90 text-sm font-medium"
-          whileHover={{ scale: 1.02, y: -1 }}
-          whileTap={{ scale: 0.98 }}
-          transition={{ duration: 0.05 }}
-        >
-          {showForm ? (
-            <>
-              <X className="h-4 w-4" />
-              <span>Tutup Form</span>
-            </>
-          ) : (
-            <>
-              <Plus className="h-4 w-4" />
-              <span>Tambah Kasir</span>
-            </>
-          )}
-        </motion.button>
-      </div>
+      {/* Add Button — only for admins */}
+      {canEdit && (
+        <div className="flex justify-end mb-4">
+          <motion.button
+            onClick={() => setShowForm(!showForm)}
+            className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-md hover:opacity-90 text-sm font-medium"
+            whileHover={{ scale: 1.02, y: -1 }}
+            whileTap={{ scale: 0.98 }}
+            transition={{ duration: 0.05 }}
+          >
+            {showForm ? (
+              <>
+                <X className="h-4 w-4" />
+                <span>Tutup Form</span>
+              </>
+            ) : (
+              <>
+                <Plus className="h-4 w-4" />
+                <span>Tambah Kasir</span>
+              </>
+            )}
+          </motion.button>
+        </div>
+      )}
 
       {/* Form - Hidden by default */}
       <AnimatePresence>
@@ -386,30 +389,34 @@ export function CashierManagement({ userId, cafeId }: CashierManagementProps) {
                       <span className="text-xs px-2 py-1 rounded-full bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
                         Aktif
                       </span>
-                      <motion.button
-                        onClick={() => openDeactivateDialog(cashier)}
-                        className="p-1.5 rounded-md hover:bg-red-100 text-red-600 dark:hover:bg-red-900/30"
-                        whileHover={{ scale: 1.1 }}
-                        whileTap={{ scale: 0.95 }}
-                        title="Nonaktifkan kasir"
-                      >
-                        <UserX className="h-4 w-4" />
-                      </motion.button>
+                      {canEdit && (
+                        <motion.button
+                          onClick={() => openDeactivateDialog(cashier)}
+                          className="p-1.5 rounded-md hover:bg-red-100 text-red-600 dark:hover:bg-red-900/30"
+                          whileHover={{ scale: 1.1 }}
+                          whileTap={{ scale: 0.95 }}
+                          title="Nonaktifkan kasir"
+                        >
+                          <UserX className="h-4 w-4" />
+                        </motion.button>
+                      )}
                     </>
                   ) : (
                     <>
                       <span className="text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400">
                         Nonaktif
                       </span>
-                      <motion.button
-                        onClick={() => openActivateDialog(cashier)}
-                        className="p-1.5 rounded-md hover:bg-green-100 text-green-600 dark:hover:bg-green-900/30"
-                        whileHover={{ scale: 1.1 }}
-                        whileTap={{ scale: 0.95 }}
-                        title="Aktifkan kasir"
-                      >
-                        <UserCheck className="h-4 w-4" />
-                      </motion.button>
+                      {canEdit && (
+                        <motion.button
+                          onClick={() => openActivateDialog(cashier)}
+                          className="p-1.5 rounded-md hover:bg-green-100 text-green-600 dark:hover:bg-green-900/30"
+                          whileHover={{ scale: 1.1 }}
+                          whileTap={{ scale: 0.95 }}
+                          title="Aktifkan kasir"
+                        >
+                          <UserCheck className="h-4 w-4" />
+                        </motion.button>
+                      )}
                     </>
                   )}
                 </div>

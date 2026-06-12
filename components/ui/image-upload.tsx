@@ -2,8 +2,8 @@
 
 import { useState, useRef, useEffect } from "react"
 import { ImagePlus, X, Loader2, Upload, Check } from "lucide-react"
-import Image from "next/image"
 import { toast } from "sonner"
+import { OptimizedImage } from "./optimized-image"
 
 interface ImageUploadProps {
   value?: string
@@ -169,11 +169,13 @@ export function ImageUpload({ value, onChange, onUploadingChange, label = "Gamba
       <label className="text-sm font-medium">{label}</label>
 
       {preview ? (
-        <div className="relative aspect-square w-full max-w-[200px] rounded-lg border overflow-hidden bg-muted group">
-          <img
+        <div className={`relative aspect-square w-full max-w-[200px] rounded-lg border overflow-hidden bg-muted group ${disabled ? 'cursor-not-allowed' : ''}`}>
+          <OptimizedImage
             src={preview}
             alt="Preview"
-            className="w-full h-full object-cover"
+            fill
+            objectFit="cover"
+            containerClassName="w-full h-full"
           />
 
           {/* Success checkmark - brief flash */}

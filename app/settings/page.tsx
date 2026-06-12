@@ -48,8 +48,6 @@ export default function Page() {
   const initialRef = useRef<any>(null)
 
   const canEdit = userData?.role === "admin" || userData?.role === "superadmin"
-  const isAdmin = canEdit
-  const visibleMenuItems = menuItems.filter(m => !m.adminOnly || isAdmin)
 
   useEffect(() => {
     if (!authLoading && (!user || !userData)) { router.push('/login'); return }
@@ -123,23 +121,13 @@ export default function Page() {
     )
   }
 
-  if (!isAdmin) {
-    return (
-      <AppShell>
-        <div className="rounded-xl border bg-card p-6 text-center text-sm text-muted-foreground">
-          Mode kasir — hanya dapat melihat pengaturan
-        </div>
-      </AppShell>
-    )
-  }
-
   return (
     <AppShell>
       <div className="flex flex-col md:flex-row gap-4 md:gap-6">
         {/* Sidebar — desktop only */}
         <nav className="w-[200px] shrink-0 hidden md:block">
           <div className="space-y-0.5 sticky top-[calc(4rem+1px)]">
-            {visibleMenuItems.map((item) => (
+            {menuItems.map((item) => (
               <button
                 key={item.id}
                 onClick={() => setActiveSection(item.id)}
@@ -160,7 +148,7 @@ export default function Page() {
         {/* Mobile tabs */}
         <div className="md:hidden">
           <div className="flex gap-1 overflow-x-auto pb-2 scrollbar-hide">
-            {visibleMenuItems.map((item) => (
+            {menuItems.map((item) => (
               <button
                 key={item.id}
                 onClick={() => setActiveSection(item.id)}
@@ -179,6 +167,12 @@ export default function Page() {
 
         {/* Content */}
         <div className="flex-1 min-w-0">
+          {!canEdit && (
+            <div className="mb-4 text-amber-700 text-xs flex items-center gap-2">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+              Mode lihat saja — Anda tidak dapat mengubah pengaturan
+            </div>
+          )}
           <div className="flex items-center gap-2.5 mb-4">
             <div className={cn("flex items-center justify-center w-8 h-8 md:w-9 md:h-9 rounded-lg shrink-0", activeItem.bg)}>
               <activeItem.icon className={cn("h-4 w-4 md:h-[18px] md:w-[18px]", activeItem.color)} />
@@ -240,6 +234,7 @@ export default function Page() {
                   setSettings={handleNotificationSettingUpdate}
                   userId={user?.id}
                   cafeId={cafeId}
+                  canEdit={canEdit}
                 />
               )}
 
@@ -247,6 +242,7 @@ export default function Page() {
                 <CashierManagement
                   userId={user?.id}
                   cafeId={cafeId}
+                  canEdit={canEdit}
                 />
               )}
             </motion.div>

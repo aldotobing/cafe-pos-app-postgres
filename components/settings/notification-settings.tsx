@@ -12,9 +12,10 @@ interface NotificationSettingsProps {
   setSettings: (settings: any) => void
   userId: string | undefined
   cafeId: number | null
+  canEdit: boolean
 }
 
-export function NotificationSettings({ localSettings, setLocalSettings, setSettings, userId, cafeId }: NotificationSettingsProps) {
+export function NotificationSettings({ localSettings, setLocalSettings, setSettings, userId, cafeId, canEdit }: NotificationSettingsProps) {
   const [isPushEnabling, setIsPushEnabling] = useState(false)
   const [isSubscribed, setIsSubscribed] = useState(false)
 
@@ -35,7 +36,7 @@ export function NotificationSettings({ localSettings, setLocalSettings, setSetti
   }, []);
 
   const handlePushToggle = async () => {
-    if (!userId || !cafeId) return
+    if (!canEdit || !userId || !cafeId) return
 
     setIsPushEnabling(true)
     try {
@@ -110,10 +111,10 @@ export function NotificationSettings({ localSettings, setLocalSettings, setSetti
         </div>
         <button
           onClick={handlePushToggle}
-          disabled={isPushEnabling}
+          disabled={isPushEnabling || !canEdit}
           className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 shrink-0 ${
             isEnabled ? 'bg-primary' : 'bg-muted'
-          } ${isPushEnabling ? 'opacity-70' : ''}`}
+          } ${(isPushEnabling || !canEdit) ? 'opacity-70 cursor-not-allowed pointer-events-none' : 'cursor-pointer'}`}
         >
           {isPushEnabling ? (
             <span className="absolute inset-0 flex items-center justify-center">

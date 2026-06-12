@@ -25,14 +25,14 @@ export function TaxCalculationSettings({ localSettings, canEdit, handleInputChan
           <SettingsField label="PPN (%)">
             <motion.input
               type="number"
-              className={`w-full rounded-md border bg-background px-3 py-2 text-sm ${focusedField === 'taxPercent' || (localSettings.taxPercent > 0) ? '' : 'text-muted-foreground/50'}`}
+              className={`w-full rounded-md border bg-background px-3 py-2 text-sm disabled:opacity-60 disabled:cursor-not-allowed ${focusedField === 'taxPercent' || (localSettings.taxPercent > 0) ? '' : 'text-muted-foreground/50'}`}
               disabled={!canEdit}
               value={focusedField === 'taxPercent' && localSettings.taxPercent === 0 ? '' : (localSettings.taxPercent ?? 0)}
               min={0}
               onChange={handleInputChange('taxPercent')}
               onFocus={() => setFocusedField('taxPercent')}
               onBlur={() => setFocusedField(null)}
-              whileFocus={{ scale: 1.01 }}
+              whileFocus={{ scale: canEdit ? 1.01 : 1 }}
               transition={{ duration: 0.05 }}
             />
           </SettingsField>
@@ -40,14 +40,14 @@ export function TaxCalculationSettings({ localSettings, canEdit, handleInputChan
           <SettingsField label="Service (%)">
             <motion.input
               type="number"
-              className={`w-full rounded-md border bg-background px-3 py-2 text-sm ${focusedField === 'servicePercent' || (localSettings.servicePercent > 0) ? '' : 'text-muted-foreground/50'}`}
+              className={`w-full rounded-md border bg-background px-3 py-2 text-sm disabled:opacity-60 disabled:cursor-not-allowed ${focusedField === 'servicePercent' || (localSettings.servicePercent > 0) ? '' : 'text-muted-foreground/50'}`}
               disabled={!canEdit}
               value={focusedField === 'servicePercent' && localSettings.servicePercent === 0 ? '' : (localSettings.servicePercent ?? 0)}
               min={0}
               onChange={handleInputChange('servicePercent')}
               onFocus={() => setFocusedField('servicePercent')}
               onBlur={() => setFocusedField(null)}
-              whileFocus={{ scale: 1.01 }}
+              whileFocus={{ scale: canEdit ? 1.01 : 1 }}
               transition={{ duration: 0.05 }}
             />
           </SettingsField>
