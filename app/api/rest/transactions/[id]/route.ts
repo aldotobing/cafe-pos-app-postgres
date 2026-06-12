@@ -144,25 +144,32 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
     const { reason } = await request.json().catch(() => ({ reason: '' }));
 
+    // Batch-fetch menu and variant data to avoid N+1 per-item queries
+    const menuIds = [...new Set((tx.transaction_items || []).map((item: any) => item.menu_id).filter(Boolean))] as string[];
+    const variantIds = [...new Set((tx.transaction_items || []).map((item: any) => item.variant_id).filter(Boolean))] as string[];
+
+    const [menuResult, variantResult] = await Promise.all([
+      menuIds.length > 0
+        ? supabaseAdmin.from('menu').select('id, track_stock').in('id', menuIds)
+        : Promise.resolve({ data: [] }),
+      variantIds.length > 0
+        ? supabaseAdmin.from('product_variants').select('id, track_stock').in('id', variantIds)
+        : Promise.resolve({ data: [] }),
+    ]);
+
+    const menuMap = new Map((menuResult.data || []).map((m: any) => [m.id, m]));
+    const variantMap = new Map((variantResult.data || []).map((v: any) => [v.id, v]));
+
     const reversalMutations = await Promise.all(
       (tx.transaction_items || []).map(async (item: any) => {
         const menuId = item.menu_id;
         if (!menuId) return null;
 
-        const { data: menuItem } = await supabaseAdmin
-          .from('menu')
-          .select('track_stock')
-          .eq('id', menuId)
-          .single();
-
+        const menuItem = menuMap.get(menuId);
         let shouldTrack = !!menuItem?.track_stock;
 
         if (item.variant_id) {
-          const { data: variant } = await supabaseAdmin
-            .from('product_variants')
-            .select('track_stock')
-            .eq('id', item.variant_id)
-            .single();
+          const variant = variantMap.get(item.variant_id);
           if (variant) {
             shouldTrack = shouldTrack || variant.track_stock === true;
           }

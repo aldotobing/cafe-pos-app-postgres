@@ -264,6 +264,22 @@ export async function POST(request: Request) {
         console.error('Transaction items insert error:', itemsError);
       }
 
+      // Batch-fetch menu and variant data to avoid N+1 per-item queries
+      const menuIds = [...new Set(body.items.map((item: any) => item.menu_id || item.menuId).filter(Boolean))] as string[];
+      const variantIds = [...new Set(body.items.map((item: any) => item.variant_id || item.variantId).filter(Boolean))] as string[];
+
+      const [menuResult, variantResult] = await Promise.all([
+        menuIds.length > 0
+          ? supabaseAdmin.from('menu').select('id, track_stock, hpp_price').in('id', menuIds)
+          : Promise.resolve({ data: [] }),
+        variantIds.length > 0
+          ? supabaseAdmin.from('product_variants').select('id, hpp_price, track_stock').in('id', variantIds)
+          : Promise.resolve({ data: [] }),
+      ]);
+
+      const menuMap = new Map((menuResult.data || []).map((m: any) => [m.id, m]));
+      const variantMap = new Map((variantResult.data || []).map((v: any) => [v.id, v]));
+
       const stockMutations = await Promise.all(
         body.items.map(async (item: any) => {
           const itemMenuId = item.menu_id || item.menuId;
@@ -271,21 +287,12 @@ export async function POST(request: Request) {
 
           if (!itemMenuId) return null;
 
-          const { data: menuItem } = await supabaseAdmin
-            .from('menu')
-            .select('track_stock, hpp_price')
-            .eq('id', itemMenuId)
-            .single();
-
+          const menuItem = menuMap.get(itemMenuId);
           let hppPrice = menuItem?.hpp_price || 0;
           let shouldTrack = !!menuItem?.track_stock;
 
           if (itemVariantId) {
-            const { data: variant } = await supabaseAdmin
-              .from('product_variants')
-              .select('hpp_price, track_stock')
-              .eq('id', itemVariantId)
-              .single();
+            const variant = variantMap.get(itemVariantId);
             if (variant) {
               shouldTrack = variant.track_stock === true ? true : shouldTrack;
               if (shouldTrack) {
