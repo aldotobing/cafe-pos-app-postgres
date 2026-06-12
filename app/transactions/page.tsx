@@ -446,8 +446,7 @@ export default function Page() {
                   <tr
                     key={t.id}
                     className={cn(
-                      "border-b last:border-b-0 cursor-pointer hover:bg-muted/50 transition-colors",
-                      t.status === 'voided' && 'bg-red-50/50 dark:bg-red-950/20'
+                      "border-b last:border-b-0 cursor-pointer hover:bg-muted/50 transition-colors"
                     )}
                     onClick={() => { setSelectedTransactionId(t.id); setShowDetailModal(true) }}
                   >
@@ -483,13 +482,13 @@ export default function Page() {
                     </td>
                     <td className="px-4 py-3 text-xs">{cashierName}</td>
                     <td className="px-4 py-3">
-                      <span className={cn("inline-flex items-center px-2 py-0.5 rounded-full text-[11px]", paymentMethodStyles[t.paymentMethod] || 'bg-muted text-muted-foreground')}>
+                      <span className={cn("inline-flex items-center px-2 py-0.5 rounded-full text-[11px]", paymentMethodStyles[t.paymentMethod || 'Tunai'] || 'bg-muted text-muted-foreground')}>
                         {t.paymentMethod}
                       </span>
                     </td>
                     <td className="px-4 py-3 text-right font-semibold tabular-nums">
                       <div>{formatRupiah(t.totalAmount || 0)}</div>
-                      {(t.discountType || t.discount_type) !== 'none' && (t.discountAmount || t.discount_amount) > 0 && (
+                      {(t.discountType || t.discount_type) !== 'none' && (t.discountAmount ?? t.discount_amount ?? 0) > 0 && (
                         <div className="text-[10px] text-emerald-600 font-medium flex items-center justify-end gap-0.5 mt-0.5">
                           <BadgePercent className="h-3 w-3" />
                           {t.discountName || t.discount_name || 'Promo'}
@@ -560,13 +559,13 @@ export default function Page() {
                   className="rounded-xl border bg-card shadow-sm overflow-hidden active:scale-[0.99] transition-transform cursor-pointer"
                   onClick={() => { setSelectedTransactionId(t.id); setShowDetailModal(true) }}
                 >
-                  <div className={cn("flex items-center justify-between p-3 border-b border-border/30", t.status === 'voided' ? 'bg-red-50/50 dark:bg-red-950/30' : 'bg-muted/20')}>
+                  <div className="flex items-center justify-between p-3 border-b border-border/30 bg-muted/20">
                     <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                       <span>{formatTanggal(t.createdAt)}</span>
                       {t.status === 'voided' ? <Ban className="h-3.5 w-3.5 text-destructive" /> : <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />}
                     </div>
                     <div className="flex items-center gap-2">
-                      {(t.discountType || t.discount_type) !== 'none' && (t.discountAmount || t.discount_amount) > 0 && (
+                      {(t.discountType || t.discount_type) !== 'none' && (t.discountAmount ?? t.discount_amount ?? 0) > 0 && (
                         <div className="text-[10px] text-emerald-600 font-medium flex items-center gap-0.5 bg-emerald-50 px-1.5 py-0.5 rounded-full">
                           <BadgePercent className="h-3 w-3" />
                           {t.discountName || t.discount_name || 'Promo'}
@@ -578,7 +577,7 @@ export default function Page() {
                   <div className="p-3 space-y-2">
                     <div className="flex items-center gap-3 text-xs">
                       <span className="text-muted-foreground">Kasir: <span className="text-foreground font-medium">{cashierName}</span></span>
-                      <span className={cn("px-1.5 py-0.5 rounded-full text-[10px]", paymentMethodStyles[t.paymentMethod] || 'bg-muted')}>{t.paymentMethod}</span>
+                      <span className={cn("px-1.5 py-0.5 rounded-full text-[10px]", paymentMethodStyles[t.paymentMethod || 'Tunai'] || 'bg-muted')}>{t.paymentMethod}</span>
                     </div>
                     <div className="flex items-center justify-between gap-2">
                       <div className="min-w-0 flex-1">

@@ -84,6 +84,7 @@ export interface UsePaginatedTransactionsReturn {
   transactions: Transaction[];
   totalCount: number;
   totalAmount: number; // Total amount of ALL filtered transactions
+  completedTotal: number; // Total of completed-only transactions (summary card)
   currentPage: number;
   totalPages: number;
   hasNextPage: boolean;

@@ -154,6 +154,13 @@ export interface Transaction {
   discountAmount?: number
   discount_name?: string | null
   discountName?: string | null
+  status?: string
+  void_reason?: string | null
+  voidReason?: string | null
+  voided_at?: string | null
+  voidedAt?: string | null
+  voided_by?: string | null
+  voidedBy?: string | null
   items: TransactionItem[]
 }
 
