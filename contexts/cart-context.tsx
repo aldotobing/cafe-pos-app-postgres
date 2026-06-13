@@ -169,9 +169,14 @@ export function CartProvider({ children }: { children: ReactNode }) {
     });
 
     const subtotal = items.reduce((sum, it) => sum + it.lineTotal, 0);
-    const tax = Math.round(((settings?.taxPercent || 0) / 100) * subtotal);
-    const service = Math.round(((settings?.servicePercent || 0) / 100) * subtotal);
-    const total = subtotal + tax + service;
+    // Apply cart-level discount (promo or manual) to match what the user sees in the cart UI
+    const cartDiscount = discountInfo?.amount || 0;
+    const discountedSubtotal = Math.max(0, subtotal - cartDiscount);
+    // Tax and service are calculated on the already-discounted subtotal,
+    // consistent with the cart panel display (cart.tsx)
+    const tax = Math.round(((settings?.taxPercent || 0) / 100) * discountedSubtotal);
+    const service = Math.round(((settings?.servicePercent || 0) / 100) * discountedSubtotal);
+    const total = discountedSubtotal + tax + service;
 
     const currentCafeId = cafeId !== null && cafeId !== undefined ? Number(cafeId) : 1;
     const currentUserId = userId || "unknown";

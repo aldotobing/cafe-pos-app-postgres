@@ -147,6 +147,16 @@ export function MobileCart() {
     return () => clearInterval(interval)
   }, [isProcessing, loadingMessages])
 
+  // Reset promo/discount state when cart is cleared or emptied
+  useEffect(() => {
+    if (cart.length === 0) {
+      setDiscountType('percent')
+      setDiscountValue(0)
+      setAppliedPromoName(null)
+      manualDiscountSet.current = false
+    }
+  }, [cart.length])
+
   const { subtotal, discountAmount, discountedSubtotal, tax, service, total, totalItems } = useMemo(() => {
     const sub = cart.reduce((sum, c) => sum + Math.max(0, c.price * c.qty - (c.discount ?? 0)), 0);
     const discAmt = discountType === 'percent' ? Math.round(sub * discountValue / 100) : discountValue;

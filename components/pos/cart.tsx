@@ -55,6 +55,16 @@ export function CartPanel() {
     return () => clearInterval(interval)
   }, [isProcessing, loadingMessages])
 
+  // Reset promo/discount state when cart is cleared or emptied
+  useEffect(() => {
+    if (cart.length === 0) {
+      setDiscountType('percent')
+      setDiscountValue(0)
+      setAppliedPromoName(null)
+      manualDiscountSet.current = false
+    }
+  }, [cart.length])
+
   const subtotal = cart.reduce((sum: number, c: any) => sum + Math.max(0, c.price * c.qty - (c.discount ?? 0)), 0)
   const discountAmount = discountType === 'percent'
     ? Math.round(subtotal * discountValue / 100)
