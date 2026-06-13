@@ -186,9 +186,9 @@ export function VariantSelector({ menuItem, isOpen, onClose, onAddToCart }: Vari
               <OptimizedImage
                 src={menuImage}
                 alt={menuItem.name}
-                width={512}
-                height={256}
-                className="w-full h-full object-cover"
+                fill
+                objectFit="cover"
+                containerClassName="w-full h-full"
                 fallback={
                   <div className="w-full h-full bg-gradient-to-br from-primary/10 via-primary/5 to-muted flex items-center justify-center">
                     <div className="flex flex-col items-center gap-3">
