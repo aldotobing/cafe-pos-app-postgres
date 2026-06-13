@@ -103,6 +103,12 @@ function LoginForm() {
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const [captchaReady, setCaptchaReady] = useState(false);
+  const [turnstileKey, setTurnstileKey] = useState(0);
+  const resetCaptcha = () => {
+    setCaptchaToken(null);
+    setCaptchaReady(false);
+    setTurnstileKey(k => k + 1);
+  };
   const nameInputRef = useRef<HTMLInputElement>(null);
   const emailInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
@@ -130,8 +136,7 @@ function LoginForm() {
     setSuccess('');
     setFieldErrors({});
     setConfirmPassword('');
-    setCaptchaToken(null);
-    setCaptchaReady(false);
+    resetCaptcha();
     setAuthMode(mode);
   };
 
@@ -162,6 +167,7 @@ function LoginForm() {
     } catch (err: any) {
       setError(getErrorMessage(err));
       setDemoLoading(false);
+      resetCaptcha();
     }
   };
 
@@ -228,6 +234,7 @@ function LoginForm() {
         setError(getErrorMessage(err));
       }
       setLoading(false);
+      resetCaptcha();
     }
   };
 
@@ -256,11 +263,10 @@ function LoginForm() {
       setPassword('');
       setFullName('');
       setConfirmPassword('');
-      setCaptchaToken(null);
-      setCaptchaReady(false);
       setTimeout(() => goTo('login'), 3000);
     } catch (err: any) {
       setError(getErrorMessage(err));
+      resetCaptcha();
     } finally {
       setLoading(false);
     }
@@ -292,11 +298,14 @@ function LoginForm() {
       const data = await res.json();
       if (!res.ok) {
         setError(data.error || 'Gagal mengirim link reset.');
+        resetCaptcha();
       } else {
         setSuccess(data.message);
+        resetCaptcha();
       }
     } catch {
       setError('Tidak dapat terhubung ke server.');
+      resetCaptcha();
     } finally {
       setLoading(false);
     }
@@ -538,6 +547,7 @@ function LoginForm() {
               {(
                 <div className="flex justify-center pt-1">
                   <Turnstile
+                    key={turnstileKey}
                     siteKey={TURNSTILE_SITE_KEY}
                     onVerify={(token) => {
                       setCaptchaToken(token);

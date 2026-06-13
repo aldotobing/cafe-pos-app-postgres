@@ -1,68 +1,93 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CheckCircle2, Loader2, ArrowRight } from 'lucide-react';
+import {
+  Store,
+  MapPin,
+  Phone,
+  ArrowRight,
+  Loader2,
+  CheckCircle2,
+  AlertCircle,
+  Building2,
+} from 'lucide-react';
+import { toast } from 'sonner';
 
-export default function CreateStore() {
+const fadeInUp = {
+  initial: { opacity: 0, y: 16 },
+  animate: { opacity: 1, y: 0 },
+};
+
+const stagger = {
+  animate: { transition: { staggerChildren: 0.08 } },
+};
+
+function useRedirectGuard() {
   const { user, userData, loading } = useAuth();
-  const [storeData, setStoreData] = useState({ name: '', address: '', phone: '' });
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [focusedField, setFocusedField] = useState<string | null>(null);
   const router = useRouter();
 
   useEffect(() => {
-    if (!loading) {
-      if (!user || !userData) {
-        router.push('/login');
-        return;
-      }
-      if (userData.role !== 'admin' && userData.role !== 'superadmin') {
-        router.push('/');
-        return;
-      }
-      if (userData.role === 'admin' && userData.cafe_id) {
-        router.push('/');
-        return;
-      }
-    }
+    if (loading) return;
+    if (!user || !userData) { router.push('/login'); return; }
+    if (userData.role !== 'admin' && userData.role !== 'superadmin') { router.push('/'); return; }
+    if (userData.role === 'admin' && userData.cafe_id) { router.push('/dashboard'); return; }
   }, [loading, user, userData, router]);
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-[#181815]">
-        <Loader2 className="w-8 h-8 animate-spin text-[#D4AF37]" />
-      </div>
-    );
-  }
+  return { user, userData, loading };
+}
 
-  if (!user || !userData || (userData.role !== 'admin' && userData.role !== 'superadmin') || (userData.role === 'admin' && userData.cafe_id)) return null;
+export default function CreateCafePage() {
+  const { user, userData, loading } = useRedirectGuard();
+  const router = useRouter();
+  const nameRef = useRef<HTMLInputElement>(null);
+
+  const [form, setForm] = useState({ name: '', address: '', phone: '' });
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [error, setError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [success, setSuccess] = useState(false);
+  const [step, setStep] = useState<'form' | 'submitting' | 'done'>('form');
+
+  useEffect(() => { nameRef.current?.focus(); }, []);
+
+  const validate = () => {
+    const e: Record<string, string> = {};
+    if (!form.name.trim()) e.name = 'Nama bisnis wajib diisi';
+    else if (form.name.trim().length < 2) e.name = 'Nama minimal 2 karakter';
+    if (!form.address.trim()) e.address = 'Alamat wajib diisi';
+    if (!form.phone.trim()) e.phone = 'Nomor telepon wajib diisi';
+    else if (!/^[0-9+\-\s]{7,15}$/.test(form.phone.trim())) e.phone = 'Format nomor telepon tidak valid';
+    setErrors(e);
+    return Object.keys(e).length === 0;
+  };
+
+  const update = (field: string, value: string) => {
+    setForm(prev => ({ ...prev, [field]: value }));
+    if (errors[field]) setErrors(prev => { const n = { ...prev }; delete n[field]; return n; });
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!validate()) return;
+
     setError('');
-    setIsSubmitting(true);
-    
+    setSubmitting(true);
+    setStep('submitting');
+
     try {
       if (!userData?.id) throw new Error('User data not found');
 
-      const response = await fetch('/api/cafes', {
+      const res = await fetch('/api/cafes', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: storeData.name,
-          address: storeData.address,
-          phone: storeData.phone,
-        }),
+        body: JSON.stringify({ name: form.name, address: form.address, phone: form.phone }),
       });
 
-      if (!response.ok) throw new Error('Gagal membuat bisnis');
-      const result = await response.json();
-      const cafeId = result.cafeId;
+      if (!res.ok) throw new Error('Gagal membuat bisnis');
+      const { cafeId } = await res.json();
 
       const updateRes = await fetch(`/api/users/${userData.id}`, {
         method: 'PATCH',
@@ -70,135 +95,233 @@ export default function CreateStore() {
         body: JSON.stringify({ cafe_id: Number(cafeId), updated_at: new Date().toISOString() }),
       });
 
-      if (!updateRes.ok) throw new Error('Gagal menghubungkan bisnis');
+      if (!updateRes.ok) throw new Error('Gagal menghubungkan bisnis ke akun');
 
+      setStep('done');
       setSuccess(true);
-      setTimeout(() => window.location.href = '/', 1000);
+      toast.success('Bisnis berhasil dibuat!');
+      setTimeout(() => { window.location.href = '/dashboard'; }, 1200);
     } catch (err: any) {
-      setError(err.message || 'Gagal membuat bisnis.');
-      setIsSubmitting(false);
+      setError(err.message || 'Gagal membuat bisnis');
+      setStep('form');
+    } finally {
+      setSubmitting(false);
     }
   };
 
+  // ── Loading ──────────────────────────────────────────────────────────────
+
+  if (loading) {
+    return (
+      <div className="min-h-dvh flex items-center justify-center bg-background">
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}
+          className="w-10 h-10 rounded-full border-[3px] border-primary/30 border-t-primary"
+        />
+      </div>
+    );
+  }
+
+  if (!user || !userData || (userData.role !== 'admin' && userData.role !== 'superadmin') || (userData.role === 'admin' && userData.cafe_id)) return null;
+
+  // ── Success ──────────────────────────────────────────────────────────────
+
   if (success) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#181815]">
-        <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="text-center">
-          <div className="h-16 w-16 rounded-full border-2 border-[#D4AF37]/20 border-t-[#D4AF37] flex items-center justify-center mx-auto mb-6" style={{ animation: 'spin 1s linear infinite' }}>
-            <CheckCircle2 className="h-7 w-7 text-emerald-400" />
-          </div>
-          <h2 className="text-2xl font-['Playfair_Display',serif] font-bold text-[#EDECE8]">Bisnis Berhasil Dibuat</h2>
+      <div className="min-h-dvh flex items-center justify-center bg-background px-4">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="text-center space-y-4"
+        >
+          <motion.div
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ type: 'spring', delay: 0.1 }}
+            className="mx-auto w-20 h-20 rounded-full bg-emerald-500/10 flex items-center justify-center"
+          >
+            <CheckCircle2 className="w-10 h-10 text-emerald-500" />
+          </motion.div>
+          <h2 className="text-2xl font-bold">Bisnis Berhasil Dibuat!</h2>
+          <p className="text-muted-foreground">Mengalihkan ke dashboard...</p>
         </motion.div>
       </div>
     );
   }
 
+  // ── Form ─────────────────────────────────────────────────────────────────
+
   return (
-    <div className="min-h-screen bg-[#181815] flex items-center justify-center p-4 selection:bg-[#D4AF37] selection:text-[#181815] overflow-hidden relative">
-      <style>{`
-        @keyframes spin { to { transform: rotate(360deg); } }
-      `}</style>
+    <div className="min-h-dvh bg-background flex flex-col">
+      {/* Subtle background */}
+      <div className="fixed inset-0 pointer-events-none">
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[400px] bg-primary/3 rounded-full blur-[120px]" />
+      </div>
 
-      {/* Background grain */}
-      <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', opacity: 0.035, backgroundImage: "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='1'/%3E%3C/svg%3E\")" }} />
+      <div className="flex-1 flex items-center justify-center p-4 sm:p-6 lg:p-8">
+        <motion.div
+          className="w-full max-w-lg relative z-10"
+          initial={{ opacity: 0, y: 20, scale: 0.98 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+        >
+          {/* Card */}
+          <div className="bg-card border border-border/60 rounded-2xl sm:rounded-3xl shadow-xl overflow-hidden">
+            {/* Header */}
+            <div className="px-6 sm:px-8 pt-8 sm:pt-10 pb-4 text-center">
+              <motion.div
+                initial={{ opacity: 0, y: -8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 }}
+                className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-primary/10 mb-5"
+              >
+                <Building2 className="w-7 h-7 text-primary" />
+              </motion.div>
+              <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
+                Buat Bisnis Baru
+              </h1>
+              <p className="text-sm text-muted-foreground mt-1.5 max-w-xs mx-auto">
+                Isi detail bisnis Anda untuk memulai menggunakan KasirKu
+              </p>
+            </div>
 
-      {/* Ambient glow */}
-      <motion.div
-        className="fixed top-1/4 left-1/2 -translate-x-1/2 w-[500px] h-[500px] bg-[#D4AF37]/5 rounded-full blur-[120px] pointer-events-none"
-        animate={{ opacity: [0.3, 0.6, 0.3] }}
-        transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-      />
+            {/* Form */}
+            <form onSubmit={handleSubmit} className="px-6 sm:px-8 pb-8 sm:pb-10">
+              {/* Error banner */}
+              <AnimatePresence mode="wait">
+                {error && (
+                  <motion.div
+                    key="error"
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="flex items-start gap-2.5 p-3 rounded-lg bg-destructive/10 border border-destructive/20 mb-5 text-sm text-destructive">
+                      <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+                      <span>{error}</span>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
-      <motion.div
-        className="w-full max-w-[440px] relative z-10"
-        initial={{ opacity: 0, y: 24, scale: 0.98 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-      >
-        <div className="bg-[#232320] border border-white/5 p-10 rounded-[32px] shadow-2xl relative overflow-hidden">
-          <div className="text-center mb-10">
-            <h1 className="font-['Playfair_Display',serif] text-4xl font-bold text-[#EDECE8] mb-3">Siapkan Bisnis</h1>
-            <p className="text-[#8A8985] text-base">Detail dasar untuk memulai</p>
+              {/* Fields */}
+              <motion.div variants={stagger} initial="initial" animate="animate" className="space-y-4">
+                {/* Name */}
+                <motion.div variants={fadeInUp} transition={{ delay: 0.15 }}>
+                  <label htmlFor="name" className="text-xs font-semibold text-muted-foreground mb-1.5 block">
+                    Nama Bisnis <span className="text-destructive">*</span>
+                  </label>
+                  <div className="relative">
+                    <Store className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                    <input
+                      ref={nameRef}
+                      id="name"
+                      type="text"
+                      required
+                      value={form.name}
+                      onChange={(e) => update('name', e.target.value)}
+                      placeholder="Contoh: Kedai Kopi Nusantara"
+                      className={`w-full pl-10 pr-4 py-3 rounded-xl border bg-background text-sm placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 transition-all ${
+                        errors.name
+                          ? 'border-destructive/60 focus:ring-destructive/20'
+                          : 'border-border/60 focus:ring-primary/20 focus:border-primary'
+                      }`}
+                    />
+                  </div>
+                  {errors.name && (
+                    <p className="text-xs text-destructive mt-1 ml-1">{errors.name}</p>
+                  )}
+                </motion.div>
+
+                {/* Address */}
+                <motion.div variants={fadeInUp} transition={{ delay: 0.2 }}>
+                  <label htmlFor="address" className="text-xs font-semibold text-muted-foreground mb-1.5 block">
+                    Alamat Lengkap <span className="text-destructive">*</span>
+                  </label>
+                  <div className="relative">
+                    <MapPin className="absolute left-3.5 top-3.5 h-4 w-4 text-muted-foreground pointer-events-none" />
+                    <textarea
+                      id="address"
+                      required
+                      rows={2}
+                      value={form.address}
+                      onChange={(e) => update('address', e.target.value)}
+                      placeholder="Jl. Sudirman No. 1, Jakarta Pusat"
+                      className={`w-full pl-10 pr-4 py-3 rounded-xl border bg-background text-sm placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 transition-all resize-none ${
+                        errors.address
+                          ? 'border-destructive/60 focus:ring-destructive/20'
+                          : 'border-border/60 focus:ring-primary/20 focus:border-primary'
+                      }`}
+                    />
+                  </div>
+                  {errors.address && (
+                    <p className="text-xs text-destructive mt-1 ml-1">{errors.address}</p>
+                  )}
+                </motion.div>
+
+                {/* Phone */}
+                <motion.div variants={fadeInUp} transition={{ delay: 0.25 }}>
+                  <label htmlFor="phone" className="text-xs font-semibold text-muted-foreground mb-1.5 block">
+                    Nomor Telepon <span className="text-destructive">*</span>
+                  </label>
+                  <div className="relative">
+                    <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                    <input
+                      id="phone"
+                      type="tel"
+                      required
+                      value={form.phone}
+                      onChange={(e) => update('phone', e.target.value)}
+                      placeholder="0812-3456-7890"
+                      className={`w-full pl-10 pr-4 py-3 rounded-xl border bg-background text-sm placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 transition-all ${
+                        errors.phone
+                          ? 'border-destructive/60 focus:ring-destructive/20'
+                          : 'border-border/60 focus:ring-primary/20 focus:border-primary'
+                      }`}
+                    />
+                  </div>
+                  {errors.phone && (
+                    <p className="text-xs text-destructive mt-1 ml-1">{errors.phone}</p>
+                  )}
+                </motion.div>
+              </motion.div>
+
+              {/* Submit */}
+              <motion.div
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.35 }}
+                className="mt-7"
+              >
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="w-full inline-flex items-center justify-center gap-2.5 py-3.5 rounded-xl bg-primary text-primary-foreground font-semibold text-sm shadow-lg shadow-primary/20 hover:bg-primary/90 active:scale-[0.98] transition-all disabled:opacity-60 disabled:cursor-not-allowed disabled:active:scale-100"
+                >
+                  {submitting ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Membuat Bisnis...
+                    </>
+                  ) : (
+                    <>
+                      Buat Bisnis
+                      <ArrowRight className="h-4 w-4" />
+                    </>
+                  )}
+                </button>
+              </motion.div>
+            </form>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-5">
-            <AnimatePresence>
-              {error && (
-                <motion.div
-                  className="mb-5 p-3.5 bg-red-500/10 border border-red-500/20 rounded-xl text-sm text-red-300 flex items-start gap-2.5"
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
-                  exit={{ opacity: 0, height: 0 }}
-                >
-                  <div className="h-5 w-5 rounded-full bg-red-500/20 flex items-center justify-center shrink-0 mt-0.5">
-                    <span className="text-red-400 text-[10px] font-bold">!</span>
-                  </div>
-                  <span>{error}</span>
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-            <div className="space-y-2">
-              <label className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#8A8985] ml-1">Nama Bisnis</label>
-              <input
-                required
-                value={storeData.name}
-                onFocus={() => setFocusedField('name')}
-                onBlur={() => setFocusedField(null)}
-                onChange={(e) => setStoreData({...storeData, name: e.target.value})}
-                className="w-full bg-black/30 border border-white/5 text-[#EDECE8] placeholder:text-[#8A8985]/40 px-5 py-4 rounded-xl focus:border-[#D4AF37] focus:ring-1 focus:ring-[#D4AF37] focus:outline-none transition-all text-sm"
-                placeholder="Contoh: Toko Sejahtera"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#8A8985] ml-1">Alamat Lengkap</label>
-              <input
-                required
-                value={storeData.address}
-                onFocus={() => setFocusedField('address')}
-                onBlur={() => setFocusedField(null)}
-                onChange={(e) => setStoreData({...storeData, address: e.target.value})}
-                className="w-full bg-black/30 border border-white/5 text-[#EDECE8] placeholder:text-[#8A8985]/40 px-5 py-4 rounded-xl focus:border-[#D4AF37] focus:ring-1 focus:ring-[#D4AF37] focus:outline-none transition-all text-sm"
-                placeholder="Jl. Sudirman No. 1, Jakarta"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#8A8985] ml-1">Nomor Telepon</label>
-              <input
-                required
-                type="tel"
-                value={storeData.phone}
-                onFocus={() => setFocusedField('phone')}
-                onBlur={() => setFocusedField(null)}
-                onChange={(e) => setStoreData({...storeData, phone: e.target.value})}
-                className="w-full bg-black/30 border border-white/5 text-[#EDECE8] placeholder:text-[#8A8985]/40 px-5 py-4 rounded-xl focus:border-[#D4AF37] focus:ring-1 focus:ring-[#D4AF37] focus:outline-none transition-all text-sm"
-                placeholder="08123456789"
-              />
-            </div>
-
-            <motion.button
-              disabled={isSubmitting}
-              whileTap={{ scale: isSubmitting ? 1 : 0.98 }}
-              type="submit"
-              className="w-full py-4 mt-6 bg-[#D4AF37] text-black font-bold rounded-xl hover:bg-[#F4CF57] transition-all text-sm shadow-lg shadow-[#D4AF37]/10 flex items-center justify-center gap-2 disabled:opacity-70"
-            >
-              {isSubmitting ? (
-                <><Loader2 className="animate-spin h-4 w-4" /> <span>Menyimpan...</span></>
-              ) : (
-                <>
-                  <span>Lanjutkan</span>
-                  <ArrowRight className="h-4 w-4" />
-                </>
-              )}
-            </motion.button>
-          </form>
-        </div>
-        <p className="text-center text-[11px] text-[#8A8985] mt-6">
-          © 2026 Kasirku — POS System
-        </p>
-      </motion.div>
+          {/* Footer */}
+          <p className="text-center text-xs text-muted-foreground/50 mt-5">
+            KasirKu POS &copy; {new Date().getFullYear()}
+          </p>
+        </motion.div>
+      </div>
     </div>
   );
 }

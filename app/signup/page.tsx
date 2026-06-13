@@ -19,6 +19,12 @@ export default function SignUpPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const [captchaReady, setCaptchaReady] = useState(false);
+  const [turnstileKey, setTurnstileKey] = useState(0);
+  const resetCaptcha = () => {
+    setCaptchaToken(null);
+    setCaptchaReady(false);
+    setTurnstileKey(k => k + 1);
+  };
   const { signUp } = useAuth();
   const router = useRouter();
 
@@ -49,6 +55,7 @@ export default function SignUpPage() {
       router.push('/login?verified=pending');
     } catch (err: any) {
       setError(err.message || 'Gagal membuat akun. Silakan coba lagi.');
+      resetCaptcha();
     } finally {
       setLoading(false);
     }
@@ -134,6 +141,7 @@ export default function SignUpPage() {
             {/* Cloudflare Turnstile */}
             <div className="flex justify-center">
               <Turnstile
+                key={turnstileKey}
                 siteKey={SITE_KEY}
                 onVerify={(token) => {
                   setCaptchaToken(token);
