@@ -51,7 +51,7 @@ export default function SignUpPage() {
 
     try {
       await signUp(email, password, fullName, captchaToken);
-      toast.success('Akun berhasil dibuat! Silakan cek email Anda untuk verifikasi.');
+      toast.success('Akun berhasil dibuat! Cek email Anda (termasuk spam/junk) untuk verifikasi.');
       router.push('/login?verified=pending');
     } catch (err: any) {
       setError(err.message || 'Gagal membuat akun. Silakan coba lagi.');

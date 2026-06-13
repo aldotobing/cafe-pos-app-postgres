@@ -118,7 +118,7 @@ export async function POST(request: Request) {
     return NextResponse.json({
       success: true,
       message: emailSent
-        ? 'Akun berhasil dibuat. Silakan cek email Anda untuk verifikasi sebelum login.'
+        ? 'Akun berhasil dibuat. Silakan cek email Anda (termasuk folder spam/junk) untuk verifikasi sebelum login.'
         : 'Akun berhasil dibuat. Silakan login.',
       emailVerificationSent: emailSent,
       user: data.user

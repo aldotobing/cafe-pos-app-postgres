@@ -56,7 +56,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       success: true,
-      message: 'Jika email terdaftar dan belum diverifikasi, link verifikasi telah dikirim.'
+      message: 'Jika email terdaftar dan belum diverifikasi, link verifikasi telah dikirim. Cek juga folder spam/junk.'
     }, { status: 200 });
 
   } catch (err) {
