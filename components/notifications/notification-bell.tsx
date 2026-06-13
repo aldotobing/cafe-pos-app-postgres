@@ -72,12 +72,19 @@ export function NotificationBell({ cafeId }: { cafeId?: number | null }) {
     cafeId ? `/api/notifications?limit=${PAGE_SIZE}&offset=0` : null,
     fetcher,
     {
-      refreshInterval: 15000,
+      refreshInterval: 0, // no polling — badge updates on focus or when bell is opened
       revalidateOnFocus: true,
       keepPreviousData: true,
-      dedupingInterval: 10000,
+      dedupingInterval: 30000,
     }
   )
+
+  // Refresh badge after new transaction (dispatched by cart checkout)
+  useEffect(() => {
+    const handler = () => mutate()
+    window.addEventListener('transactionCompleted', handler)
+    return () => window.removeEventListener('transactionCompleted', handler)
+  }, [mutate])
 
   // Fetch older notifications on demand
   const [olderData, setOlderData] = useState<Notification[]>([])
