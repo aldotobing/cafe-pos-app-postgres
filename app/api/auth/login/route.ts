@@ -24,7 +24,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const { email, password } = await request.json()
+    const { email, password, captchaToken } = await request.json()
     const cookieStore = await cookies()
 
     const supabase = createServerClient(
@@ -43,12 +43,37 @@ export async function POST(request: Request) {
       }
     )
 
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+      options: { captchaToken: captchaToken || undefined },
+    })
 
     if (error || !data.user) {
+      console.error('Login error:', error?.message, error?.status);
+
+      // Detect captcha-specific errors and return clear Indonesian messages
+      if (error?.message?.includes('captcha')) {
+        return NextResponse.json(
+          { error: 'Verifikasi keamanan diperlukan. Pastikan Anda telah menyelesaikan captcha.', code: 'CAPTCHA_REQUIRED' },
+          { status: 401 }
+        );
+      }
+
       return NextResponse.json(
-        { error: error?.message || 'Invalid credentials' },
+        { error: error?.message || 'Email atau password salah.', code: 'INVALID_CREDENTIALS' },
         { status: 401 }
+      );
+    }
+
+    // Check email confirmation — replaces old superadmin approval flow
+    if (!data.user.email_confirmed_at && !data.user.confirmed_at) {
+      return NextResponse.json(
+        {
+          error: 'Silakan verifikasi email Anda terlebih dahulu. Cek inbox atau spam Anda.',
+          code: 'EMAIL_NOT_CONFIRMED',
+        },
+        { status: 403 }
       )
     }
 

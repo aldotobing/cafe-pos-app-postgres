@@ -76,12 +76,12 @@ export async function GET(request: NextRequest) {
         .is('deleted_at', null)
         .gte('created_at', monthAgo),
 
-      // Pending approvals
+      // Inactive users (email confirmation replaces approval)
       supabaseAdmin
         .from('user_profiles')
         .select('user_id', { count: 'exact', head: true })
         .is('deleted_at', null)
-        .eq('is_approved', false),
+        .eq('is_active', false),
 
       // Online users (last_login < 5 minutes ago)
       supabaseAdmin
@@ -110,7 +110,7 @@ export async function GET(request: NextRequest) {
     const revenueWeek = revenueWeekResult.data?.reduce((sum, t) => sum + Number(t.total_amount), 0) || 0;
     const revenueMonth = revenueMonthResult.data?.reduce((sum, t) => sum + Number(t.total_amount), 0) || 0;
 
-    const pendingApprovals = pendingApprovalsResult.count || 0;
+    const inactiveUsers = pendingApprovalsResult.count || 0;
     const onlineUsers = onlineUsersResult.count || 0;
 
     return NextResponse.json({
@@ -128,11 +128,9 @@ export async function GET(request: NextRequest) {
         week: revenueWeek,
         month: revenueMonth
       },
-      approvals: {
-        pending: pendingApprovals
-      },
       activity: {
-        online: onlineUsers
+        online: onlineUsers,
+        inactive: inactiveUsers
       }
     });
   } catch (error) {

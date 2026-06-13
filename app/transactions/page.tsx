@@ -161,14 +161,7 @@ export default function Page() {
       return;
     }
 
-    // Check approval status for regular admin users
     if (!authLoading && user && userData) {
-      if (!userData.is_approved && userData.role !== 'superadmin') {
-        // Redirect to pending approval page
-        router.push('/pending-approval');
-        return;
-      }
-
       // For cashier users, ensure they're assigned to a cafe
       if (userData.role === 'cashier' && !userData.cafe_id) {
         router.push('/login'); // Cashier not assigned to any cafe

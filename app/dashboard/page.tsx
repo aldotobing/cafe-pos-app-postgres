@@ -151,11 +151,6 @@ export default function DashboardPage() {
     }
 
     if (!authLoading && user && userData) {
-      if (!userData.is_approved && userData.role !== 'superadmin') {
-        router.push('/pending-approval');
-        return;
-      }
-
       if (userData.role === 'cashier' && !userData.cafe_id) {
         router.push('/login');
         return;

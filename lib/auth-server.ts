@@ -9,7 +9,7 @@ export interface AuthenticatedUser {
   cafeId?: number;
   fullName?: string;
   isActive: boolean;
-  isApproved: boolean;
+  emailConfirmed: boolean;
 }
 
 const userCache = new Map<string, { data: AuthenticatedUser; timestamp: number }>()
@@ -57,7 +57,7 @@ export async function getAuthenticatedUser(_request?: Request): Promise<Authenti
       cafeId: profile?.cafe_id || undefined,
       fullName: profile?.full_name,
       isActive: profile?.is_active ?? true,
-      isApproved: profile?.is_approved ?? false,
+      emailConfirmed: !!(user.email_confirmed_at || user.confirmed_at),
     }
 
     userCache.set(user.id, { data: result, timestamp: Date.now() })

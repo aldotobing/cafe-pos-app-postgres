@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect, Suspense } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { createClient } from '@/utils/supabase/client';
 import { motion } from 'framer-motion';
 import { Lock, Eye, EyeOff, ArrowRight, Loader2, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { Input } from '@/components/ui/input';
@@ -9,36 +10,118 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { ErrorMessage } from '@/components/ui/error-message';
 
-type RecoveryTokens = { access_token: string; refresh_token: string } | null;
+type RecoveryState =
+  | { phase: 'checking' }
+  | { phase: 'ready' }
+  | { phase: 'error'; message: string };
 
-function useRecoveryTokens(): { tokens: RecoveryTokens; checking: boolean; error: string } {
-  const [state, setState] = useState<{ tokens: RecoveryTokens; checking: boolean; error: string }>({
-    tokens: null,
-    checking: true,
-    error: '',
-  });
+function useRecoverySession(): RecoveryState {
+  const [state, setState] = useState<RecoveryState>({ phase: 'checking' });
 
   useEffect(() => {
-    // Extract tokens from email link hash: #access_token=...&refresh_token=...&type=recovery
-    const hash = window.location.hash.substring(1);
-    const hashParams = new URLSearchParams(hash);
+    let cancelled = false;
 
-    const type = hashParams.get('type');
-    const access_token = hashParams.get('access_token');
-    const refresh_token = hashParams.get('refresh_token') || '';
+    async function verify() {
+      const supabase = createClient();
 
-    if (access_token && type === 'recovery') {
-      // Clean the URL
-      window.history.replaceState(null, '', window.location.pathname);
-      setState({ tokens: { access_token, refresh_token }, checking: false, error: '' });
-    } else {
-      setState({
-        tokens: null,
-        checking: false,
-        error: 'Link reset password tidak valid. Silakan minta link baru dari halaman login.',
-      });
+      console.log('[reset-password] URL:', window.location.href);
+      console.log('[reset-password] search:', window.location.search);
+      console.log('[reset-password] hash:', window.location.hash);
+
+      // PKCE flow: token_hash in query params (modern Supabase)
+      const queryParams = new URLSearchParams(window.location.search);
+      const hashParams = new URLSearchParams(window.location.hash.substring(1));
+      const tokenHash = queryParams.get('token_hash');
+      const type = queryParams.get('type') || hashParams.get('type');
+
+      // Check for error params in both query and hash
+      const errorCode = queryParams.get('error_code') || hashParams.get('error_code');
+      const errorDescription = queryParams.get('error_description') || hashParams.get('error_description');
+
+      // Check for Supabase error params first
+      if (errorCode) {
+        setState({
+          phase: 'error',
+          message: errorDescription || `Error: ${errorCode}`,
+        });
+        return;
+      }
+
+      if (tokenHash && type === 'recovery') {
+        console.log('[reset-password] PKCE flow detected');
+        window.history.replaceState(null, '', '/reset-password');
+
+        const { error } = await supabase.auth.verifyOtp({
+          token_hash: tokenHash,
+          type: 'recovery',
+        });
+
+        if (cancelled) return;
+
+        if (error) {
+          console.log('[reset-password] verifyOtp error:', error);
+          setState({
+            phase: 'error',
+            message: error.message.includes('expired')
+              ? 'Link reset password sudah kadaluarsa. Silakan minta link baru dari halaman login.'
+              : `Link reset password tidak valid: ${error.message}`,
+          });
+        } else {
+          console.log('[reset-password] verifyOtp success');
+          setState({ phase: 'ready' });
+        }
+        return;
+      }
+
+      // Implicit flow: access_token in URL hash (legacy)
+      const accessToken = hashParams.get('access_token');
+      const refreshToken = hashParams.get('refresh_token') || '';
+
+      console.log('[reset-password] hash params:', Object.fromEntries(hashParams));
+
+      if (accessToken && type === 'recovery') {
+        console.log('[reset-password] Implicit flow detected');
+        window.history.replaceState(null, '', window.location.pathname);
+
+        const { error } = await supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken,
+        });
+
+        if (cancelled) return;
+
+        if (error) {
+          console.log('[reset-password] setSession error:', error);
+          setState({
+            phase: 'error',
+            message: `Link reset password tidak valid: ${error.message}`,
+          });
+        } else {
+          console.log('[reset-password] setSession success');
+          setState({ phase: 'ready' });
+        }
+        return;
+      }
+
+      console.log('[reset-password] No tokens found in URL, checking existing session');
+
+      // Check if already have a session (proxy may have exchanged cookies)
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!cancelled) {
+        if (session) {
+          setState({ phase: 'ready' });
+        } else {
+          setState({
+            phase: 'error',
+            message: 'Link reset password tidak valid. Silakan minta link baru dari halaman login.',
+          });
+        }
+      }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
+    verify();
+
+    return () => { cancelled = true; };
   }, []);
 
   return state;
@@ -51,7 +134,7 @@ function ResetPasswordForm() {
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
   const router = useRouter();
-  const { tokens, checking, error: tokenError } = useRecoveryTokens();
+  const recoveryState = useRecoverySession();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -61,33 +144,25 @@ function ResetPasswordForm() {
       return;
     }
 
-    if (!tokens) {
-      setError('Token reset tidak ditemukan. Silakan minta link baru.');
-      return;
-    }
-
     setLoading(true);
     setError('');
 
     try {
-      const res = await fetch('/api/auth/reset-password', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          access_token: tokens.access_token,
-          refresh_token: tokens.refresh_token,
-          password,
-        }),
+      const supabase = createClient();
+
+      const { error: updateError } = await supabase.auth.updateUser({
+        password,
       });
 
-      const data = await res.json();
-
-      if (!res.ok) {
-        setError(data.error || 'Gagal memperbarui password.');
+      if (updateError) {
+        setError(updateError.message || 'Gagal memperbarui password.');
         return;
       }
 
-      setSuccess(data.message);
+      // Sign out after password change
+      await supabase.auth.signOut();
+
+      setSuccess('Password berhasil diperbarui. Silakan masuk dengan password baru.');
       setTimeout(() => router.push('/login'), 2500);
     } catch {
       setError('Tidak dapat terhubung ke server.');
@@ -96,22 +171,22 @@ function ResetPasswordForm() {
     }
   };
 
-  // ── Checking state ────────────────────────────────────────────────────
+  // ── Checking ────────────────────────────────────────────────────────────
 
-  if (checking) {
+  if (recoveryState.phase === 'checking') {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <div className="flex flex-col items-center gap-3">
           <Loader2 className="h-8 w-8 text-primary animate-spin" />
-          <p className="text-sm text-muted-foreground">Memeriksa link...</p>
+          <p className="text-sm text-muted-foreground">Memverifikasi link reset password...</p>
         </div>
       </div>
     );
   }
 
-  // ── Invalid token ─────────────────────────────────────────────────────
+  // ── Error ───────────────────────────────────────────────────────────────
 
-  if (tokenError) {
+  if (recoveryState.phase === 'error') {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <motion.div
@@ -123,7 +198,7 @@ function ResetPasswordForm() {
             <AlertTriangle className="h-6 w-6 text-destructive" />
           </div>
           <h2 className="text-xl font-semibold text-foreground mb-2">Link Tidak Valid</h2>
-          <p className="text-sm text-muted-foreground mb-6">{tokenError}</p>
+          <p className="text-sm text-muted-foreground mb-6">{recoveryState.message}</p>
           <Button onClick={() => router.push('/login')} className="w-full">
             Kembali ke Login
           </Button>
@@ -132,7 +207,7 @@ function ResetPasswordForm() {
     );
   }
 
-  // ── Success state ─────────────────────────────────────────────────────
+  // ── Success ─────────────────────────────────────────────────────────────
 
   if (success) {
     return (
@@ -153,7 +228,7 @@ function ResetPasswordForm() {
     );
   }
 
-  // ── Password form ─────────────────────────────────────────────────────
+  // ── Password form ───────────────────────────────────────────────────────
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4 sm:p-6 overflow-hidden">

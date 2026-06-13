@@ -12,6 +12,7 @@ const PUBLIC_ROUTES = [
   '/api/auth/me',
   '/api/auth/forgot-password',
   '/api/auth/reset-password',
+  '/api/auth/resend-confirmation',
   '/_next',
   '/favicon.ico',
   '/robots.txt',

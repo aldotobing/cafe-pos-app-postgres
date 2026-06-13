@@ -9,6 +9,9 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { ErrorMessage, getErrorMessage } from '@/components/ui/error-message';
+import Turnstile from '@/components/turnstile';
+
+const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || '0x4AAAAAABe3cRiTdtHdktvC';
 
 // ─── Validation ────────────────────────────────────────────────────────────
 
@@ -98,6 +101,8 @@ function LoginForm() {
   const [demoLoading, setDemoLoading] = useState(false);
   const [navigating, setNavigating] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const [captchaReady, setCaptchaReady] = useState(false);
   const nameInputRef = useRef<HTMLInputElement>(null);
   const emailInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
@@ -110,6 +115,8 @@ function LoginForm() {
     setSuccess('');
     setFieldErrors({});
     setConfirmPassword('');
+    setCaptchaToken(null);
+    setCaptchaReady(false);
     setAuthMode(mode);
   };
 
@@ -127,15 +134,14 @@ function LoginForm() {
   // ── Demo login ────────────────────────────────────────────────────────
 
   const handleDemoLogin = async () => {
+    if (!captchaToken) {
+      setError('Harap selesaikan verifikasi keamanan.');
+      return;
+    }
     setDemoLoading(true);
     setError('');
     try {
-      const userData = await signIn('demo@kasirku.biz.id', 'akundemo');
-      if (!userData.is_approved) {
-        setError('Akun demo sedang tidak aktif. Silakan gunakan akun pribadi.');
-        setDemoLoading(false);
-        return;
-      }
+      const userData = await signIn('demo@kasirku.biz.id', 'akundemo', captchaToken || undefined);
       setNavigating(true);
       router.push(redirectTo);
     } catch (err: any) {
@@ -153,13 +159,16 @@ function LoginForm() {
       setFieldErrors(errors);
       return;
     }
+    if (!captchaToken) {
+      setError('Harap selesaikan verifikasi keamanan.');
+      return;
+    }
     setFieldErrors({});
     setLoading(true);
     setError('');
 
     try {
-      const userData = await signIn(email, password);
-      if (!userData.is_approved) throw new Error('pending');
+      const userData = await signIn(email, password, captchaToken || undefined);
       const targetPath =
         redirectTo !== '/'
           ? redirectTo
@@ -173,16 +182,30 @@ function LoginForm() {
       setNavigating(true);
       router.push(targetPath);
     } catch (err: any) {
-      if (err.message === 'pending') {
+      if (err.code === 'EMAIL_NOT_CONFIRMED' || err.status === 403) {
         setError(
           <span>
-            Akun Anda menunggu persetujuan. Silakan hubungi{' '}
-            <a
-              href={`mailto:aldo_tobing@hotmail.com?subject=Aktivasi Akun Kasirku&body=Halo Admin, saya ingin meminta aktivasi untuk akun saya dengan email: ${email}`}
+            Silakan verifikasi email Anda terlebih dahulu. Cek inbox atau folder spam Anda.{' '}
+            <button
+              onClick={async () => {
+                setLoading(true);
+                try {
+                  await fetch('/api/auth/resend-confirmation', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email }),
+                  });
+                  setError('Link verifikasi baru telah dikirim. Silakan cek email Anda.');
+                } catch {
+                  setError('Gagal mengirim ulang verifikasi. Silakan coba lagi.');
+                } finally {
+                  setLoading(false);
+                }
+              }}
               className="text-primary hover:underline font-bold"
             >
-              administrator
-            </a>
+              Kirim ulang verifikasi
+            </button>
             .
           </span>,
         );
@@ -202,19 +225,25 @@ function LoginForm() {
       setFieldErrors(errors);
       return;
     }
+    if (!captchaToken) {
+      setError('Harap selesaikan verifikasi keamanan.');
+      return;
+    }
     setFieldErrors({});
     setLoading(true);
     setError('');
     setSuccess('');
 
     try {
-      await signUp(email, password, fullName);
-      setSuccess('Pendaftaran berhasil! Silakan masuk.');
+      await signUp(email, password, fullName, captchaToken || undefined);
+      setSuccess('Akun berhasil dibuat! Silakan cek email Anda untuk verifikasi, lalu masuk.');
       setEmail('');
       setPassword('');
       setFullName('');
       setConfirmPassword('');
-      setTimeout(() => goTo('login'), 2000);
+      setCaptchaToken(null);
+      setCaptchaReady(false);
+      setTimeout(() => goTo('login'), 3000);
     } catch (err: any) {
       setError(getErrorMessage(err));
     } finally {
@@ -243,7 +272,7 @@ function LoginForm() {
       const res = await fetch('/api/auth/forgot-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email, captchaToken }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -383,7 +412,7 @@ function LoginForm() {
                       required
                       placeholder="Nama lengkap Anda"
                       className="pl-10 peer"
-                      disabled={loading || navigating}
+                      disabled={loading || navigating || !captchaReady}
                       aria-invalid={!!fieldErrors.fullName}
                     />
                     <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground peer-focus:text-primary transition-colors pointer-events-none" />
@@ -405,7 +434,7 @@ function LoginForm() {
                     type="email"
                     placeholder="nama@email.com"
                     className="pl-10 peer"
-                    disabled={loading || navigating}
+                    disabled={loading || navigating || !captchaReady}
                     aria-invalid={!!fieldErrors.email}
                   />
                   <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground peer-focus:text-primary transition-colors pointer-events-none" />
@@ -438,7 +467,7 @@ function LoginForm() {
                         type={showPassword ? 'text' : 'password'}
                         placeholder={authMode === 'signup' ? 'Minimal 6 karakter' : '••••••••'}
                         className="pl-10 pr-10 peer"
-                        disabled={loading || navigating}
+                        disabled={loading || navigating || !captchaReady}
                         aria-invalid={!!fieldErrors.password}
                       />
                       <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground peer-focus:text-primary transition-colors pointer-events-none" />
@@ -469,7 +498,7 @@ function LoginForm() {
                               ? 'border-emerald-500 focus-visible:ring-emerald-500/20'
                               : ''
                           }`}
-                          disabled={loading || navigating}
+                          disabled={loading || navigating || !captchaReady}
                           aria-invalid={!!fieldErrors.confirmPassword}
                         />
                         <ShieldCheck className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground peer-focus:text-primary transition-colors pointer-events-none" />
@@ -490,8 +519,31 @@ function LoginForm() {
                 </>
               )}
 
+              {/* Cloudflare Turnstile (all modes require captcha) */}
+              {(
+                <div className="flex justify-center pt-1">
+                  <Turnstile
+                    siteKey={TURNSTILE_SITE_KEY}
+                    onVerify={(token) => {
+                      setCaptchaToken(token);
+                      setCaptchaReady(true);
+                      setError('');
+                    }}
+                    onError={() => {
+                      setCaptchaToken(null);
+                      setCaptchaReady(false);
+                    }}
+                    onExpire={() => {
+                      setCaptchaToken(null);
+                      setCaptchaReady(false);
+                    }}
+                    theme="auto"
+                  />
+                </div>
+              )}
+
               {/* Submit */}
-              <Button type="submit" disabled={loading || navigating} size="lg" className="w-full mt-2">
+              <Button type="submit" disabled={loading || navigating || !captchaReady} size="lg" className="w-full mt-2">
                 {navigating ? (
                   <>
                     <CheckCircle2 className="h-4 w-4" />
@@ -531,7 +583,7 @@ function LoginForm() {
                 Belum punya akun?{' '}
                 <button
                   onClick={() => goTo('signup')}
-                  disabled={loading || navigating}
+                  disabled={loading || navigating || !captchaReady}
                   className="text-primary font-medium hover:text-primary/85 transition-colors disabled:opacity-50"
                 >
                   Daftar
@@ -542,7 +594,7 @@ function LoginForm() {
                 Sudah punya akun?{' '}
                 <button
                   onClick={() => goTo('login')}
-                  disabled={loading || navigating}
+                  disabled={loading || navigating || !captchaReady}
                   className="text-primary font-medium hover:text-primary/85 transition-colors disabled:opacity-50"
                 >
                   Masuk

@@ -52,7 +52,6 @@ export default function Page() {
   useEffect(() => {
     if (!authLoading && (!user || !userData)) { router.push('/login'); return }
     if (!authLoading && user && userData) {
-      if (!userData.is_approved && userData.role !== 'superadmin') { router.push('/pending-approval'); return }
       if (userData.role === 'cashier' && !userData.cafe_id) { router.push('/login'); return }
       if (userData.role === 'admin' && !userData.cafe_id) { router.push('/create-cafe'); return }
     }

@@ -58,13 +58,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: 'daily',
       priority: 0.5,
     },
-    {
-      url: `${baseUrl}/pending-approval`,
-      lastModified: now,
-      changeFrequency: 'monthly',
-      priority: 0.3,
-    },
-
     // Manajemen Menu & Produk
     {
       url: `${baseUrl}/menu`,

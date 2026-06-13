@@ -12,7 +12,6 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ us
 
     const updateData: any = {};
     if (data.is_active !== undefined) updateData.is_active = data.is_active;
-    if (data.is_approved !== undefined) updateData.is_approved = data.is_approved;
     if (data.full_name !== undefined) updateData.full_name = data.full_name;
 
     const { error } = await supabaseAdmin
