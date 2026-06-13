@@ -249,7 +249,7 @@ export function MobileCart() {
       <AnimatePresence>
         {!isExpanded && cart.length > 0 && (
           <motion.div
-            className="bg-primary text-primary-foreground rounded-lg p-3 shadow-lg cursor-pointer"
+            className="bg-primary text-primary-foreground rounded-xl p-3 shadow-lg cursor-pointer"
             initial={{ y: 20, opacity: 0 }}
             animate={{
               y: 0,
@@ -307,7 +307,7 @@ export function MobileCart() {
               onClick={() => setIsExpanded(false)}
             />
             <motion.div
-              className="fixed inset-x-0 bottom-0 bg-background border-t rounded-t-lg shadow-xl z-[55] flex flex-col max-h-[90vh]"
+              className="fixed inset-x-0 bottom-0 bg-background border-t rounded-t-2xl shadow-xl z-[55] flex flex-col max-h-[90vh] overflow-hidden"
               initial={{ y: "100%" }}
               animate={{ y: 0 }}
               exit={{ y: "100%" }}
