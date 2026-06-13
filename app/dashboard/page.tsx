@@ -178,41 +178,51 @@ export default function DashboardPage() {
           animate="visible"
           variants={containerVariants}
         >
-          <motion.div variants={itemVariants} className="h-full">
-            <StatCard
-              title="Penjualan Hari Ini"
-              value={animatedRevenue}
-              description="Total pendapatan hari ini"
-              icon={DollarSign}
-              iconClassName="text-emerald-500 bg-emerald-500/10"
-            />
+          {/* Combined card: mobile only */}
+          <motion.div variants={itemVariants} className="h-full md:hidden col-span-2">
+            <div className="rounded-lg border border-border bg-card shadow-subtle p-3 h-full">
+              <div className="flex divide-x divide-border h-full items-stretch">
+                <div className="flex-1 min-w-0 px-3 flex flex-col">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground/70 mb-0.5">Penjualan</p>
+                  <p className="text-base font-bold truncate" title={String(animatedRevenue)}>{animatedRevenue}</p>
+                </div>
+                <div className="px-3 flex flex-col">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground/70 mb-0.5">Transaksi</p>
+                  <p className="text-base font-bold">{animatedTxCount}</p>
+                </div>
+              </div>
+            </div>
           </motion.div>
-          <motion.div variants={itemVariants} className="h-full">
-            <StatCard
-              title="Transaksi Hari Ini"
-              value={animatedTxCount}
-              description="Jumlah bon tercetak"
-              icon={CreditCard}
-              iconClassName="text-blue-400 bg-blue-400/10"
-            />
+
+          {/* Desktop: separate cards */}
+          <motion.div variants={itemVariants} className="h-full hidden md:block">
+            <StatCard title="Penjualan Hari Ini" value={animatedRevenue} description="" icon={DollarSign} iconClassName="text-emerald-500 bg-emerald-500/10" />
           </motion.div>
-          <motion.div variants={itemVariants} className="h-full">
-            <StatCard
-              title="Menu Terlaris"
-              value={topItem}
-              description={topItemCount > 0 ? `${topItemCount}x dipesan hari ini` : "Item paling banyak dipesan"}
-              icon={TrendingUp}
-              iconClassName="text-amber-400 bg-amber-400/10"
-            />
+          <motion.div variants={itemVariants} className="h-full hidden md:block">
+            <StatCard title="Transaksi Hari Ini" value={animatedTxCount} description="" icon={CreditCard} iconClassName="text-blue-400 bg-blue-400/10" />
           </motion.div>
-          <motion.div variants={itemVariants} className="h-full">
-            <StatCard
-              title="Total Produk"
-              value={animatedMenuCount}
-              description="Menu aktif saat ini"
-              icon={Package}
-              iconClassName="text-purple-400 bg-purple-400/10"
-            />
+
+          {/* Menu Terlaris: compact on mobile, full StatCard on md+ */}
+          <motion.div variants={itemVariants} className="h-full md:hidden">
+            <div className="rounded-lg border border-border bg-card shadow-subtle p-3 h-full flex flex-col">
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground/70 mb-0.5">Menu Terlaris</p>
+              <p className="text-base font-bold truncate" title={String(topItem)}>{topItem}</p>
+              {topItemCount > 0 && <p className="text-[10px] text-muted-foreground">{topItemCount}x dipesan</p>}
+            </div>
+          </motion.div>
+          <motion.div variants={itemVariants} className="h-full hidden md:block">
+            <StatCard title="Menu Terlaris" value={topItem} description={topItemCount > 0 ? `${topItemCount}x dipesan` : ""} icon={TrendingUp} iconClassName="text-amber-400 bg-amber-400/10" />
+          </motion.div>
+
+          {/* Total Produk: compact on mobile, full StatCard on md+ */}
+          <motion.div variants={itemVariants} className="h-full md:hidden">
+            <div className="rounded-lg border border-border bg-card shadow-subtle p-3 h-full flex flex-col">
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground/70 mb-0.5">Total Produk</p>
+              <p className="text-base font-bold">{animatedMenuCount}</p>
+            </div>
+          </motion.div>
+          <motion.div variants={itemVariants} className="h-full hidden md:block">
+            <StatCard title="Total Produk" value={animatedMenuCount} description="" icon={Package} iconClassName="text-purple-400 bg-purple-400/10" />
           </motion.div>
         </motion.div>
 
