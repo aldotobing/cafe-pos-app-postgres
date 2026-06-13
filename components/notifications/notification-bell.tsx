@@ -1,14 +1,14 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { Bell, Package, AlertTriangle, Clock, ShoppingCart, X } from 'lucide-react'
+import { Bell, Package, AlertTriangle, Clock, ShoppingCart, Megaphone, X } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { cn } from '@/lib/utils'
 import Link from 'next/link'
 import useSWR from 'swr'
 
-type NotifType = 'low_stock' | 'out_of_stock' | 'trial_expiring' | 'new_transaction' | 'target_achieved'
+type NotifType = 'low_stock' | 'out_of_stock' | 'trial_expiring' | 'new_transaction' | 'target_achieved' | 'broadcast'
 
 interface Notification {
   id: string
@@ -51,6 +51,12 @@ const typeConfig: Record<NotifType, { icon: typeof Bell; color: string; bg: stri
     color: 'text-emerald-600 dark:text-emerald-400',
     bg: 'bg-emerald-100 dark:bg-emerald-500/15',
     link: () => '/expenses'
+  },
+  broadcast: {
+    icon: Megaphone,
+    color: 'text-amber-600 dark:text-amber-400',
+    bg: 'bg-amber-100 dark:bg-amber-500/15',
+    link: (d: any) => d?.url || '/dashboard'
   }
 }
 
