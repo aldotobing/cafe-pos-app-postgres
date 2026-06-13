@@ -238,7 +238,14 @@ export async function POST(request: Request) {
 
     if (error) {
       console.error('Transaction POST error:', error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      // Map PostgreSQL error codes to user-friendly Indonesian messages
+      if (error.code === '23505') {
+        return NextResponse.json({
+          error: 'Nomor transaksi bentrok (duplikat). Silakan coba lagi.',
+          retry: true,
+        }, { status: 409 });
+      }
+      return NextResponse.json({ error: 'Gagal menyimpan transaksi. Silakan coba lagi.' }, { status: 500 });
     }
 
     let transactionItems: any[] = [];

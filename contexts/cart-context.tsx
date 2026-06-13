@@ -3,7 +3,8 @@
 import React, { createContext, useContext, useState, ReactNode } from "react";
 import { mutate as globalMutate } from "swr";
 import type { CartItem, MenuItem, Transaction, PaymentMethod } from "../types";
-import { transactionsApi } from "../lib/api";
+import { transactionsApi, ApiError } from "../lib/api";
+import { FetchError } from "../lib/fetch-client";
 import { toast } from "sonner";
 
 interface CartContextType {
@@ -221,8 +222,13 @@ export function CartProvider({ children }: { children: ReactNode }) {
       setCart([]);
 
       if (currentCafeId) {
+        // Invalidate both the legacy REST key and the paginated-transactions SWR key
         globalMutate(
-          (key) => typeof key === 'string' && key.includes('/api/rest/transactions') && key.includes(`cafe_id=${currentCafeId}`),
+          (key) => {
+            if (typeof key === 'string' && key.includes('/api/rest/transactions') && key.includes(`cafe_id=${currentCafeId}`)) return true;
+            if (Array.isArray(key) && key[0] === 'paginated-transactions' && key[1] === currentCafeId) return true;
+            return false;
+          },
           { revalidate: true }
         ).then(() => {
           if (typeof window !== "undefined") {
@@ -264,6 +270,15 @@ export function CartProvider({ children }: { children: ReactNode }) {
       }
 
       toast.error("Gagal menyimpan transaksi");
+      if (e instanceof ApiError && e.message) {
+        toast.error(e.message, { duration: 6000 });
+      } else if (e instanceof FetchError && e.isNetworkError) {
+        toast.error('Tidak dapat terhubung ke server. Periksa koneksi internet.', { duration: 6000 });
+      } else if (e instanceof Error && e.message && !e.message.includes('500')) {
+        toast.error(e.message);
+      } else {
+        toast.error('Gagal menyimpan transaksi. Silakan coba lagi.');
+      }
       return null;
     }
   };
