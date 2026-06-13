@@ -56,13 +56,17 @@ const typeConfig: Record<NotifType, { icon: typeof Bell; color: string; bg: stri
 
 const PAGE_SIZE = 10
 
+// Module-level cache of read notification IDs so the badge doesn't blink
+// when the component remounts during page navigation
+const READ_CACHE = new Set<string>()
+
 const fetcher = (url: string) => fetch(url, { credentials: 'include' }).then(r => r.json())
 
 export function NotificationBell({ cafeId }: { cafeId?: number | null }) {
   const [open, setOpen] = useState(false)
   const [shaking, setShaking] = useState(false)
-  const [readIds, setReadIds] = useState<Set<string>>(new Set())
   const prevLenRef = useRef(0)
+  const patchingRef = useRef(false)
 
   const { data, mutate } = useSWR<{ notifications: Notification[]; total: number; hasMore: boolean }>(
     cafeId ? `/api/notifications?limit=${PAGE_SIZE}&offset=0` : null,
@@ -112,7 +116,16 @@ export function NotificationBell({ cafeId }: { cafeId?: number | null }) {
 
   // Only count unread from SWR data (latest), not older batches
   const latestNotifications = data?.notifications ?? []
-  const unread = latestNotifications.filter(n => !n.is_read && !readIds.has(n.id)).length
+  const unread = latestNotifications.filter(n => !n.is_read && !READ_CACHE.has(n.id)).length
+
+  // Persist unread count across remounts to prevent badge blink during navigation.
+  // When data is undefined (SWR still loading), reuse the last known count
+  // instead of flashing 0.
+  const lastUnreadRef = useRef(0)
+  const displayedUnread = data ? unread : lastUnreadRef.current
+  useEffect(() => {
+    if (data) lastUnreadRef.current = unread
+  }, [unread, data])
 
   useEffect(() => {
     if (latestNotifications.length > prevLenRef.current && prevLenRef.current > 0) {
@@ -124,22 +137,32 @@ export function NotificationBell({ cafeId }: { cafeId?: number | null }) {
   }, [latestNotifications.length])
 
   const markAllRead = useCallback(async () => {
-    if (!cafeId || unread === 0) return
-    const ids = new Set(latestNotifications.filter(n => !n.is_read).map(n => n.id))
-    setReadIds(prev => {
-      const next = new Set(prev)
-      ids.forEach(id => next.add(id))
-      return next
-    })
-    fetch('/api/notifications', { method: 'PATCH', credentials: 'include' }).catch(() => {})
-  }, [cafeId, unread, latestNotifications])
+    if (!cafeId || unread === 0 || patchingRef.current) return
+    patchingRef.current = true
+    // Optimistically mark as read in the module-level cache so badge updates instantly
+    // and survives remounts during navigation
+    latestNotifications.filter(n => !n.is_read).forEach(n => READ_CACHE.add(n.id))
+    try {
+      // Await the PATCH, then mutate so SWR re-fetches confirmed server state
+      await fetch('/api/notifications', { method: 'PATCH', credentials: 'include' })
+      await mutate()
+    } catch {
+      // If PATCH fails, remove from cache so they show as unread again
+      latestNotifications.filter(n => !n.is_read).forEach(n => READ_CACHE.delete(n.id))
+    } finally {
+      patchingRef.current = false
+    }
+  }, [cafeId, unread, latestNotifications, mutate])
 
   return (
     <Popover open={open} onOpenChange={(v) => {
       setOpen(v)
       if (v) {
-        mutate()
-        if (unread > 0) markAllRead()
+        if (unread > 0) {
+          markAllRead() // mutates SWR after PATCH completes
+        } else {
+          mutate() // refresh list even if nothing to mark
+        }
       }
     }}>
       <PopoverTrigger asChild>
@@ -152,11 +175,11 @@ export function NotificationBell({ cafeId }: { cafeId?: number | null }) {
             'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
             shaking && 'animate-shake'
           )}
-          aria-label={`Notifikasi${unread > 0 ? ` (${unread})` : ''}`}
+          aria-label={`Notifikasi${displayedUnread > 0 ? ` (${displayedUnread})` : ''}`}
         >
           <Bell className="h-[18px] w-[18px]" />
           <AnimatePresence>
-            {unread > 0 && (
+            {displayedUnread > 0 && (
               <motion.span
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
@@ -164,7 +187,7 @@ export function NotificationBell({ cafeId }: { cafeId?: number | null }) {
                 transition={{ type: 'spring', stiffness: 500, damping: 30 }}
                 className="absolute -top-0.5 -right-0.5 h-4 min-w-[1rem] rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center px-1 shadow-sm"
               >
-                {unread > 9 ? '9+' : unread}
+                {displayedUnread > 9 ? '9+' : displayedUnread}
               </motion.span>
             )}
           </AnimatePresence>
@@ -182,14 +205,14 @@ export function NotificationBell({ cafeId }: { cafeId?: number | null }) {
           <span className="text-sm font-semibold">Notifikasi</span>
           <div className="flex items-center gap-2">
             <AnimatePresence>
-              {unread > 0 && (
+              {displayedUnread > 0 && (
                 <motion.span
                   initial={{ opacity: 0, x: 10 }}
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: 10 }}
                   className="text-xs text-muted-foreground"
                 >
-                  {unread} baru
+                  {displayedUnread} baru
                 </motion.span>
               )}
             </AnimatePresence>
