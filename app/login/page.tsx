@@ -110,6 +110,21 @@ function LoginForm() {
   const redirectTo = searchParams.get('redirect') || '/';
   const { signUp, signIn } = useAuth();
 
+  // Show banner when arriving from email confirmation
+  useEffect(() => {
+    const verified = searchParams.get('verified');
+    if (verified === 'pending') {
+      setSuccess('Email verifikasi telah dikirim. Silakan cek inbox dan klik link konfirmasi, lalu login.');
+    }
+    // Check hash for signup confirmation redirect
+    const hash = window.location.hash.substring(1);
+    const hashParams = new URLSearchParams(hash);
+    if (hashParams.get('type') === 'signup') {
+      setSuccess('Email berhasil dikonfirmasi! Silakan login.');
+      window.history.replaceState(null, '', '/login');
+    }
+  }, []);
+
   const goTo = (mode: 'login' | 'signup' | 'forgot') => {
     setError('');
     setSuccess('');

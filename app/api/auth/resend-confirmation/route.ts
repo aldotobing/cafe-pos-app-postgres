@@ -24,13 +24,17 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Email diperlukan" }, { status: 400 });
     }
 
+    const proto = request.headers.get('x-forwarded-proto') || 'https';
+    const host = request.headers.get('x-forwarded-host') || request.headers.get('host') || 'kasirku.biz.id';
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || `${proto}://${host}`;
+
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     const { error } = await supabase.auth.resend({
       type: 'signup',
       email,
       options: {
-        emailRedirectTo: new URL('/login', request.url).toString(),
+        emailRedirectTo: `${appUrl}/login`,
       },
     });
 

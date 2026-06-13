@@ -52,9 +52,11 @@ export async function POST(request: Request) {
     const supabase = createClient(supabaseUrl, supabaseKey)
 
     // Sign up dengan Supabase Auth — email confirmation replaces manual approval
-    // Build redirect URL using origin from request (works in dev & production)
-    const origin = new URL(request.url).origin;
-    const redirectUrl = `${origin}/login`;
+    // Build redirect URL. Use request headers first, fall back to env, then production URL.
+    const proto = request.headers.get('x-forwarded-proto') || 'https';
+    const host = request.headers.get('x-forwarded-host') || request.headers.get('host') || 'kasirku.biz.id';
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || `${proto}://${host}`;
+    const redirectUrl = `${appUrl}/login`;
 
     const { data, error } = await supabase.auth.signUp({
       email,
