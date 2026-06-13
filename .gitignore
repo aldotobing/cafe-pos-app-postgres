@@ -39,3 +39,5 @@ check-redis-cli.ts
 .claude.json
 .qwen/settings.json.orig
 .qwen/skills/
+
+# Dep review test
