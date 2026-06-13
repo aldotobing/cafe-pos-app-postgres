@@ -136,27 +136,29 @@ CREATE TRIGGER on_auth_user_created
 -- 4. TRANSACTION NUMBER GENERATOR
 -- ============================================================================
 
+-- Counter table for atomic transaction number generation (no race condition)
+CREATE TABLE IF NOT EXISTS txn_sequence (
+    date_key TEXT PRIMARY KEY,
+    counter INTEGER NOT NULL DEFAULT 0
+);
+
 -- Function: Generate unique transaction number (TXN-YYYYMMDD-XXXXX)
+-- Uses INSERT ON CONFLICT to atomically increment — safe under concurrency
 CREATE OR REPLACE FUNCTION generate_transaction_number()
 RETURNS TEXT AS $$
 DECLARE
-    v_prefix TEXT;
-    v_sequence INTEGER;
-    v_result TEXT;
+    v_date_key TEXT;
+    v_counter INTEGER;
 BEGIN
-    v_prefix := 'TXN-' || TO_CHAR(NOW() AT TIME ZONE 'Asia/Jakarta', 'YYYYMMDD') || '-';
+    v_date_key := TO_CHAR(NOW() AT TIME ZONE 'Asia/Jakarta', 'YYYYMMDD');
 
-    -- Get next sequence number for today (Jakarta time)
-    SELECT COALESCE(MAX(
-        CAST(SUBSTRING(transaction_number FROM LENGTH(v_prefix) + 1) AS INTEGER)
-    ), 0) + 1
-    INTO v_sequence
-    FROM transactions
-    WHERE transaction_number LIKE v_prefix || '%'
-    AND created_at >= DATE_TRUNC('day', NOW() AT TIME ZONE 'Asia/Jakarta');
-    
-    v_result := v_prefix || LPAD(v_sequence::TEXT, 5, '0');
-    RETURN v_result;
+    INSERT INTO txn_sequence (date_key, counter)
+    VALUES (v_date_key, 1)
+    ON CONFLICT (date_key) DO UPDATE
+    SET counter = txn_sequence.counter + 1
+    RETURNING counter INTO v_counter;
+
+    RETURN 'TXN-' || v_date_key || '-' || LPAD(v_counter::TEXT, 5, '0');
 END;
 $$ LANGUAGE plpgsql;
 
