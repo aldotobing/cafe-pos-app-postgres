@@ -30,6 +30,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from "@/lib/utils";
+import { getJakartaNow } from "@/lib/format";
 
 interface User {
   id: string;
@@ -189,7 +190,7 @@ export default function UserManagement() {
     pending: users.filter(u => !u.is_approved).length,
     active: users.filter(u => u.is_active).length,
     newToday: users.filter(u => {
-      const today = new Date().toISOString().split('T')[0];
+      const today = getJakartaNow().split(' ')[0];
       return u.created_at?.startsWith(today);
     }).length
   }), [users]);

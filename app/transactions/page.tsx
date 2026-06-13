@@ -2,7 +2,7 @@
 
 import { AppShell } from "../../components/app-shell"
 import { useEffect, useMemo, useRef, useState } from "react"
-import { formatRupiah, formatTanggal } from "../../lib/format"
+import { formatRupiah, formatTanggal, getJakartaNow } from "../../lib/format"
 import { useAuth } from '@/lib/auth-context';
 import { useTransactionsPaginated, useCafeSettings } from "@/hooks/use-cafe-data"
 import { transactionsApi } from '@/lib/api'
@@ -26,14 +26,42 @@ import { id } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 
 export default function Page() {
-  // Set default dates to today
-  const today = new Date().toISOString().split('T')[0];
+  // Get today's date in Jakarta timezone (GMT+7), not UTC
+  // new Date().toISOString() returns UTC — between 00:00–07:00 WIB it gives yesterday
+  const getTodayJakarta = () => getJakartaNow().split(' ')[0];
+  const initialToday = getTodayJakarta();
   const [method, setMethod] = useState<string>("Semua")
-  const [from, setFrom] = useState<string>(today)
-  const [to, setTo] = useState<string>(today)
+  const [from, setFrom] = useState<string>(initialToday)
+  const [to, setTo] = useState<string>(initialToday)
+  // Track the day we last set, so we can detect day changes
+  const lastDayRef = useRef(initialToday)
+
+  // Auto-update from/to when the calendar day changes (e.g., app left open past midnight)
+  useEffect(() => {
+    const checkDay = () => {
+      const jakartaToday = getTodayJakarta();
+      if (jakartaToday !== lastDayRef.current) {
+        const previousDay = lastDayRef.current;
+        lastDayRef.current = jakartaToday;
+        // Only update if from/to still match the previous "today" — don't override manual picks
+        setFrom((prev) => (prev === previousDay ? jakartaToday : prev));
+        setTo((prev) => (prev === previousDay ? jakartaToday : prev));
+      }
+    };
+    const interval = setInterval(checkDay, 60_000); // check every minute
+    // Also check on visibility change (user returns to tab after midnight)
+    const onVisible = () => checkDay();
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, []);
   const [userFilter, setUserFilter] = useState<string>("Semua")
   const [statusFilter, setStatusFilter] = useState<'all' | 'completed' | 'voided'>('all')
   const [search, setSearch] = useState("")
+  const [fromOpen, setFromOpen] = useState(false)
+  const [toOpen, setToOpen] = useState(false)
   const [debouncedSearch, setDebouncedSearch] = useState("")
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -306,7 +334,7 @@ export default function Page() {
         <div className="flex items-center gap-2 mb-4">
           <Filter className="h-4 w-4 text-primary" />
           <span className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-muted-foreground">Filter</span>
-          {(userFilter !== 'Semua' || method !== 'Semua' || from !== today || to !== today || statusFilter !== 'all') && (
+          {(userFilter !== 'Semua' || method !== 'Semua' || from !== getTodayJakarta() || to !== getTodayJakarta() || statusFilter !== 'all') && (
             <span className="w-1.5 h-1.5 rounded-full bg-primary" />
           )}
         </div>
@@ -374,7 +402,7 @@ export default function Page() {
           <div className="col-span-2 flex flex-col gap-1.5">
             <label className="text-[10px] font-bold uppercase text-muted-foreground px-1">Periode</label>
             <div className="grid grid-cols-2 gap-x-4">
-              <Popover>
+              <Popover open={fromOpen} onOpenChange={setFromOpen}>
                 <PopoverTrigger asChild>
                   <Button variant="outline" className="w-full h-10 rounded-xl justify-start font-normal text-sm">
                     <CalendarIcon className="w-4 h-4 mr-2 text-muted-foreground shrink-0" />
@@ -382,10 +410,10 @@ export default function Page() {
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0 rounded-xl shadow-xl" align="start">
-                  <Calendar mode="single" selected={parseISO(from)} onSelect={(date) => date && setFrom(format(date, 'yyyy-MM-dd'))} locale={id} />
+                  <Calendar mode="single" selected={parseISO(from)} onSelect={(date) => { if (date) { setFrom(format(date, 'yyyy-MM-dd')); setFromOpen(false); } }} locale={id} />
                 </PopoverContent>
               </Popover>
-              <Popover>
+              <Popover open={toOpen} onOpenChange={setToOpen}>
                 <PopoverTrigger asChild>
                   <Button variant="outline" className="w-full h-10 rounded-xl justify-start font-normal text-sm">
                     <CalendarIcon className="w-4 h-4 mr-2 text-muted-foreground shrink-0" />
@@ -393,7 +421,7 @@ export default function Page() {
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0 rounded-xl shadow-xl" align="start">
-                  <Calendar mode="single" selected={parseISO(to)} onSelect={(date) => date && setTo(format(date, 'yyyy-MM-dd'))} locale={id} />
+                  <Calendar mode="single" selected={parseISO(to)} onSelect={(date) => { if (date) { setTo(format(date, 'yyyy-MM-dd')); setToOpen(false); } }} locale={id} />
                 </PopoverContent>
               </Popover>
             </div>
@@ -401,7 +429,7 @@ export default function Page() {
         </div>
         <div className="flex items-center gap-2 pt-4 mt-4 border-t border-dashed">
           <button
-            onClick={() => { setUserFilter("Semua"); setMethod("Semua"); setFrom(today); setTo(today); setSearch(""); }}
+            onClick={() => { const d = getTodayJakarta(); setUserFilter("Semua"); setMethod("Semua"); setFrom(d); setTo(d); setSearch(""); }}
             className="flex-1 sm:flex-none px-4 h-9 rounded-xl border border-dashed hover:bg-muted/50 transition-all text-xs font-medium text-muted-foreground"
           >
             Reset

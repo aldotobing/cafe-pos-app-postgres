@@ -62,6 +62,7 @@ export default function ProfitReportPage() {
   })
   const [currentPage, setCurrentPage] = useState(1)
   const [exporting, setExporting] = useState(false)
+  const [dateOpen, setDateOpen] = useState(false)
   const itemsPerPage = 10
 
   const toLocalISO = (dateStr: string) => new Date(dateStr + 'T00:00:00').toISOString();
@@ -324,7 +325,7 @@ export default function ProfitReportPage() {
             </div>
 
             <div className="flex items-center gap-2">
-              <Popover>
+              <Popover open={dateOpen} onOpenChange={setDateOpen}>
                 <PopoverTrigger asChild>
                   <Button
                     id="date"
@@ -356,7 +357,7 @@ export default function ProfitReportPage() {
                     mode="range"
                     defaultMonth={date?.from}
                     selected={date}
-                    onSelect={setDate}
+                    onSelect={(newDate) => { setDate(newDate); if (newDate?.from && newDate?.to) setDateOpen(false); }}
                     numberOfMonths={2}
                   />
                 </PopoverContent>

@@ -144,16 +144,16 @@ DECLARE
     v_sequence INTEGER;
     v_result TEXT;
 BEGIN
-    v_prefix := 'TXN-' || TO_CHAR(NOW(), 'YYYYMMDD') || '-';
-    
-    -- Get next sequence number for today
+    v_prefix := 'TXN-' || TO_CHAR(NOW() AT TIME ZONE 'Asia/Jakarta', 'YYYYMMDD') || '-';
+
+    -- Get next sequence number for today (Jakarta time)
     SELECT COALESCE(MAX(
         CAST(SUBSTRING(transaction_number FROM LENGTH(v_prefix) + 1) AS INTEGER)
     ), 0) + 1
     INTO v_sequence
     FROM transactions
     WHERE transaction_number LIKE v_prefix || '%'
-    AND created_at >= DATE_TRUNC('day', NOW());
+    AND created_at >= DATE_TRUNC('day', NOW() AT TIME ZONE 'Asia/Jakarta');
     
     v_result := v_prefix || LPAD(v_sequence::TEXT, 5, '0');
     RETURN v_result;

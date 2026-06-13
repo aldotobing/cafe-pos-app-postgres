@@ -53,10 +53,15 @@ export default function StatistikPage() {
   });
   const [exporting, setExporting] = useState(false);
   const [filterVersion, setFilterVersion] = useState(0);
+  const [dateOpen, setDateOpen] = useState(false);
 
   const handleDateChange = (newDate: DateRange | undefined) => {
     setDate(newDate);
     setFilterVersion((v) => v + 1);
+    // Close popover when range is complete (both from and to selected)
+    if (newDate?.from && newDate?.to) {
+      setDateOpen(false);
+    }
   };
 
   const toLocalISO = (dateStr: string) => new Date(dateStr + 'T00:00:00').toISOString();
@@ -456,7 +461,7 @@ export default function StatistikPage() {
             </div>
  
             <div className="flex items-center gap-2">
-              <Popover>
+              <Popover open={dateOpen} onOpenChange={setDateOpen}>
                 <PopoverTrigger asChild>
                   <Button
                     id="date"
