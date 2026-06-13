@@ -23,9 +23,10 @@ export async function POST(request: Request) {
       );
     }
 
-    // ALWAYS use production URL for redirectTo.
-    // HTTPS→HTTP redirects strip the URL hash (security policy), losing the tokens.
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://kasirku.biz.id';
+    // Use HTTPS URL for redirectTo. HTTPS→HTTP strips the URL hash, losing tokens.
+    const proto = request.headers.get('x-forwarded-proto') || 'https';
+    const host = request.headers.get('x-forwarded-host') || request.headers.get('host') || 'kasirku.biz.id';
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || `${proto}://${host}`;
 
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
