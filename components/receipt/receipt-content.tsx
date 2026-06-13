@@ -34,8 +34,8 @@ export function ReceiptContent({ tx, settings, creatorName }: ReceiptContentProp
             <OptimizedImage
               src={settings.logoUrl}
               alt={settings.name || "Logo"}
-              width={64}
-              height={24}
+              width={48}
+              height={48}
               objectFit="contain"
             />
           </div>
