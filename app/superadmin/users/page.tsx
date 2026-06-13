@@ -62,7 +62,6 @@ export default function UserManagement() {
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
   const [currentPage, setCurrentPage] = useState(1);
   const [expandedCard, setExpandedCard] = useState<string | null>(null);
-  const [liveUpdateActive, setLiveUpdateActive] = useState(false);
   const router = useRouter();
 
   const fetchUsers = async () => {
@@ -132,42 +131,6 @@ export default function UserManagement() {
     }
     if (userData?.role === 'superadmin') fetchUsers();
   }, [userData, authLoading, router]);
-
-  // Polling untuk live online status (setiap 30 detik)
-  useEffect(() => {
-    if (userData?.role !== 'superadmin') return;
-
-    const fetchUserStatus = async () => {
-      try {
-        const response = await fetch('/api/superadmin/users/status');
-        if (response.ok) {
-          const data = await response.json();
-          // Update last_login dari users yang ada
-          setUsers(prevUsers =>
-            prevUsers.map(user => {
-              const statusUpdate = data.users.find((s: any) => s.id === user.id);
-              if (statusUpdate) {
-                return { ...user, last_login: statusUpdate.last_login };
-              }
-              return user;
-            })
-          );
-          setLiveUpdateActive(true);
-        }
-      } catch (err) {
-        // Silent fail, tidak perlu error toast
-        setLiveUpdateActive(false);
-      }
-    };
-
-    // Initial fetch
-    fetchUserStatus();
-
-    // Polling interval
-    const interval = setInterval(fetchUserStatus, 30000); // 30 detik
-
-    return () => clearInterval(interval);
-  }, [userData?.role]);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -269,12 +232,6 @@ export default function UserManagement() {
             <p className="text-sm text-muted-foreground mt-0.5">Kelola hak akses dan persetujuan akun</p>
           </div>
           <div className="flex items-center gap-2">
-            {liveUpdateActive && (
-              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/10 text-emerald-600 text-xs font-medium">
-                <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                <span className="hidden sm:inline">Live Update</span>
-              </div>
-            )}
             <button
               onClick={fetchUsers}
               className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition shadow-sm text-sm font-medium"
