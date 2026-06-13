@@ -86,6 +86,9 @@ export default function ExpensesPage() {
   const [expenseToDelete, setExpenseToDelete] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [amountDisplay, setAmountDisplay] = useState('');
+  const [startOpen, setStartOpen] = useState(false);
+  const [endOpen, setEndOpen] = useState(false);
+  const [expenseDateOpen, setExpenseDateOpen] = useState(false);
 
   const { data: categoriesData, error: categoriesError } = useSWR<{ data: ExpenseCategory[] }>(
     cafeId ? `/api/finance/categories?cafe_id=${cafeId}` : null, apiFetcher, { revalidateOnFocus: false }
@@ -278,7 +281,7 @@ export default function ExpensesPage() {
             <div className="flex flex-col gap-1.5">
               <label className="text-[10px] font-bold uppercase text-muted-foreground px-1">Periode</label>
               <div className="flex gap-2 items-center">
-                <Popover>
+                <Popover open={startOpen} onOpenChange={setStartOpen}>
                   <PopoverTrigger asChild>
                     <Button variant="outline" className="flex-1 justify-start h-9 rounded-lg text-sm font-normal">
                       <CalendarIcon className="w-4 h-4 mr-1.5 text-muted-foreground shrink-0" />
@@ -286,11 +289,11 @@ export default function ExpensesPage() {
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0 rounded-xl" align="start">
-                    <Calendar mode="single" selected={startDate} onSelect={(date) => date && setStartDate(date)} />
+                    <Calendar mode="single" selected={startDate} onSelect={(date) => { if (date) { setStartDate(date); setStartOpen(false); } }} />
                   </PopoverContent>
                 </Popover>
                 <span className="text-muted-foreground text-sm">—</span>
-                <Popover>
+                <Popover open={endOpen} onOpenChange={setEndOpen}>
                   <PopoverTrigger asChild>
                     <Button variant="outline" className="flex-1 justify-start h-9 rounded-lg text-sm font-normal">
                       <CalendarIcon className="w-4 h-4 mr-1.5 text-muted-foreground shrink-0" />
@@ -298,7 +301,7 @@ export default function ExpensesPage() {
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0 rounded-xl" align="start">
-                    <Calendar mode="single" selected={endDate} onSelect={(date) => date && setEndDate(date)} />
+                    <Calendar mode="single" selected={endDate} onSelect={(date) => { if (date) { setEndDate(date); setEndOpen(false); } }} />
                   </PopoverContent>
                 </Popover>
               </div>
@@ -651,7 +654,7 @@ export default function ExpensesPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <Label className="text-sm">Tanggal <span className="text-destructive">*</span></Label>
-                  <Popover>
+                  <Popover open={expenseDateOpen} onOpenChange={setExpenseDateOpen}>
                     <PopoverTrigger asChild>
                       <Button variant="outline" className="w-full justify-start h-10 rounded-lg font-normal">
                         <CalendarIcon className="w-4 h-4 mr-2 text-muted-foreground" />
@@ -659,7 +662,7 @@ export default function ExpensesPage() {
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0 rounded-xl" align="start">
-                      <Calendar mode="single" selected={parseISO(formData.expense_date)} onSelect={(date) => date && setFormData(prev => ({ ...prev, expense_date: format(date, 'yyyy-MM-dd') }))} />
+                      <Calendar mode="single" selected={parseISO(formData.expense_date)} onSelect={(date) => { if (date) { setFormData(prev => ({ ...prev, expense_date: format(date, 'yyyy-MM-dd') })); setExpenseDateOpen(false); } }} />
                     </PopoverContent>
                   </Popover>
                 </div>

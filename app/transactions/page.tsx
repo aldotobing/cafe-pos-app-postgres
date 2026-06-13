@@ -60,6 +60,8 @@ export default function Page() {
   const [userFilter, setUserFilter] = useState<string>("Semua")
   const [statusFilter, setStatusFilter] = useState<'all' | 'completed' | 'voided'>('all')
   const [search, setSearch] = useState("")
+  const [fromOpen, setFromOpen] = useState(false)
+  const [toOpen, setToOpen] = useState(false)
   const [debouncedSearch, setDebouncedSearch] = useState("")
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -400,7 +402,7 @@ export default function Page() {
           <div className="col-span-2 flex flex-col gap-1.5">
             <label className="text-[10px] font-bold uppercase text-muted-foreground px-1">Periode</label>
             <div className="grid grid-cols-2 gap-x-4">
-              <Popover>
+              <Popover open={fromOpen} onOpenChange={setFromOpen}>
                 <PopoverTrigger asChild>
                   <Button variant="outline" className="w-full h-10 rounded-xl justify-start font-normal text-sm">
                     <CalendarIcon className="w-4 h-4 mr-2 text-muted-foreground shrink-0" />
@@ -408,10 +410,10 @@ export default function Page() {
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0 rounded-xl shadow-xl" align="start">
-                  <Calendar mode="single" selected={parseISO(from)} onSelect={(date) => date && setFrom(format(date, 'yyyy-MM-dd'))} locale={id} />
+                  <Calendar mode="single" selected={parseISO(from)} onSelect={(date) => { if (date) { setFrom(format(date, 'yyyy-MM-dd')); setFromOpen(false); } }} locale={id} />
                 </PopoverContent>
               </Popover>
-              <Popover>
+              <Popover open={toOpen} onOpenChange={setToOpen}>
                 <PopoverTrigger asChild>
                   <Button variant="outline" className="w-full h-10 rounded-xl justify-start font-normal text-sm">
                     <CalendarIcon className="w-4 h-4 mr-2 text-muted-foreground shrink-0" />
@@ -419,7 +421,7 @@ export default function Page() {
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0 rounded-xl shadow-xl" align="start">
-                  <Calendar mode="single" selected={parseISO(to)} onSelect={(date) => date && setTo(format(date, 'yyyy-MM-dd'))} locale={id} />
+                  <Calendar mode="single" selected={parseISO(to)} onSelect={(date) => { if (date) { setTo(format(date, 'yyyy-MM-dd')); setToOpen(false); } }} locale={id} />
                 </PopoverContent>
               </Popover>
             </div>
