@@ -206,7 +206,7 @@ function LoginForm() {
       if (err.code === 'EMAIL_NOT_CONFIRMED' || err.status === 403) {
         setError(
           <span>
-            Silakan verifikasi email Anda terlebih dahulu. Cek inbox atau folder spam Anda.{' '}
+            Silakan verifikasi email Anda terlebih dahulu. Cek inbox dan folder spam/junk.{' '}
             <button
               onClick={async () => {
                 setLoading(true);
@@ -216,7 +216,7 @@ function LoginForm() {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ email }),
                   });
-                  setError('Link verifikasi baru telah dikirim. Silakan cek email Anda.');
+                  setError('Link verifikasi baru telah dikirim. Cek email Anda (termasuk spam/junk).');
                 } catch {
                   setError('Gagal mengirim ulang verifikasi. Silakan coba lagi.');
                 } finally {
@@ -258,7 +258,7 @@ function LoginForm() {
 
     try {
       await signUp(email, password, fullName, captchaToken || undefined);
-      setSuccess('Akun berhasil dibuat! Silakan cek email Anda untuk verifikasi, lalu masuk.');
+      setSuccess('Akun berhasil dibuat! Cek email Anda (termasuk spam/junk) untuk verifikasi, lalu masuk.');
       setEmail('');
       setPassword('');
       setFullName('');

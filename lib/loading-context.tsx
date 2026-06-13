@@ -40,8 +40,15 @@ export function LoadingProvider({ children }: { children: ReactNode }) {
     setIsContentLoading(false);
   };
 
+  // Lock body scroll when global loading is shown
+  useEffect(() => {
+    if (isGlobalLoading) {
+      document.body.style.overflow = 'hidden';
+      return () => { document.body.style.overflow = ''; };
+    }
+  }, [isGlobalLoading]);
+
   // Disable content loading on route changes to prevent dizziness
-  // Show content loading when route changes, then hide after a short delay
   // useEffect(() => {
   //   if (pathname) {
   //     showContentLoading();
@@ -67,12 +74,13 @@ export function LoadingProvider({ children }: { children: ReactNode }) {
       {/* Global Loading Overlay - for major operations */}
       <AnimatePresence>
         {isGlobalLoading && (
-          <motion.div 
-            className="fixed inset-0 z-[9999] flex items-center justify-center bg-background"
+          <motion.div
+            className="fixed inset-0 z-[9999] flex items-center justify-center bg-background overflow-hidden"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
+            onTouchMove={(e) => e.preventDefault()}
           >
             <div className="flex flex-col items-center">
               <motion.div

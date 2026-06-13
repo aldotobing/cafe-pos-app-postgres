@@ -56,7 +56,7 @@ export default function VerifyEmailPage() {
         <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
           <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10 text-center space-y-4">
             <p className="text-gray-600">
-              Kami telah mengirim link verifikasi ke email Anda. Silakan cek inbox atau folder spam Anda dan klik link tersebut untuk mengaktifkan akun.
+              Kami telah mengirim link verifikasi ke email Anda. Silakan cek inbox dan folder spam/junk, lalu klik link tersebut untuk mengaktifkan akun.
             </p>
             <p className="text-sm text-muted-foreground">
               Setelah verifikasi, refresh halaman ini untuk melanjutkan.

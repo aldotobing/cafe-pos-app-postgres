@@ -38,6 +38,16 @@ export function CartPanel() {
   const { promotions } = usePromotions(userData?.cafe_id)
   const [appliedPromoName, setAppliedPromoName] = useState<string | null>(null)
   const manualDiscountSet = useRef(false)
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const prevCartLen = useRef(cart.length)
+
+  // Auto-scroll to bottom when new item added
+  useEffect(() => {
+    if (cart.length > prevCartLen.current && scrollRef.current) {
+      scrollRef.current.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
+    }
+    prevCartLen.current = cart.length
+  }, [cart.length])
 
   const loadingMessages = useMemo(() => [
     "Memproses...",
@@ -132,7 +142,7 @@ export function CartPanel() {
       </div>
 
       {/* Items */}
-      <div className="flex-1 overflow-y-auto px-4 py-3 scrollbar-custom relative">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-3 scrollbar-custom relative">
         {cart.length === 0 && !isProcessing && (
           <div className="flex flex-col items-center justify-center h-full text-center">
             <div className="w-14 h-14 rounded-full bg-muted/60 flex items-center justify-center mb-3">
@@ -361,6 +371,7 @@ export function CartPanel() {
           disabled={cart.length === 0 || isProcessing}
           onClick={async () => {
             setIsProcessing(true);
+            scrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
             try {
               const menuMap = new Map((menu as any[]).map((m: any) => [m.id, m]));
               const tx = await checkout(payment, orderNote, user?.id, userData?.full_name, userData?.cafe_id, settings, menuMap, {
