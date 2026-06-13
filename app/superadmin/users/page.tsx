@@ -57,7 +57,7 @@ export default function UserManagement() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'active' | 'inactive'>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
   const [sortField, setSortField] = useState<SortField>('created');
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
   const [currentPage, setCurrentPage] = useState(1);
@@ -79,21 +79,9 @@ export default function UserManagement() {
     }
   };
 
-  const toggleApproval = async (userId: string, currentApproval: boolean) => {
-    try {
-      const response = await fetch(`/api/rest/users/${userId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ is_approved: !currentApproval ? 1 : 0 })
-      });
-      if (!response.ok) throw new Error('Failed to update approval');
-      setUsers(users.map(user =>
-        user.id === userId ? { ...user, is_approved: !currentApproval } : user
-      ));
-      toast.success(currentApproval ? 'Persetujuan dicabut' : 'Pengguna disetujui');
-    } catch (err) {
-      toast.error('Gagal memperbarui status persetujuan');
-    }
+  const toggleApproval = async (userId: string) => {
+    // No-op: email confirmation replaces manual approval
+    toast.info('Email confirmation sekarang menggantikan approval manual.');
   };
 
   const toggleActive = async (userId: string, currentActive: boolean) => {
@@ -187,8 +175,8 @@ export default function UserManagement() {
 
   const stats = useMemo(() => ({
     total: users.length,
-    pending: users.filter(u => !u.is_approved).length,
     active: users.filter(u => u.is_active).length,
+    inactive: users.filter(u => !u.is_active).length,
     newToday: users.filter(u => {
       const today = getJakartaNow().split(' ')[0];
       return u.created_at?.startsWith(today);
@@ -204,7 +192,6 @@ export default function UserManagement() {
 
       const matchesStatus =
         statusFilter === 'all' ? true :
-        statusFilter === 'pending' ? !user.is_approved :
         statusFilter === 'active' ? user.is_active :
         !user.is_active;
 
@@ -302,8 +289,8 @@ export default function UserManagement() {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           {[
             { label: 'Total', value: stats.total, icon: Users, color: 'bg-blue-500/10 text-blue-600' },
-            { label: 'Pending', value: stats.pending, icon: ShieldAlert, color: 'bg-amber-500/10 text-amber-600' },
             { label: 'Aktif', value: stats.active, icon: CheckCircle2, color: 'bg-emerald-500/10 text-emerald-600' },
+            { label: 'Nonaktif', value: stats.inactive, icon: ShieldAlert, color: 'bg-amber-500/10 text-amber-600' },
             { label: 'Baru Hari Ini', value: stats.newToday, icon: UserPlus, color: 'bg-indigo-500/10 text-indigo-600' },
           ].map((stat, i) => (
             <motion.div
@@ -346,7 +333,6 @@ export default function UserManagement() {
                   className="bg-background border border-border/60 rounded-lg pl-9 pr-8 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/20 transition appearance-none cursor-pointer"
                 >
                   <option value="all">Semua Status</option>
-                  <option value="pending">Menunggu</option>
                   <option value="active">Aktif</option>
                   <option value="inactive">Nonaktif</option>
                 </select>
@@ -454,19 +440,6 @@ export default function UserManagement() {
                                     {user.is_active ? 'Aktif' : 'Nonaktif'}
                                   </span>
                                 </div>
-                                <div className="flex items-center gap-2">
-                                  {user.is_approved ? (
-                                    <ShieldCheck className="w-3 h-3 text-emerald-500" />
-                                  ) : (
-                                    <ShieldAlert className="w-3 h-3 text-amber-500" />
-                                  )}
-                                  <span className={cn(
-                                    "text-xs",
-                                    user.is_approved ? "text-emerald-600" : "text-amber-600"
-                                  )}>
-                                    {user.is_approved ? 'Terverifikasi' : 'Pending'}
-                                  </span>
-                                </div>
                               </div>
                             </td>
                             <td className="px-4 py-3">
@@ -505,18 +478,6 @@ export default function UserManagement() {
                                   title="Perpanjang Trial 30 Hari"
                                 >
                                   <CalendarPlus className="w-4 h-4" />
-                                </button>
-                                <button
-                                  onClick={() => toggleApproval(user.id, user.is_approved)}
-                                  className={cn(
-                                    "p-2 rounded-lg transition",
-                                    user.is_approved
-                                      ? "hover:bg-muted text-muted-foreground"
-                                      : "hover:bg-emerald-500/10 text-emerald-600"
-                                  )}
-                                  title={user.is_approved ? 'Cabut persetujuan' : 'Setujui'}
-                                >
-                                  {user.is_approved ? <UserX className="w-4 h-4" /> : <UserCheck className="w-4 h-4" />}
                                 </button>
                                 <button
                                   onClick={() => toggleActive(user.id, user.is_active)}
@@ -586,16 +547,6 @@ export default function UserManagement() {
                                   {user.is_active ? 'Aktif' : 'Nonaktif'}
                                 </span>
                               </div>
-                              <div className="flex items-center gap-1.5">
-                                {user.is_approved ? (
-                                  <ShieldCheck className="w-3 h-3 text-emerald-500" />
-                                ) : (
-                                  <ShieldAlert className="w-3 h-3 text-amber-500" />
-                                )}
-                                <span className="text-xs text-muted-foreground">
-                                  {user.is_approved ? 'Verified' : 'Pending'}
-                                </span>
-                              </div>
                             </div>
                             <div className="flex items-center gap-1.5 mt-1">
                               <span className={cn(
@@ -646,18 +597,6 @@ export default function UserManagement() {
                                   title="Perpanjang Trial 30 Hari"
                                 >
                                   <CalendarPlus className="w-4 h-4" />
-                                </button>
-                                <button
-                                  onClick={() => toggleApproval(user.id, user.is_approved)}
-                                  className={cn(
-                                    "flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-medium transition",
-                                    user.is_approved
-                                      ? "bg-muted text-muted-foreground hover:bg-muted/80"
-                                      : "bg-emerald-500 text-white hover:bg-emerald-600"
-                                  )}
-                                >
-                                  {user.is_approved ? <UserX className="w-3.5 h-3.5" /> : <UserCheck className="w-3.5 h-3.5" />}
-                                  {user.is_approved ? 'Cabut' : 'Setujui'}
                                 </button>
                                 <button
                                   onClick={() => toggleActive(user.id, user.is_active)}

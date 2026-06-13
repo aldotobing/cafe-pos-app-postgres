@@ -28,7 +28,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const { email, password, fullName } = await request.json();
+    const { email, password, fullName, captchaToken } = await request.json();
 
     if (!email || !password || !fullName) {
       return NextResponse.json({ error: "Lengkapi semua kolom yang diperlukan" }, {
@@ -51,25 +51,37 @@ export async function POST(request: Request) {
 
     const supabase = createClient(supabaseUrl, supabaseKey)
 
-    // Sign up dengan Supabase Auth
+    // Sign up dengan Supabase Auth — email confirmation replaces manual approval
+    // Build redirect URL using origin from request (works in dev & production)
+    const origin = new URL(request.url).origin;
+    const redirectUrl = `${origin}/login`;
+
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
+        emailRedirectTo: redirectUrl,
+        captchaToken: captchaToken || undefined,
         data: {
           full_name: fullName,
           role: 'admin',
-          is_approved: false,
+          is_approved: true,
         }
       }
     })
 
     if (error) {
-      if (error.message.toLowerCase().includes('already registered') || 
+      if (error.message.toLowerCase().includes('already registered') ||
           error.message.toLowerCase().includes('email')) {
         return NextResponse.json(
           { error: "Email sudah terdaftar. Silakan login atau gunakan email lain.", code: "DUPLICATE_EMAIL" },
           { status: 409 }
+        );
+      }
+      if (error.message.toLowerCase().includes('captcha')) {
+        return NextResponse.json(
+          { error: "Verifikasi keamanan (captcha) gagal. Silakan muat ulang halaman dan coba lagi.", code: "CAPTCHA_FAILED" },
+          { status: 400 }
         );
       }
       return NextResponse.json(
@@ -86,22 +98,28 @@ export async function POST(request: Request) {
           user_id: data.user.id,
           full_name: fullName,
           role: 'admin',
-          is_approved: false,
+          is_approved: true,
           is_active: true,
           trial_start_date: getJakartaNow().split(' ')[0],
           trial_end_date: new Date(new Date().getTime() + 7 * 60 * 60 * 1000 + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
         });
-      
+
       if (profileError) {
         console.error('Profile creation error:', profileError);
         // Don't fail the signup, just log the error
       }
     }
 
-    return NextResponse.json({ 
-      success: true, 
-      message: 'Akun berhasil dibuat. Silakan tunggu approval dari admin.',
-      user: data.user 
+    // Check if email confirmation was sent
+    const emailSent = data?.user?.identities?.length === 0 || data?.user?.email_confirmed_at == null;
+
+    return NextResponse.json({
+      success: true,
+      message: emailSent
+        ? 'Akun berhasil dibuat. Silakan cek email Anda untuk verifikasi sebelum login.'
+        : 'Akun berhasil dibuat. Silakan login.',
+      emailVerificationSent: emailSent,
+      user: data.user
     }, { status: 200 });
 
   } catch (err) {

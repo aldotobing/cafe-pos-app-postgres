@@ -53,7 +53,7 @@ export async function getAuthenticatedUser(request?: Request) {
       cafeId: profile?.cafe_id,
       fullName: profile?.full_name,
       isActive: profile?.is_active ?? true,
-      isApproved: profile?.is_approved ?? false,
+      isApproved: true, // Email confirmation replaces manual approval
     }
   } catch (error) {
     console.error('getAuthenticatedUser error:', error)

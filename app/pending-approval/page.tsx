@@ -3,32 +3,29 @@
 import { useAuth } from '@/lib/auth-context';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
+import { Mail, ArrowLeft } from 'lucide-react';
+import Link from 'next/link';
 
-export default function PendingApprovalPage() {
+export default function VerifyEmailPage() {
   const { user, userData, loading, signOutUser } = useAuth();
   const router = useRouter();
 
   // Handle redirects based on user state
   useEffect(() => {
     if (!loading && user) {
-      // If user is approved, check if they need to create a cafe
-      if (userData && userData.is_approved) {
-        // If user is an admin and doesn't have a cafe assignment, redirect to create cafe
+      // If email is confirmed, redirect based on role
+      if (userData && userData.email_confirmed) {
         if (userData.role === 'admin' && !userData.cafe_id) {
           router.push('/create-cafe');
-        }
-        // For other approved users (superadmin, cashier with cafe), redirect to dashboard
-        else {
+        } else {
           router.push('/');
         }
       }
     } else if (!user && !loading) {
-      // If user is not authenticated, redirect to login
       router.push('/login');
     }
   }, [loading, user, userData, router]);
 
-  // Show loading state while checking auth
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
@@ -41,31 +38,38 @@ export default function PendingApprovalPage() {
     );
   }
 
-  // Show approval pending message for unapproved users who are not superadmin
-  if (userData && !userData.is_approved && userData.role !== 'superadmin') {
+  // Show email verification reminder for users who haven't confirmed
+  if (userData && !userData.email_confirmed) {
     return (
       <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
         <div className="sm:mx-auto sm:w-full sm:max-w-md">
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Account Pending Approval
-          </h2>
+          <div className="text-center">
+            <div className="mx-auto w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-4">
+              <Mail className="w-8 h-8 text-blue-600" />
+            </div>
+            <h2 className="text-2xl font-bold text-gray-900">
+              Verifikasi Email Anda
+            </h2>
+          </div>
         </div>
 
         <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-          <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10 text-center">
-            <p className="mb-6 text-gray-600">
-              Your account is currently pending approval. Please contact the administrator at 
-              <span className="font-medium text-blue-600"> admin@yourcafe.com </span>
-              to complete the approval process.
+          <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10 text-center space-y-4">
+            <p className="text-gray-600">
+              Kami telah mengirim link verifikasi ke email Anda. Silakan cek inbox atau folder spam Anda dan klik link tersebut untuk mengaktifkan akun.
             </p>
-            
+            <p className="text-sm text-muted-foreground">
+              Setelah verifikasi, refresh halaman ini untuk melanjutkan.
+            </p>
+
             <button
               onClick={() => {
                 signOutUser();
               }}
-              className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+              className="w-full flex items-center justify-center gap-2 py-2.5 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 transition-colors"
             >
-              Sign Out
+              <ArrowLeft className="w-4 h-4" />
+              Kembali ke Login
             </button>
           </div>
         </div>
@@ -73,7 +77,6 @@ export default function PendingApprovalPage() {
     );
   }
 
-  // If user is not authenticated, show redirecting message
   if (!user) {
     return (
       <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">

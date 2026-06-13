@@ -12,8 +12,8 @@ interface AuthContextType {
   loading: boolean;
   signingOut: boolean;
   error: string | null;
-  signIn: (email: string, password: string) => Promise<any>;
-  signUp: (email: string, password: string, fullName: string) => Promise<void>;
+  signIn: (email: string, password: string, captchaToken?: string) => Promise<any>;
+  signUp: (email: string, password: string, fullName: string, captchaToken?: string) => Promise<void>;
   signOutUser: () => Promise<{ success: boolean; error?: string }>;
   clearError: () => void;
   userData: any | null;
@@ -164,13 +164,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const signIn = async (email: string, password: string) => {
+  const signIn = async (email: string, password: string, captchaToken?: string) => {
     setError(null);
     try {
       const res = await fetchClient('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, password, captchaToken }),
         credentials: 'include',
       });
       if (!res.ok) {
@@ -195,14 +195,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const signUp = async (email: string, password: string, fullName: string) => {
+  const signUp = async (email: string, password: string, fullName: string, captchaToken?: string) => {
     setError(null);
     let res: Response;
     try {
       res = await fetchClient('/api/auth/signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password, fullName }),
+        body: JSON.stringify({ email, password, fullName, captchaToken }),
         credentials: 'include',
       });
     } catch (networkErr) {

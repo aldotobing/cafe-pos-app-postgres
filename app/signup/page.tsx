@@ -1,11 +1,14 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Eye, EyeOff, AlertCircle, CheckCircle2, Loader2 } from 'lucide-react';
+import { Eye, EyeOff, AlertCircle, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import Turnstile from '@/components/turnstile';
+
+const SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || '0x4AAAAAABe3cRiTdtHdktvC';
 
 export default function SignUpPage() {
   const [email, setEmail] = useState('');
@@ -14,6 +17,8 @@ export default function SignUpPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const [captchaReady, setCaptchaReady] = useState(false);
   const { signUp } = useAuth();
   const router = useRouter();
 
@@ -32,11 +37,16 @@ export default function SignUpPage() {
       setLoading(false);
       return;
     }
+    if (!captchaToken) {
+      setError('Harap selesaikan verifikasi keamanan.');
+      setLoading(false);
+      return;
+    }
 
     try {
-      await signUp(email, password, fullName);
-      toast.success('Akun berhasil dibuat! Silakan login.');
-      router.push('/login');
+      await signUp(email, password, fullName, captchaToken);
+      toast.success('Akun berhasil dibuat! Silakan cek email Anda untuk verifikasi.');
+      router.push('/login?verified=pending');
     } catch (err: any) {
       setError(err.message || 'Gagal membuat akun. Silakan coba lagi.');
     } finally {
@@ -121,6 +131,28 @@ export default function SignUpPage() {
               </div>
             </div>
 
+            {/* Cloudflare Turnstile */}
+            <div className="flex justify-center">
+              <Turnstile
+                siteKey={SITE_KEY}
+                onVerify={(token) => {
+                  setCaptchaToken(token);
+                  setCaptchaReady(true);
+                  setError('');
+                }}
+                onError={() => {
+                  setCaptchaToken(null);
+                  setCaptchaReady(false);
+                  setError('Gagal memverifikasi keamanan. Silakan refresh halaman.');
+                }}
+                onExpire={() => {
+                  setCaptchaToken(null);
+                  setCaptchaReady(false);
+                }}
+                theme="auto"
+              />
+            </div>
+
             {/* Error Message */}
             {error && (
               <div className="flex items-start gap-2.5 p-3 rounded-lg bg-destructive/10 border border-destructive/20">
@@ -132,7 +164,7 @@ export default function SignUpPage() {
             {/* Submit */}
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || !captchaReady}
               className="w-full flex items-center justify-center gap-2 rounded-lg bg-primary text-primary-foreground px-4 py-2.5 text-sm font-medium shadow-sm hover:bg-primary/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? (
