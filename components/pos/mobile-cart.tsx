@@ -286,13 +286,23 @@ export function MobileCart() {
       {/* Expanded cart view */}
       <AnimatePresence>
         {isExpanded && (
-          <motion.div
-            className="fixed inset-x-0 bottom-0 bg-background border-t rounded-t-lg shadow-xl z-[55] flex flex-col max-h-[90vh]"
-            initial={{ y: "100%" }}
-            animate={{ y: 0 }}
-            exit={{ y: "100%" }}
-            transition={{ type: "spring", damping: 25, stiffness: 200 }}
-          >
+          <>
+            {/* Backdrop blur */}
+            <motion.div
+              className="fixed inset-0 bg-background/60 backdrop-blur-sm z-[54]"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              onClick={() => setIsExpanded(false)}
+            />
+            <motion.div
+              className="fixed inset-x-0 bottom-0 bg-background border-t rounded-t-lg shadow-xl z-[55] flex flex-col max-h-[90vh]"
+              initial={{ y: "100%" }}
+              animate={{ y: 0 }}
+              exit={{ y: "100%" }}
+              transition={{ type: "spring", damping: 25, stiffness: 200 }}
+            >
             {/* Cart header */}
             <div className="flex items-center justify-between p-3 border-b bg-card">
               <div className="flex items-center gap-2">
@@ -479,7 +489,7 @@ export function MobileCart() {
               </div>
 
               <button
-                className="w-full rounded-md bg-primary text-primary-foreground py-2.5 font-bold text-base disabled:opacity-50 transition-transform hover:brightness-110 active:scale-[0.98] flex items-center justify-center gap-2"
+                className="w-full rounded-md bg-primary text-primary-foreground py-3 font-bold text-base disabled:opacity-50 transition-transform hover:brightness-110 active:scale-[0.98] flex items-center justify-center gap-2 mt-2.5"
                 disabled={cart.length === 0 || isProcessing}
                 onClick={async () => {
                   setIsProcessing(true);
@@ -515,6 +525,7 @@ export function MobileCart() {
               </button>
             </div>
           </motion.div>
+          </>
         )}
       </AnimatePresence>
 

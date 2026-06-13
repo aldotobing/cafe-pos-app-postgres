@@ -357,7 +357,7 @@ export function CartPanel() {
         </div>
 
         <button
-          className="w-full rounded-xl bg-primary text-primary-foreground py-2.5 font-semibold text-sm disabled:opacity-50 transition-all hover:brightness-110 hover:shadow-md active:scale-[0.98] flex items-center justify-center gap-2"
+          className="w-full rounded-xl bg-primary text-primary-foreground py-3 font-semibold text-sm disabled:opacity-50 transition-all hover:brightness-110 hover:shadow-md active:scale-[0.98] flex items-center justify-center gap-2 mt-2.5"
           disabled={cart.length === 0 || isProcessing}
           onClick={async () => {
             setIsProcessing(true);
