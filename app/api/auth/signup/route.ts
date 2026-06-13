@@ -2,6 +2,7 @@ import { createClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
 import { ratelimit, getClientIP } from "@/lib/rate-limit";
 import { supabaseAdmin } from "@/lib/supabase-server";
+import { getJakartaNow } from "@/lib/format";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!
@@ -87,8 +88,8 @@ export async function POST(request: Request) {
           role: 'admin',
           is_approved: false,
           is_active: true,
-          trial_start_date: new Date().toISOString().split('T')[0],
-          trial_end_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+          trial_start_date: getJakartaNow().split(' ')[0],
+          trial_end_date: new Date(new Date().getTime() + 7 * 60 * 60 * 1000 + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
         });
       
       if (profileError) {

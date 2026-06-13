@@ -2,7 +2,7 @@
 
 import { AppShell } from "../../components/app-shell"
 import { useEffect, useMemo, useState } from "react"
-import { formatRupiah } from "../../lib/format"
+import { formatRupiah, getJakartaNow } from "../../lib/format"
 import { useCountUp, useCountUpFormatted } from "@/hooks/use-count-up"
 import { useMenu, useTransactions } from "@/hooks/use-cafe-data"
 import { TrendingUp, CreditCard, Package, DollarSign } from "lucide-react"
@@ -52,21 +52,25 @@ export default function DashboardPage() {
   // Transactions are already filtered by cafe_id in the hook
   const cafeTransactions = transactions;
 
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
+  // Use Jakarta timezone (GMT+7) for all date computations
+  const jakartaNow = getJakartaNow(); // "2026-06-13 14:30:00"
+  const jakartaToday = jakartaNow.split(' ')[0]; // "2026-06-13"
+  // Midnight Jakarta in UTC epoch: "2026-06-13T00:00:00+07:00"
+  const jakartaTodayStart = new Date(jakartaToday + 'T00:00:00+07:00').getTime();
 
   const { totalHariIni, jumlahTransaksi, topItem, topItemCount, weeklyRevenue } = useMemo(() => {
     let totalHariIni = 0
     let jumlahTransaksi = 0
     const itemCountById: Record<string, number> = {}
     const itemNameById: Record<string, string> = {}
-    const todayStart = today.getTime();
 
-    // Calculate weekly revenue
+    // Calculate weekly revenue — last 7 days in Jakarta timezone.
+    // Work in "shifted UTC" space: add 7h so UTC date ops produce Jakarta dates.
+    const nowShifted = new Date(Date.now() + 7 * 60 * 60 * 1000);
     const weeklyMap: Record<string, number> = {};
     const last7Days = Array.from({ length: 7 }, (_, i) => {
-      const d = new Date();
-      d.setDate(d.getDate() - (6 - i));
+      const d = new Date(nowShifted);
+      d.setUTCDate(d.getUTCDate() - (6 - i));
       return d.toISOString().split('T')[0];
     });
 
@@ -79,10 +83,12 @@ export default function DashboardPage() {
       if (isNaN(date.getTime())) {
         date = new Date();
       }
-      const dateStr = date.toISOString().split('T')[0];
 
-      // Daily stats
-      if (date.getTime() >= todayStart) {
+      // Convert stored UTC timestamp to Jakarta date string by adding 7h offset
+      const dateStr = new Date(date.getTime() + 7 * 60 * 60 * 1000).toISOString().split('T')[0];
+
+      // Daily stats — compare stored UTC timestamp against Jakarta midnight (in UTC)
+      if (date.getTime() >= jakartaTodayStart) {
         totalHariIni += t.totalAmount || 0
         jumlahTransaksi += 1
         for (const it of t.items) {
