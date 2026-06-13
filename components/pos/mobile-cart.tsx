@@ -129,7 +129,17 @@ export function MobileCart() {
   const { promotions } = usePromotions(userData?.cafe_id)
   const [appliedPromoName, setAppliedPromoName] = useState<string | null>(null);
   const manualDiscountSet = useRef(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const prevCartLen = useRef(cart.length);
   const router = useRouter();
+
+  // Auto-scroll to bottom when new item added
+  useEffect(() => {
+    if (cart.length > prevCartLen.current && scrollRef.current) {
+      scrollRef.current.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
+    }
+    prevCartLen.current = cart.length
+  }, [cart.length]);
 
   const loadingMessages = useMemo(() => [
     "Memproses...",
@@ -331,7 +341,7 @@ export function MobileCart() {
             </div>
 
             {/* Cart items */}
-            <div className="overflow-y-auto p-3 space-y-3 flex-grow max-h-[40vh]">
+            <div ref={scrollRef} className="overflow-y-auto p-3 space-y-3 flex-grow max-h-[40vh]">
               {/* Empty state — only when truly empty and not processing */}
               {cart.length === 0 && !isProcessing && (
                 <div className="text-center py-4 text-muted-foreground">Belum ada item.</div>
@@ -355,7 +365,7 @@ export function MobileCart() {
                       />
                     ))}
                   </div>
-                  {/* Loading overlay — outside blur wrapper */}
+                  {/* Loading overlay */}
                   {isProcessing && (
                     <div className="absolute inset-0 flex flex-col items-center justify-center bg-card/60 backdrop-blur-sm">
                       <Loader2 className="h-7 w-7 text-primary animate-spin mb-3" />
@@ -493,6 +503,7 @@ export function MobileCart() {
                 disabled={cart.length === 0 || isProcessing}
                 onClick={async () => {
                   setIsProcessing(true);
+                  scrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
                   try {
                     const menuMap = new Map(menu.map((m: any) => [m.id, m]));
                     const tx = await checkout(payment, orderNote, user?.id, userData?.full_name, userData?.cafe_id || 1, settings, menuMap, {
@@ -524,6 +535,7 @@ export function MobileCart() {
                 )}
               </button>
             </div>
+
           </motion.div>
           </>
         )}
