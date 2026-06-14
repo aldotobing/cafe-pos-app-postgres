@@ -211,6 +211,20 @@ export function CartProvider({ children }: { children: ReactNode }) {
       })),
     };
 
+    // Idempotency key: if the request times out and we retry, the server will
+    // return the already-created transaction instead of creating a duplicate.
+    const idempotencyKey = crypto.randomUUID();
+
+    const dispatchEvents = (createdTx: Transaction) => {
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("transactionCompleted"));
+        window.dispatchEvent(new CustomEvent("syncEnd"));
+      }
+    };
+
+    const makeRequest = () =>
+      transactionsApi.create(txData, currentCafeId, idempotencyKey);
+
     // Prevent double-checkout: button is disabled while isProcessing is true,
     // and the cart overlay blocks interaction during checkout.
     try {
@@ -218,7 +232,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         window.dispatchEvent(new CustomEvent("syncStart"));
       }
 
-      const createdTx = await transactionsApi.create(txData, currentCafeId);
+      const createdTx = await makeRequest();
       setCart([]);
 
       if (currentCafeId) {
@@ -230,50 +244,55 @@ export function CartProvider({ children }: { children: ReactNode }) {
             return false;
           },
           { revalidate: true }
-        ).then(() => {
-          if (typeof window !== "undefined") {
-            window.dispatchEvent(new CustomEvent("syncEnd"));
-          }
-        });
-      }
-
-      if (typeof window !== "undefined") {
-        window.dispatchEvent(new CustomEvent("transactionCompleted"));
+        ).then(() => dispatchEvents(createdTx));
+      } else {
+        dispatchEvents(createdTx);
       }
 
       return createdTx;
     } catch (e) {
       console.error('Checkout error:', e);
 
-      // The request may have timed out but the server still processed it.
-      // Check if a matching transaction was actually created before restoring.
-      if (e instanceof DOMException && e.name === 'AbortError') {
+      // Network errors (timeout, AbortError, FetchError.isNetworkError):
+      // the server may have received and processed the request. Retry once
+      // with the same idempotency key — the server will return the existing
+      // transaction instead of creating a duplicate.
+      const isNetworkErr =
+        (e instanceof DOMException && e.name === 'AbortError') ||
+        (e instanceof FetchError && (e as FetchError).isNetworkError);
+
+      if (isNetworkErr && idempotencyKey) {
+        toast.loading('Server lambat, memeriksa status transaksi...', { id: 'checkout-retry' });
         try {
-          const recent = await transactionsApi.get(currentCafeId, 5);
-          const match = (recent || []).find((tx: any) => {
-            if (!tx.created_at) return false;
-            const created = new Date(tx.created_at).getTime();
-            const now = Date.now();
-            return (now - created < 60000) &&
-              tx.subtotal === subtotal &&
-              tx.totalAmount === total;
-          });
-          if (match) {
-            setCart([]);
-            toast.success('Transaksi berhasil disimpan!');
-            if (typeof window !== "undefined") {
-              window.dispatchEvent(new CustomEvent("transactionCompleted"));
-            }
-            return match as any;
+          const retryTx = await makeRequest();
+          setCart([]);
+          toast.success('Transaksi berhasil disimpan!', { id: 'checkout-retry' });
+          if (currentCafeId) {
+            globalMutate(
+              (key) => {
+                if (typeof key === 'string' && key.includes('/api/rest/transactions') && key.includes(`cafe_id=${currentCafeId}`)) return true;
+                if (Array.isArray(key) && key[0] === 'paginated-transactions' && key[1] === currentCafeId) return true;
+                return false;
+              },
+              { revalidate: true }
+            ).then(() => dispatchEvents(retryTx));
+          } else {
+            dispatchEvents(retryTx);
           }
-        } catch {}
+          return retryTx;
+        } catch (retryErr) {
+          console.error('Checkout retry also failed:', retryErr);
+          toast.dismiss('checkout-retry');
+        }
       }
 
+      // Both attempts failed — show appropriate error and keep the cart intact
+      // so the cashier can retry manually without losing the order.
       toast.error("Gagal menyimpan transaksi");
       if (e instanceof ApiError && e.message) {
         toast.error(e.message, { duration: 6000 });
-      } else if (e instanceof FetchError && e.isNetworkError) {
-        toast.error('Tidak dapat terhubung ke server. Periksa koneksi internet.', { duration: 6000 });
+      } else if (isNetworkErr) {
+        toast.error('Server tidak merespons. Pastikan koneksi stabil dan coba lagi.', { duration: 8000 });
       } else if (e instanceof Error && e.message && !e.message.includes('500')) {
         toast.error(e.message);
       } else {

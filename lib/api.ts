@@ -406,13 +406,13 @@ export const transactionsApi = {
       updatedAt: tx.updated_at
     };
   },
-  create: async (tx: any, cafeId?: number): Promise<Transaction> => {
-    const data = { 
+  create: async (tx: any, cafeId?: number, idempotencyKey?: string): Promise<Transaction> => {
+    const data: Record<string, unknown> = {
       transaction_number: tx.transactionNumber,
-      subtotal: tx.subtotal, 
-      tax_amount: tx.taxAmount, 
+      subtotal: tx.subtotal,
+      tax_amount: tx.taxAmount,
       service_charge: tx.serviceCharge,
-      total_amount: tx.totalAmount, 
+      total_amount: tx.totalAmount,
       payment_method: tx.paymentMethod,
       payment_amount: tx.paymentAmount,
       change_amount: tx.changeAmount,
@@ -432,8 +432,9 @@ export const transactionsApi = {
         quantity: item.qty,
         discount: item.discount,
         note: item.note,
-      }))
+      })),
     };
+    if (idempotencyKey) data.idempotency_key = idempotencyKey;
     const response = await apiRequest<any>('/rest/transactions', { method: 'POST', body: JSON.stringify(data) });
     const serverTx = response?.data || response;
     if (!serverTx?.id) {
