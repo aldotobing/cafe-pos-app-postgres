@@ -204,42 +204,81 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unauthorized: No cafe assigned" }, { status: 403 });
     }
 
+    // Idempotency check: if the client retries after a timeout, the previous
+    // request may have succeeded. Return the existing transaction instead of
+    // creating a duplicate.
+    if (body.idempotency_key) {
+      const { data: existing, error: lookupErr } = await supabaseAdmin
+        .from('transactions')
+        .select('*, transaction_items(*)')
+        .eq('idempotency_key', body.idempotency_key)
+        .is('deleted_at', null)
+        .maybeSingle();
+
+      if (!lookupErr && existing) {
+        return NextResponse.json({
+          data: existing,
+          success: true,
+          existing: true,
+        }, { status: 200 });
+      }
+    }
+
     // Generate transaction number — scoped per cafe
     const { data: txnNumber, error: txnError } = await supabaseAdmin
       .rpc('generate_transaction_number', { p_cafe_id: cafeId } as any);
-    
+
     if (txnError) {
       console.error('Generate transaction number error:', txnError);
     }
 
     // Create transaction
+    const insertPayload: Record<string, unknown> = {
+      transaction_number: txnNumber || `TXN-${Date.now()}`,
+      cafe_id: cafeId,
+      created_by: user.id,
+      cashier_name: user.fullName || user.email,
+      subtotal: body.subtotal || 0,
+      tax_amount: body.tax_amount || 0,
+      service_charge: body.service_charge || 0,
+      total_amount: body.total_amount || 0,
+      payment_method: body.payment_method || 'Tunai',
+      payment_amount: body.payment_amount || 0,
+      change_amount: body.change_amount || 0,
+      order_note: body.order_note,
+      discount_type: body.discount_type || 'none',
+      discount_value: body.discount_value || 0,
+      discount_amount: body.discount_amount || 0,
+      discount_name: body.discount_name || null,
+    };
+    if (body.idempotency_key) insertPayload.idempotency_key = body.idempotency_key;
+
     const { data: transaction, error } = await supabaseAdmin
       .from('transactions')
-      .insert({
-        transaction_number: txnNumber || `TXN-${Date.now()}`,
-        cafe_id: cafeId,
-        created_by: user.id,
-        cashier_name: user.fullName || user.email,
-        subtotal: body.subtotal || 0,
-        tax_amount: body.tax_amount || 0,
-        service_charge: body.service_charge || 0,
-        total_amount: body.total_amount || 0,
-        payment_method: body.payment_method || 'Tunai',
-        payment_amount: body.payment_amount || 0,
-        change_amount: body.change_amount || 0,
-        order_note: body.order_note,
-        discount_type: body.discount_type || 'none',
-        discount_value: body.discount_value || 0,
-        discount_amount: body.discount_amount || 0,
-        discount_name: body.discount_name || null,
-      })
+      .insert(insertPayload)
       .select()
       .single();
 
     if (error) {
       console.error('Transaction POST error:', error);
-      // Map PostgreSQL error codes to user-friendly Indonesian messages
+      // 23505 = unique violation. If idempotency_key collided (race condition),
+      // re-fetch the already-inserted row and return it.
       if (error.code === '23505') {
+        if (body.idempotency_key) {
+          const { data: raceExisting } = await supabaseAdmin
+            .from('transactions')
+            .select('*, transaction_items(*)')
+            .eq('idempotency_key', body.idempotency_key)
+            .is('deleted_at', null)
+            .maybeSingle();
+          if (raceExisting) {
+            return NextResponse.json({
+              data: raceExisting,
+              success: true,
+              existing: true,
+            }, { status: 200 });
+          }
+        }
         return NextResponse.json({
           error: 'Nomor transaksi bentrok (duplikat). Silakan coba lagi.',
           retry: true,

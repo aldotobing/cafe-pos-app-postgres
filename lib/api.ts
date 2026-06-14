@@ -216,27 +216,24 @@ export const menuApi = {
     };
   },
   update: async (id: string, item: Partial<MenuItem>): Promise<MenuItem> => {
-    const data: any = {
-      name: item.name,
-      category: item.category,
-      price: item.price,
-      available: item.available ? 1 : 0,
-      image_url: item.imageUrl,
-      // Stock fields
-      stock_quantity: item.stockQuantity,
-      hpp_price: item.hppPrice,
-      margin_percent: item.marginPercent,
-      min_stock: item.minStock,
-      track_stock: item.trackStock ? 1 : 0,
-      // Variant flag
-      has_variants: item.hasVariants ? 1 : 0,
-    };
-    
-    // Only send category_id if it exists (migration may not have been run yet)
-    if (item.categoryId) {
-      data.category_id = item.categoryId;
-    }
-    
+    const data: any = {};
+
+    // Only include fields that are explicitly provided to avoid overwriting
+    // DB values with undefined/defaults (e.g. toggling availability shouldn't
+    // reset track_stock or has_variants).
+    if (item.name !== undefined) data.name = item.name;
+    if (item.category !== undefined) data.category = item.category;
+    if (item.price !== undefined) data.price = item.price;
+    if (item.available !== undefined) data.available = item.available ? 1 : 0;
+    if (item.imageUrl !== undefined) data.image_url = item.imageUrl;
+    if (item.stockQuantity !== undefined) data.stock_quantity = item.stockQuantity;
+    if (item.hppPrice !== undefined) data.hpp_price = item.hppPrice;
+    if (item.marginPercent !== undefined) data.margin_percent = item.marginPercent;
+    if (item.minStock !== undefined) data.min_stock = item.minStock;
+    if (item.trackStock !== undefined) data.track_stock = item.trackStock ? 1 : 0;
+    if (item.hasVariants !== undefined) data.has_variants = item.hasVariants ? 1 : 0;
+    if (item.categoryId) data.category_id = item.categoryId;
+
     await apiRequest(`/rest/menu/${id}`, { method: 'PUT', body: JSON.stringify(data) });
     return menuApi.getById(id);
   },
@@ -409,13 +406,13 @@ export const transactionsApi = {
       updatedAt: tx.updated_at
     };
   },
-  create: async (tx: any, cafeId?: number): Promise<Transaction> => {
-    const data = { 
+  create: async (tx: any, cafeId?: number, idempotencyKey?: string): Promise<Transaction> => {
+    const data: Record<string, unknown> = {
       transaction_number: tx.transactionNumber,
-      subtotal: tx.subtotal, 
-      tax_amount: tx.taxAmount, 
+      subtotal: tx.subtotal,
+      tax_amount: tx.taxAmount,
       service_charge: tx.serviceCharge,
-      total_amount: tx.totalAmount, 
+      total_amount: tx.totalAmount,
       payment_method: tx.paymentMethod,
       payment_amount: tx.paymentAmount,
       change_amount: tx.changeAmount,
@@ -435,8 +432,9 @@ export const transactionsApi = {
         quantity: item.qty,
         discount: item.discount,
         note: item.note,
-      }))
+      })),
     };
+    if (idempotencyKey) data.idempotency_key = idempotencyKey;
     const response = await apiRequest<any>('/rest/transactions', { method: 'POST', body: JSON.stringify(data) });
     const serverTx = response?.data || response;
     if (!serverTx?.id) {
