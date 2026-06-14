@@ -136,15 +136,19 @@ CREATE TRIGGER on_auth_user_created
 -- 4. TRANSACTION NUMBER GENERATOR
 -- ============================================================================
 
--- Counter table for atomic transaction number generation (no race condition)
+-- Counter table for atomic, per-cafe transaction number generation
+-- Composite key (date_key, cafe_id) ensures each cafe has independent numbering
 CREATE TABLE IF NOT EXISTS txn_sequence (
-    date_key TEXT PRIMARY KEY,
-    counter INTEGER NOT NULL DEFAULT 0
+    date_key TEXT NOT NULL,
+    cafe_id INTEGER NOT NULL,
+    counter INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (date_key, cafe_id)
 );
 
 -- Function: Generate unique transaction number (TXN-YYYYMMDD-XXXXX)
+-- Scoped per cafe — each business gets its own independent sequence
 -- Uses INSERT ON CONFLICT to atomically increment — safe under concurrency
-CREATE OR REPLACE FUNCTION generate_transaction_number()
+CREATE OR REPLACE FUNCTION generate_transaction_number(p_cafe_id INTEGER)
 RETURNS TEXT AS $$
 DECLARE
     v_date_key TEXT;
@@ -152,9 +156,9 @@ DECLARE
 BEGIN
     v_date_key := TO_CHAR(NOW() AT TIME ZONE 'Asia/Jakarta', 'YYYYMMDD');
 
-    INSERT INTO txn_sequence (date_key, counter)
-    VALUES (v_date_key, 1)
-    ON CONFLICT (date_key) DO UPDATE
+    INSERT INTO txn_sequence (date_key, cafe_id, counter)
+    VALUES (v_date_key, p_cafe_id, 1)
+    ON CONFLICT (date_key, cafe_id) DO UPDATE
     SET counter = txn_sequence.counter + 1
     RETURNING counter INTO v_counter;
 
