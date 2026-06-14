@@ -107,6 +107,7 @@ export async function GET(request: Request) {
     const menuId = searchParams.get('menuId');
     const limit = searchParams.get('limit') || '10';
     const offset = searchParams.get('offset') || '0';
+    const typeFilter = searchParams.get('type');
 
     // Date range filters (Postgres)
     const createdAtGte = searchParams.get('created_at_gte') || searchParams.get('start_date');
@@ -130,6 +131,11 @@ export async function GET(request: Request) {
       .select('*', { count: 'exact' })
       .eq('cafe_id', parseInt(cafeId))
       .order('created_at', { ascending: false });
+
+    // Apply type filter (in, out, adjustment, opname)
+    if (typeFilter && typeFilter !== 'all') {
+      query = query.eq('type', typeFilter);
+    }
 
     // Apply date filters
     if (createdAtGte) {
