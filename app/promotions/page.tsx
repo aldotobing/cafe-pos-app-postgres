@@ -467,6 +467,7 @@ export default function PromotionsPage() {
                       </label>
                       <input
                         type="number"
+                        inputMode="numeric"
                         value={form.value || ''}
                         onChange={e => setForm(f => ({ ...f, value: Math.max(0, Number(e.target.value) || 0) }))}
                         min={0}
@@ -481,6 +482,7 @@ export default function PromotionsPage() {
                       <label className="text-sm font-medium mb-1.5 block">Min Subtotal (Rp)</label>
                       <input
                         type="number"
+                        inputMode="numeric"
                         value={form.minSubtotal || ''}
                         onChange={e => setForm(f => ({ ...f, minSubtotal: Math.max(0, Number(e.target.value) || 0) }))}
                         min={0}
@@ -492,6 +494,7 @@ export default function PromotionsPage() {
                       <label className="text-sm font-medium mb-1.5 block">Max Diskon (Rp)</label>
                       <input
                         type="number"
+                        inputMode="numeric"
                         value={form.maxDiscount || ''}
                         onChange={e => setForm(f => ({ ...f, maxDiscount: Math.max(0, Number(e.target.value) || 0) }))}
                         min={0}

@@ -15,7 +15,7 @@ import {
 } from '@/components/ui';
 import { format, parseISO } from 'date-fns';
 import { id } from 'date-fns/locale';
-import { Calendar as CalendarIcon, Plus, Trash2, Edit2, RefreshCw, RotateCcw, X, Wallet } from 'lucide-react';
+import { Calendar as CalendarIcon, Plus, Trash2, Edit2, RefreshCw, X, Wallet, Filter } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -274,12 +274,23 @@ export default function ExpensesPage() {
         {/* Filters */}
         <motion.div
           variants={{ hidden: { opacity: 0, y: 4 }, visible: { opacity: 1, y: 0 } }}
-          className="rounded-xl border bg-card shadow-sm p-4"
+          className="rounded-xl sm:rounded-2xl border bg-card shadow-sm p-4 sm:p-5"
         >
+          {/* Filter Title */}
+          <div className="flex items-center gap-2.5 mb-4">
+            <Filter className="h-4 w-4 text-muted-foreground" />
+            <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70">
+              FILTER
+            </span>
+            {(selectedCategory || startDate.getMonth() !== new Date().getMonth() || startDate.getDate() !== 1 || endDate.toDateString() !== new Date().toDateString()) && (
+              <span className="w-1.5 h-1.5 rounded-full bg-primary" />
+            )}
+          </div>
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* Periode */}
             <div className="flex flex-col gap-1.5">
-              <label className="text-[10px] font-bold uppercase text-muted-foreground px-1">Periode</label>
+              <label className="text-xs font-medium text-muted-foreground">Periode</label>
               <div className="flex gap-2 items-center">
                 <Popover open={startOpen} onOpenChange={setStartOpen}>
                   <PopoverTrigger asChild>
@@ -289,7 +300,7 @@ export default function ExpensesPage() {
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0 rounded-xl" align="start">
-                    <Calendar mode="single" selected={startDate} onSelect={(date) => { if (date) { setStartDate(date); setStartOpen(false); } }} />
+                    <Calendar mode="single" selected={startDate} onSelect={(date) => { if (date) { setStartDate(date); setStartOpen(false); } }} locale={id} />
                   </PopoverContent>
                 </Popover>
                 <span className="text-muted-foreground text-sm">—</span>
@@ -301,7 +312,7 @@ export default function ExpensesPage() {
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0 rounded-xl" align="start">
-                    <Calendar mode="single" selected={endDate} onSelect={(date) => { if (date) { setEndDate(date); setEndOpen(false); } }} />
+                    <Calendar mode="single" selected={endDate} onSelect={(date) => { if (date) { setEndDate(date); setEndOpen(false); } }} locale={id} />
                   </PopoverContent>
                 </Popover>
               </div>
@@ -309,7 +320,7 @@ export default function ExpensesPage() {
 
             {/* Kategori */}
             <div className="flex flex-col gap-1.5">
-              <label className="text-[10px] font-bold uppercase text-muted-foreground px-1">Kategori</label>
+              <label className="text-xs font-medium text-muted-foreground">Kategori</label>
               <div className="flex gap-2">
                 <Select value={selectedCategory || 'all'} onValueChange={(v) => setSelectedCategory(v === 'all' ? '' : v)}>
                   <SelectTrigger className="flex-1 h-9 rounded-lg">
@@ -340,19 +351,17 @@ export default function ExpensesPage() {
           </div>
 
           {/* Reset */}
-          <div className="flex items-center gap-2 pt-3 mt-3 border-t border-dashed">
-            <Button
-              variant="ghost"
-              className="flex-1 sm:flex-none px-4 h-9 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground"
+          <div className="flex items-center gap-2 pt-4 mt-4 border-t border-dashed">
+            <button
               onClick={() => {
                 setStartDate(new Date(new Date().getFullYear(), new Date().getMonth(), 1))
                 setEndDate(new Date())
                 setSelectedCategory('')
               }}
+              className="flex-1 sm:flex-none px-4 h-9 rounded-xl border border-dashed hover:bg-muted/50 transition-all text-xs font-medium text-muted-foreground"
             >
-              <RotateCcw className="w-3.5 h-3.5 mr-1.5" />
-              Reset Filter
-            </Button>
+              Reset
+            </button>
           </div>
         </motion.div>
 
@@ -622,77 +631,152 @@ export default function ExpensesPage() {
         </motion.div>
 
       {/* Add/Edit Dialog */}
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="sm:max-w-[480px] max-w-[95vw] p-0 gap-0 overflow-hidden rounded-xl">
-          <DialogHeader className="px-5 pt-5 pb-4 border-b border-border">
-            <DialogTitle className="text-lg font-semibold">{editingExpense ? 'Edit Pengeluaran' : 'Tambah Pengeluaran'}</DialogTitle>
-            <DialogDescription className="text-sm text-muted-foreground">
-              {editingExpense ? 'Perbarui detail pengeluaran operasional' : 'Catat pengeluaran operasional baru'}
-            </DialogDescription>
-          </DialogHeader>
-          <form onSubmit={handleSubmit}>
-            <div className="px-5 py-4 space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <Label htmlFor="category" className="text-sm">Kategori <span className="text-destructive">*</span></Label>
-                  <Select value={formData.category_id} onValueChange={(v) => setFormData(prev => ({ ...prev, category_id: v }))}>
-                    <SelectTrigger className="h-10 rounded-lg"><SelectValue placeholder="Pilih kategori" /></SelectTrigger>
-                    <SelectContent>
-                      {categories?.map(cat => (
-                        <SelectItem key={cat.id} value={cat.id}>
-                          <div className="flex items-center gap-2"><div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: cat.color }} />{cat.name}</div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+      <AnimatePresence>
+        {isDialogOpen && (
+          <>
+            <motion.div
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50"
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              onClick={() => setIsDialogOpen(false)}
+            />
+            <motion.div
+              className="fixed inset-0 z-50 flex items-center justify-center p-4"
+              initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ duration: 0.2 }}
+            >
+              <div className="w-full max-w-md bg-card border rounded-xl shadow-2xl overflow-hidden">
+                {/* Dialog Header */}
+                <div className="flex items-center justify-between p-4 border-b">
+                  <div className="flex items-center gap-2">
+                    <Wallet className="h-5 w-5 text-primary" />
+                    <h3 className="font-semibold">
+                      {editingExpense ? 'Edit Pengeluaran' : 'Tambah Pengeluaran'}
+                    </h3>
+                  </div>
+                  <button
+                    onClick={() => setIsDialogOpen(false)}
+                    className="p-1 rounded-md hover:bg-muted transition"
+                  >
+                    <X className="h-4 w-4 text-muted-foreground" />
+                  </button>
                 </div>
-                <div className="space-y-1.5">
-                  <Label className="text-sm">Jumlah (Rp) <span className="text-destructive">*</span></Label>
-                  <Input className="h-10 rounded-lg font-mono" value={amountDisplay} onChange={handleAmountChange} placeholder="0" required />
-                </div>
+
+                {/* Dialog Content */}
+                <form onSubmit={handleSubmit}>
+                  <div className="p-4 space-y-4 max-h-[60vh] overflow-y-auto">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-sm font-medium mb-1.5 block">Kategori <span className="text-destructive">*</span></label>
+                        <select
+                          value={formData.category_id}
+                          onChange={(e) => setFormData(prev => ({ ...prev, category_id: e.target.value }))}
+                          className="w-full rounded-lg border bg-background px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
+                          required
+                        >
+                          <option value="">Pilih kategori</option>
+                          {categories?.map(cat => (
+                            <option key={cat.id} value={cat.id}>{cat.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium mb-1.5 block">Jumlah (Rp) <span className="text-destructive">*</span></label>
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          value={amountDisplay}
+                          onChange={handleAmountChange}
+                          placeholder="0"
+                          required
+                          className="w-full rounded-lg border bg-background px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all font-mono"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-sm font-medium mb-1.5 block">Tanggal <span className="text-destructive">*</span></label>
+                        <Popover open={expenseDateOpen} onOpenChange={setExpenseDateOpen}>
+                          <PopoverTrigger asChild>
+                            <button
+                              type="button"
+                              className="w-full flex items-center rounded-lg border bg-background px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
+                            >
+                              <CalendarIcon className="w-4 h-4 mr-2 text-muted-foreground" />
+                              {formData.expense_date ? format(parseISO(formData.expense_date), 'dd MMM yyyy', { locale: id }) : 'Pilih tanggal'}
+                            </button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0 rounded-xl" align="start">
+                            <Calendar mode="single" selected={parseISO(formData.expense_date)} onSelect={(date) => { if (date) { setFormData(prev => ({ ...prev, expense_date: format(date, 'yyyy-MM-dd') })); setExpenseDateOpen(false); } }} />
+                          </PopoverContent>
+                        </Popover>
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium mb-1.5 block">Metode Pembayaran</label>
+                        <select
+                          value={formData.payment_method}
+                          onChange={(e) => setFormData(prev => ({ ...prev, payment_method: e.target.value }))}
+                          className="w-full rounded-lg border bg-background px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
+                        >
+                          {paymentMethods.map(m => <option key={m} value={m}>{m}</option>)}
+                        </select>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="text-sm font-medium mb-1.5 block">Deskripsi</label>
+                      <input
+                        type="text"
+                        value={formData.description}
+                        onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                        placeholder="Keterangan pengeluaran"
+                        className="w-full rounded-lg border bg-background px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-sm font-medium mb-1.5 block">Nomor Nota</label>
+                      <input
+                        type="text"
+                        value={formData.receipt_number}
+                        onChange={(e) => setFormData(prev => ({ ...prev, receipt_number: e.target.value }))}
+                        placeholder="Nomor nota/referensi"
+                        className="w-full rounded-lg border bg-background px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all font-mono"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Dialog Footer */}
+                  <div className="flex gap-2 p-4 border-t bg-muted/20">
+                    <button
+                      type="button"
+                      onClick={() => setIsDialogOpen(false)}
+                      disabled={isSubmitting}
+                      className="flex-1 px-4 py-2 rounded-lg border bg-background hover:bg-muted transition text-sm disabled:opacity-50"
+                    >
+                      Batal
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={isSubmitting}
+                      className="flex-1 px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition text-sm font-medium disabled:opacity-50 flex items-center justify-center gap-2"
+                    >
+                      {isSubmitting ? (
+                        <>
+                          <RefreshCw className="h-4 w-4 animate-spin" />
+                          <span>Menyimpan...</span>
+                        </>
+                      ) : (
+                        <span>{editingExpense ? 'Simpan Perubahan' : 'Tambah Pengeluaran'}</span>
+                      )}
+                    </button>
+                  </div>
+                </form>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <Label className="text-sm">Tanggal <span className="text-destructive">*</span></Label>
-                  <Popover open={expenseDateOpen} onOpenChange={setExpenseDateOpen}>
-                    <PopoverTrigger asChild>
-                      <Button variant="outline" className="w-full justify-start h-10 rounded-lg font-normal">
-                        <CalendarIcon className="w-4 h-4 mr-2 text-muted-foreground" />
-                        {formData.expense_date ? format(parseISO(formData.expense_date), 'dd MMM yyyy', { locale: id }) : 'Pilih tanggal'}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0 rounded-xl" align="start">
-                      <Calendar mode="single" selected={parseISO(formData.expense_date)} onSelect={(date) => { if (date) { setFormData(prev => ({ ...prev, expense_date: format(date, 'yyyy-MM-dd') })); setExpenseDateOpen(false); } }} />
-                    </PopoverContent>
-                  </Popover>
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-sm">Metode Pembayaran</Label>
-                  <Select value={formData.payment_method} onValueChange={(v: any) => setFormData(prev => ({ ...prev, payment_method: v }))}>
-                    <SelectTrigger className="h-10 rounded-lg"><SelectValue /></SelectTrigger>
-                    <SelectContent>{paymentMethods.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}</SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-sm">Deskripsi</Label>
-                <Input className="h-10 rounded-lg" value={formData.description} onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))} placeholder="Keterangan pengeluaran" />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-sm">Nomor Nota</Label>
-                <Input className="h-10 rounded-lg font-mono" value={formData.receipt_number} onChange={(e) => setFormData(prev => ({ ...prev, receipt_number: e.target.value }))} placeholder="Nomor nota/referensi" />
-              </div>
-            </div>
-            <div className="flex items-center justify-end gap-3 px-5 py-3 border-t border-border bg-muted/30">
-              <button type="button" onClick={() => setIsDialogOpen(false)} className="px-4 py-2 rounded-lg border bg-background hover:bg-muted transition text-sm">Batal</button>
-              <button type="submit" disabled={isSubmitting} className="px-5 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition text-sm font-medium flex items-center gap-2 disabled:opacity-50">
-                {isSubmitting ? <RefreshCw className="w-4 h-4 animate-spin" /> : null}
-                {isSubmitting ? 'Menyimpan...' : editingExpense ? 'Simpan Perubahan' : 'Tambah Pengeluaran'}
-              </button>
-            </div>
-          </form>
-        </DialogContent>
-      </Dialog>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
 
       {/* Delete Confirmation */}
       <AnimatePresence>

@@ -451,6 +451,7 @@ export default function CategoriesPage() {
                     <label className="text-sm font-medium mb-1.5 block">Urutan Tampil</label>
                     <input
                       type="number"
+                      inputMode="numeric"
                       value={form.sortOrder}
                       onChange={(e) => setForm(f => ({ ...f, sortOrder: Number(e.target.value) || 0 }))}
                       onFocus={(e) => e.target.select()}
