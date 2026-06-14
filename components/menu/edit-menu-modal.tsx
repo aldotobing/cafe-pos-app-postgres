@@ -311,6 +311,7 @@ export function EditMenuModal({ menuItem, onClose, modalVariants }: EditMenuModa
                     <div className="relative">
                       <motion.input
                         type="number"
+                        inputMode="numeric"
                         className="w-full rounded-lg border bg-background px-3 py-2.5 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
                         value={editForm.marginPercent || ''}
                         onChange={(e) => {
@@ -430,6 +431,7 @@ export function EditMenuModal({ menuItem, onClose, modalVariants }: EditMenuModa
                   </label>
                   <motion.input
                     type="number"
+                    inputMode="numeric"
                     className={`w-full rounded-lg border px-3 py-2.5 text-sm transition-all ${
                       hasVariants
                         ? 'bg-muted/50 text-muted-foreground cursor-not-allowed'
@@ -451,6 +453,7 @@ export function EditMenuModal({ menuItem, onClose, modalVariants }: EditMenuModa
                   </label>
                   <motion.input
                     type="number"
+                    inputMode="numeric"
                     className="w-full rounded-lg border bg-background px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
                     value={editForm.minStock || ''}
                     onChange={(e) => setEditForm({...editForm, minStock: Number(e.target.value) || 5})}

@@ -961,12 +961,13 @@ export function ProductVariantsManager({
                         </label>
                         <input
                           type="number"
+                          inputMode="numeric"
                           className="w-full rounded-md border bg-background px-3 py-2 text-sm"
                           placeholder="0"
                           value={newVariant.stockQuantity || ''}
-                          onChange={(e) => setNewVariant(prev => ({ 
-                            ...prev, 
-                            stockQuantity: Number(e.target.value) || 0 
+                          onChange={(e) => setNewVariant(prev => ({
+                            ...prev,
+                            stockQuantity: Number(e.target.value) || 0
                           }))}
                         />
                       </div>

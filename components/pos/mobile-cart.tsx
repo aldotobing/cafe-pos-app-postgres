@@ -85,6 +85,7 @@ const MemoizedCartItem = memo(function CartItem({
         <div className="relative">
           <input
             type="number"
+            inputMode="numeric"
             className={`w-full rounded-md border bg-background px-2 py-1 text-xs ${!focusedDiscountId && (item.discount === 0 || item.discount === null || item.discount === undefined) ? 'text-transparent' : ''}`}
             placeholder="Diskon (Rp)"
             value={focusedDiscountId === itemKey && (item.discount === 0 || item.discount === null || item.discount === undefined) ? '' : (item.discount ?? 0)}
@@ -421,6 +422,7 @@ export function MobileCart() {
                         </select>
                         <input
                           type="number"
+                          inputMode="numeric"
                           className="w-16 text-xs border rounded px-1 py-0.5 bg-background"
                           value={discountValue || ''}
                           placeholder="0"
@@ -454,6 +456,7 @@ export function MobileCart() {
                       </select>
                       <input
                         type="number"
+                        inputMode="numeric"
                         className="w-16 text-xs border rounded px-1 py-0.5 bg-background opacity-60"
                         value={discountValue || ''}
                         placeholder="0"

@@ -130,6 +130,7 @@ export function RestockDialog({ isOpen, onClose, menuItem, onRestock }: RestockD
                   </label>
                   <input
                     type="number"
+                    inputMode="numeric"
                     min={1}
                     value={quantity || ""}
                     onChange={(e) => setQuantity(Number(e.target.value) || 0)}
@@ -163,6 +164,7 @@ export function RestockDialog({ isOpen, onClose, menuItem, onRestock }: RestockD
                     </label>
                     <input
                       type="number"
+                      inputMode="numeric"
                       min={0}
                       value={hppPrice || ""}
                       onChange={(e) => setHppPrice(Number(e.target.value) || 0)}

@@ -234,6 +234,7 @@ export function CartPanel() {
                   <div className="relative">
                     <input
                       type="number"
+                      inputMode="numeric"
                       className={`w-full rounded-lg border bg-card px-2.5 py-1.5 text-xs placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-ring/50 transition-all ${!focusedDiscountId && (c.discount === 0 || c.discount === null || c.discount === undefined) ? 'text-transparent' : ''}`}
                       value={focusedDiscountId === `${c.menuId}-${c.variantId || ''}` ? (c.discount || '') : (c.discount ?? 0)}
                       min={0}

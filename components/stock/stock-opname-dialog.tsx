@@ -233,6 +233,7 @@ export function StockOpnameDialog({ isOpen, onClose, menuItems, variantsMap, use
                               <td className="px-4 py-3">
                                 <input
                                   type="number"
+                                  inputMode="numeric"
                                   min={0}
                                   value={counts[m.id] ?? ''}
                                   onChange={(e) => {
@@ -309,6 +310,7 @@ export function StockOpnameDialog({ isOpen, onClose, menuItems, variantsMap, use
                               <td className="px-4 py-2.5">
                                 <input
                                   type="number"
+                                  inputMode="numeric"
                                   min={0}
                                   value={counts[v.id] ?? ''}
                                   onChange={(e) => {
@@ -373,6 +375,7 @@ export function StockOpnameDialog({ isOpen, onClose, menuItems, variantsMap, use
                                 <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Hitung Fisik</div>
                                 <input
                                   type="number"
+                                  inputMode="numeric"
                                   min={0}
                                   value={counts[m.id] ?? ''}
                                   onChange={(e) => {
@@ -462,6 +465,7 @@ export function StockOpnameDialog({ isOpen, onClose, menuItems, variantsMap, use
                                 <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Hitung Fisik</div>
                                 <input
                                   type="number"
+                                  inputMode="numeric"
                                   min={0}
                                   value={counts[v.id] ?? ''}
                                   onChange={(e) => {
