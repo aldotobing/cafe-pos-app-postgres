@@ -66,6 +66,11 @@ const PAGE_SIZE = 10
 // when the component remounts during page navigation
 const READ_CACHE = new Set<string>()
 
+// Expose on window so logout can clear without importing this entire module
+if (typeof window !== 'undefined') {
+  (window as any).__kasirkuClearNotifCache = () => READ_CACHE.clear()
+}
+
 const fetcher = (url: string) => fetch(url, { credentials: 'include' }).then(r => r.json())
 
 export function NotificationBell({ cafeId }: { cafeId?: number | null }) {

@@ -138,12 +138,17 @@ CREATE TRIGGER on_auth_user_created
 
 -- Counter table for atomic, per-cafe transaction number generation
 -- Composite key (date_key, cafe_id) ensures each cafe has independent numbering
-CREATE TABLE IF NOT EXISTS txn_sequence (
+-- Handle migration from old single-column schema
+DROP TABLE IF EXISTS txn_sequence;
+CREATE TABLE txn_sequence (
     date_key TEXT NOT NULL,
     cafe_id INTEGER NOT NULL,
     counter INTEGER NOT NULL DEFAULT 0,
     PRIMARY KEY (date_key, cafe_id)
 );
+
+-- Drop old global overload (no params) to avoid confusion
+DROP FUNCTION IF EXISTS generate_transaction_number();
 
 -- Function: Generate unique transaction number (TXN-YYYYMMDD-XXXXX)
 -- Scoped per cafe — each business gets its own independent sequence
@@ -165,6 +170,25 @@ BEGIN
     RETURN 'TXN-' || v_date_key || '-' || LPAD(v_counter::TEXT, 5, '0');
 END;
 $$ LANGUAGE plpgsql;
+
+-- Seed the counter from existing transaction numbers (one-time)
+-- so new per-cafe counters pick up where old global ones left off
+INSERT INTO txn_sequence (date_key, cafe_id, counter)
+SELECT
+    SUBSTRING(transaction_number FROM 5 FOR 8) AS date_key,
+    cafe_id,
+    MAX(CAST(SUBSTRING(transaction_number FROM 14) AS INTEGER)) AS max_counter
+FROM transactions
+WHERE transaction_number LIKE 'TXN-%'
+GROUP BY date_key, cafe_id
+ON CONFLICT (date_key, cafe_id) DO UPDATE
+SET counter = EXCLUDED.counter
+WHERE txn_sequence.counter < EXCLUDED.counter;
+
+-- Change unique constraint from global to per-cafe
+-- so each business can have its own TXN-YYYYMMDD-00001
+ALTER TABLE transactions DROP CONSTRAINT IF EXISTS transactions_transaction_number_key;
+ALTER TABLE transactions ADD CONSTRAINT transactions_transaction_number_cafe_unique UNIQUE (cafe_id, transaction_number);
 
 -- ============================================================================
 -- 5. STOCK MUTATION TRIGGERS

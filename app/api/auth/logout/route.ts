@@ -22,11 +22,16 @@ export async function POST(request: Request) {
       }
     )
 
-    await supabase.auth.signOut()
+    const { error } = await supabase.auth.signOut()
+    if (error) {
+      console.error('Logout error:', error)
+      return NextResponse.json({ success: false, error: error.message }, { status: 500 })
+    }
 
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error('Logout error:', error)
-    return NextResponse.json({ success: true })
+    const message = error instanceof Error ? error.message : 'Gagal logout'
+    return NextResponse.json({ success: false, error: message }, { status: 500 })
   }
 }

@@ -267,13 +267,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       // Call logout API to clear server-side cookies
-      await fetchClient('/api/auth/logout', { method: 'POST', credentials: 'include' });
+      const logoutRes = await fetchClient('/api/auth/logout', { method: 'POST', credentials: 'include' });
+
+      if (!logoutRes.ok) {
+        const body = await logoutRes.json().catch(() => ({}));
+        throw new Error(body.error || 'Gagal logout');
+      }
+
+      // Clear all client-side state
+      mutate(() => true, undefined, { revalidate: false });
+      if (typeof window !== 'undefined') {
+        (window as any).__kasirkuClearNotifCache?.();
+      }
 
       setUser(null);
       setUserData(null);
       setError(null);
 
-      router.push('/login');
+      // Hard reload to /login for a completely clean slate
+      // (clears all in-memory React state, module-level caches, etc.)
+      if (typeof window !== 'undefined') {
+        window.location.href = '/login';
+      }
       return { success: true };
     } catch (err) {
       const message =

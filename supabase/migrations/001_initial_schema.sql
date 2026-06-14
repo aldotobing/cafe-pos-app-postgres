@@ -154,7 +154,7 @@ CREATE TYPE payment_method AS ENUM ('Tunai', 'QRIS', 'Debit', 'Transfer');
 
 CREATE TABLE transactions (
     id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
-    transaction_number TEXT UNIQUE NOT NULL,
+    transaction_number TEXT NOT NULL,
     subtotal NUMERIC(12,2) NOT NULL,
     tax_amount NUMERIC(12,2) NOT NULL,
     service_charge NUMERIC(12,2) NOT NULL,
@@ -285,6 +285,9 @@ CREATE INDEX idx_product_variants_barcode ON product_variants(barcode) WHERE del
 CREATE INDEX idx_product_variants_stock ON product_variants(menu_id, track_stock, stock_quantity) WHERE deleted_at IS NULL;
 
 -- Transactions indexes
+-- Per-cafe unique transaction numbers (Cafe A and Cafe B can both have 00001)
+ALTER TABLE transactions ADD CONSTRAINT transactions_txn_cafe_unique UNIQUE (cafe_id, transaction_number);
+
 CREATE INDEX idx_transactions_cafe_created ON transactions(cafe_id, created_at DESC) WHERE deleted_at IS NULL;
 CREATE INDEX idx_transactions_created_by ON transactions(created_by) WHERE deleted_at IS NULL;
 CREATE INDEX idx_transactions_number ON transactions(transaction_number);
