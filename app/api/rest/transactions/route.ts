@@ -204,9 +204,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unauthorized: No cafe assigned" }, { status: 403 });
     }
 
-    // Generate transaction number menggunakan function
+    // Generate transaction number — scoped per cafe
     const { data: txnNumber, error: txnError } = await supabaseAdmin
-      .rpc('generate_transaction_number');
+      .rpc('generate_transaction_number', { p_cafe_id: cafeId } as any);
     
     if (txnError) {
       console.error('Generate transaction number error:', txnError);
