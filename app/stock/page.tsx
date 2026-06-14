@@ -85,9 +85,8 @@ export default function StockPage() {
   }, [categories]);
 
   // Memoize filtered mutations to prevent unnecessary re-renders
-  const filteredMutations = useMemo(() => {
-    return mutations.filter(mut => mutationFilter === 'all' || mut.type === mutationFilter);
-  }, [mutations, mutationFilter]);
+  // Filtering is now done server-side via the API type param —
+  // the mutations array already contains only the selected type.
 
   // Animation variants
   const headerVariants = {
@@ -194,12 +193,14 @@ export default function StockPage() {
     setIsLoadingHistory(true);
     try {
       const currentOffset = isLoadMore ? historyOffset : 0;
-      const response = await fetch(`/api/stock/mutations?cafeId=${cafeId}&limit=10&offset=${currentOffset}`);
+      // Send type filter to the API so pagination works correctly when filtered
+      const typeParam = mutationFilter !== 'all' ? `&type=${mutationFilter}` : '';
+      const response = await fetch(`/api/stock/mutations?cafeId=${cafeId}&limit=10&offset=${currentOffset}${typeParam}`);
 
       if (response.ok) {
         const data = await response.json();
         const newMutations = data.mutations || [];
-        
+
         if (isLoadMore) {
           setMutations(prev => [...prev, ...newMutations]);
           setHistoryOffset(prev => prev + newMutations.length);
@@ -207,7 +208,7 @@ export default function StockPage() {
           setMutations(newMutations);
           setHistoryOffset(newMutations.length);
         }
-        
+
         setHasMoreHistory(data.hasMore ?? newMutations.length >= 10);
       }
     } catch {
@@ -218,11 +219,15 @@ export default function StockPage() {
     }
   };
 
+  // Load/refresh mutation history when panel opens or filter changes
   useEffect(() => {
-    if (showHistory && mutations.length === 0) {
-      loadMutationHistory();
-    }
-  }, [showHistory]);
+    if (!showHistory) return;
+    // Reset pagination and reload from the API with the current filter
+    setMutations([]);
+    setHistoryOffset(0);
+    setHasMoreHistory(false);
+    loadMutationHistory();
+  }, [showHistory, mutationFilter]);
 
   // Filter menu items by stock status, category, and search query
   const filteredMenu = useMemo(() => {
@@ -794,10 +799,7 @@ export default function StockPage() {
             className="rounded-xl border bg-card overflow-hidden"
           >
             <div className="flex items-center justify-between p-4 border-b">
-              <div className="flex items-center gap-2">
-                <History className="h-5 w-5 text-muted-foreground" />
-                <h2 className="font-semibold">Riwayat Mutasi Stok</h2>
-              </div>
+              <h2 className="font-semibold">Riwayat Mutasi Stok</h2>
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => loadMutationHistory()}
@@ -888,11 +890,24 @@ export default function StockPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {isInitialLoading ? (
+                  {isInitialLoading || (isLoadingHistory && mutations.length === 0) ? (
                     <tr>
                       <td colSpan={7} className="px-4 py-12 text-center text-muted-foreground">
                         <RefreshCw className="h-6 w-6 mx-auto mb-2 opacity-30 animate-spin" />
-                        Memuat riwayat...
+                        {isInitialLoading ? 'Memuat riwayat...' : 'Memperbarui...'}
+                      </td>
+                    </tr>
+                  ) : mutations.length === 0 && mutationFilter !== 'all' ? (
+                    <tr>
+                      <td colSpan={7} className="px-4 py-12 text-center text-muted-foreground">
+                        <Filter className="h-12 w-12 mx-auto mb-2 opacity-30" />
+                        <div className="text-sm font-medium">Tidak ada mutasi dengan filter ini</div>
+                        <button
+                          onClick={() => setMutationFilter('all')}
+                          className="text-xs text-primary hover:underline mt-1"
+                        >
+                          Tampilkan semua mutasi
+                        </button>
                       </td>
                     </tr>
                   ) : mutations.length === 0 ? (
@@ -904,7 +919,7 @@ export default function StockPage() {
                       </td>
                     </tr>
                   ) : (
-                    filteredMutations.map((mut, index) => (
+                    mutations.map((mut, index) => (
                       <tr key={`${mut.id}-${index}`} className="border-t last:border-b-0">
                         <td className="px-4 py-3 text-muted-foreground text-xs">{formatTanggal(mut.createdAt)}</td>
                         <td className="px-4 py-3">
@@ -986,18 +1001,6 @@ export default function StockPage() {
                 </div>
               )}
 
-              {mutations.length > 0 && filteredMutations.length === 0 && (
-                <div className="px-4 py-12 text-center text-muted-foreground">
-                  <Filter className="h-12 w-12 mx-auto mb-2 opacity-30" />
-                  <div className="text-sm font-medium">Tidak ada mutasi dengan filter ini</div>
-                  <button
-                    onClick={() => setMutationFilter('all')}
-                    className="text-xs text-primary hover:underline mt-1"
-                  >
-                    Tampilkan semua mutasi
-                  </button>
-                </div>
-              )}
             </div>
           </motion.div>
         )}
