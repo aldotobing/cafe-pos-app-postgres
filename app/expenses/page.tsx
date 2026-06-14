@@ -15,7 +15,7 @@ import {
 } from '@/components/ui';
 import { format, parseISO } from 'date-fns';
 import { id } from 'date-fns/locale';
-import { Calendar as CalendarIcon, Plus, Trash2, Edit2, RefreshCw, RotateCcw, X, Wallet } from 'lucide-react';
+import { Calendar as CalendarIcon, Plus, Trash2, Edit2, RefreshCw, X, Wallet, Filter } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -274,12 +274,23 @@ export default function ExpensesPage() {
         {/* Filters */}
         <motion.div
           variants={{ hidden: { opacity: 0, y: 4 }, visible: { opacity: 1, y: 0 } }}
-          className="rounded-xl border bg-card shadow-sm p-4"
+          className="rounded-xl sm:rounded-2xl border bg-card shadow-sm p-4 sm:p-5"
         >
+          {/* Filter Title */}
+          <div className="flex items-center gap-2.5 mb-4">
+            <Filter className="h-4 w-4 text-muted-foreground" />
+            <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70">
+              FILTER
+            </span>
+            {(selectedCategory || startDate.getMonth() !== new Date().getMonth() || startDate.getDate() !== 1 || endDate.toDateString() !== new Date().toDateString()) && (
+              <span className="w-1.5 h-1.5 rounded-full bg-primary" />
+            )}
+          </div>
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* Periode */}
             <div className="flex flex-col gap-1.5">
-              <label className="text-[10px] font-bold uppercase text-muted-foreground px-1">Periode</label>
+              <label className="text-xs font-medium text-muted-foreground">Periode</label>
               <div className="flex gap-2 items-center">
                 <Popover open={startOpen} onOpenChange={setStartOpen}>
                   <PopoverTrigger asChild>
@@ -289,7 +300,7 @@ export default function ExpensesPage() {
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0 rounded-xl" align="start">
-                    <Calendar mode="single" selected={startDate} onSelect={(date) => { if (date) { setStartDate(date); setStartOpen(false); } }} />
+                    <Calendar mode="single" selected={startDate} onSelect={(date) => { if (date) { setStartDate(date); setStartOpen(false); } }} locale={id} />
                   </PopoverContent>
                 </Popover>
                 <span className="text-muted-foreground text-sm">—</span>
@@ -301,7 +312,7 @@ export default function ExpensesPage() {
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0 rounded-xl" align="start">
-                    <Calendar mode="single" selected={endDate} onSelect={(date) => { if (date) { setEndDate(date); setEndOpen(false); } }} />
+                    <Calendar mode="single" selected={endDate} onSelect={(date) => { if (date) { setEndDate(date); setEndOpen(false); } }} locale={id} />
                   </PopoverContent>
                 </Popover>
               </div>
@@ -309,7 +320,7 @@ export default function ExpensesPage() {
 
             {/* Kategori */}
             <div className="flex flex-col gap-1.5">
-              <label className="text-[10px] font-bold uppercase text-muted-foreground px-1">Kategori</label>
+              <label className="text-xs font-medium text-muted-foreground">Kategori</label>
               <div className="flex gap-2">
                 <Select value={selectedCategory || 'all'} onValueChange={(v) => setSelectedCategory(v === 'all' ? '' : v)}>
                   <SelectTrigger className="flex-1 h-9 rounded-lg">
@@ -340,19 +351,17 @@ export default function ExpensesPage() {
           </div>
 
           {/* Reset */}
-          <div className="flex items-center gap-2 pt-3 mt-3 border-t border-dashed">
-            <Button
-              variant="ghost"
-              className="flex-1 sm:flex-none px-4 h-9 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground"
+          <div className="flex items-center gap-2 pt-4 mt-4 border-t border-dashed">
+            <button
               onClick={() => {
                 setStartDate(new Date(new Date().getFullYear(), new Date().getMonth(), 1))
                 setEndDate(new Date())
                 setSelectedCategory('')
               }}
+              className="flex-1 sm:flex-none px-4 h-9 rounded-xl border border-dashed hover:bg-muted/50 transition-all text-xs font-medium text-muted-foreground"
             >
-              <RotateCcw className="w-3.5 h-3.5 mr-1.5" />
-              Reset Filter
-            </Button>
+              Reset
+            </button>
           </div>
         </motion.div>
 
